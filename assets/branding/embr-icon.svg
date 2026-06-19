@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 140 140" width="140" height="140" role="img" aria-label="EMBR icon">
+  <title>EMBR icon — single ember</title>
+  <!-- One centred ember for app/general icon use: glow, hot core, flame lick, rising sparks. -->
+  <g transform="translate(70,84)">
+    <circle r="46" fill="#F59E0B" opacity="0.06"/>
+    <circle r="34" fill="#F59E0B" opacity="0.09"/>
+    <circle r="25" fill="#F59E0B" opacity="0.13"/>
+    <circle r="17" fill="#F8A317" opacity="0.20"/>
+    <circle r="12" fill="#fcd34d"/>
+    <circle r="8.5" fill="#f59e0b"/>
+    <circle r="4" fill="#fffdf7"/>
+    <path d="M0,-44 C7,-32 7,-19 0,-12 C-7,-19 -7,-32 0,-44 Z" fill="#fbbf24"/>
+    <path d="M0,-40 C4,-30 4,-19 0,-14 C-4,-19 -4,-30 0,-40 Z" fill="#fde68a"/>
+    <circle cx="-5" cy="-54" r="2.2" fill="#f59e0b" opacity="0.85"/>
+    <circle cx="-9" cy="-63" r="1.5" fill="#f59e0b" opacity="0.65"/>
+    <circle cx="-4" cy="-71" r="1.0" fill="#f59e0b" opacity="0.45"/>
+  </g>
+</svg>

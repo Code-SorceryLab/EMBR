@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 680 380" width="680" height="380" role="img" aria-label="EMBR — emotional memory for believable roleplay">
+  <title>EMBR logo</title>
+  <desc>Three drifting will-o-wisp embers of different sizes, each with a small flame lick and rising sparks, above the soft lowercase wordmark embr.</desc>
+  <defs>
+    <!-- One ember: soft concentric glow, a hot core, a flame lick, and rising sparks. -->
+    <g id="ember">
+      <circle r="46" fill="#F59E0B" opacity="0.06"/>
+      <circle r="34" fill="#F59E0B" opacity="0.09"/>
+      <circle r="25" fill="#F59E0B" opacity="0.13"/>
+      <circle r="17" fill="#F8A317" opacity="0.20"/>
+      <circle r="12" fill="#fcd34d"/>
+      <circle r="8.5" fill="#f59e0b"/>
+      <circle r="4" fill="#fffdf7"/>
+      <path d="M0,-44 C7,-32 7,-19 0,-12 C-7,-19 -7,-32 0,-44 Z" fill="#fbbf24"/>
+      <path d="M0,-40 C4,-30 4,-19 0,-14 C-4,-19 -4,-30 0,-40 Z" fill="#fde68a"/>
+      <circle cx="-5" cy="-54" r="2.2" fill="#f59e0b" opacity="0.85"/>
+      <circle cx="-9" cy="-63" r="1.5" fill="#f59e0b" opacity="0.65"/>
+      <circle cx="-4" cy="-71" r="1.0" fill="#f59e0b" opacity="0.45"/>
+    </g>
+  </defs>
+
+  <use href="#ember" transform="translate(252,158) scale(0.72)"/>
+  <use href="#ember" transform="translate(372,210) scale(1.05)"/>
+  <use href="#ember" transform="translate(482,262) scale(0.5)"/>
+
+  <text x="360" y="338" text-anchor="middle" font-family="-apple-system, system-ui, 'Segoe UI', Roboto, sans-serif" font-size="64" font-weight="300" letter-spacing="16" fill="#dcd6d0">embr</text>
+</svg>

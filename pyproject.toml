@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "embr"
+version = "0.1.0"
+description = "Emotional Memory for Believable Roleplay — emotion-grounded memory for persistent game NPCs."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Kevin Chua" }]
+keywords = ["LLM", "NPC", "memory", "affective-computing", "retrieval", "game-ai"]
+
+# Core stays tiny on purpose: only the applet needs a third-party package. The heavy ML
+# stack (embeddings, the local model) goes in the optional extras below so a fresh clone
+# runs the skeleton and the demo with almost nothing installed.
+dependencies = [
+    "textual>=0.50",
+]
+
+[project.optional-dependencies]
+# Installed when we wire in real retrieval and the local model (phase 2).
+ml = [
+    "numpy>=1.24",
+    "sentence-transformers>=2.2",
+    "rank-bm25>=0.2",
+]
+dev = [
+    "pytest>=7.4",
+]
+
+[project.scripts]
+embr = "embr.app.main:main"
+
+[tool.setuptools.packages.find]
+include = ["embr*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

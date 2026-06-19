@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="EMBR favicon">
+  <title>EMBR favicon</title>
+  <!-- A single ember scaled to read at tab size: glow + hot core + flame, sparks dropped
+       (they vanish below ~32px). Transparent background so it sits on light or dark tabs. -->
+  <g transform="translate(32,38) scale(0.62)">
+    <circle r="46" fill="#F59E0B" opacity="0.10"/>
+    <circle r="34" fill="#F59E0B" opacity="0.14"/>
+    <circle r="25" fill="#F59E0B" opacity="0.20"/>
+    <circle r="17" fill="#F8A317" opacity="0.30"/>
+    <circle r="12" fill="#fcd34d"/>
+    <circle r="8.5" fill="#f59e0b"/>
+    <circle r="4" fill="#fffdf7"/>
+    <path d="M0,-44 C7,-32 7,-19 0,-12 C-7,-19 -7,-32 0,-44 Z" fill="#fbbf24"/>
+    <path d="M0,-40 C4,-30 4,-19 0,-14 C-4,-19 -4,-30 0,-40 Z" fill="#fde68a"/>
+  </g>
+</svg>

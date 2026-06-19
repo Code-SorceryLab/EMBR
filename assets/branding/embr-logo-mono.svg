@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 120" width="320" height="120" role="img" aria-label="EMBR — emotional memory for believable roleplay">
+  <title>EMBR logo (monochrome)</title>
+  <!-- Single-colour lockup for print and greyscale paper figures. The soft glow can't
+       survive in one ink, so the ember becomes a simple flame + core-ring glyph.
+       Uses currentColor — set CSS `color` (or `fill`) on the embedding element to recolour. -->
+  <g color="#1c1917">
+    <!-- ember glyph -->
+    <g transform="translate(48,64)" fill="currentColor">
+      <circle r="11" fill="none" stroke="currentColor" stroke-width="3"/>
+      <circle r="3.5"/>
+      <path d="M0,-40 C8,-27 8,-12 0,-4 C-8,-12 -8,-27 0,-40 Z"/>
+      <circle cx="-7" cy="-48" r="2"/>
+      <circle cx="-11" cy="-57" r="1.4"/>
+    </g>
+    <!-- wordmark -->
+    <text x="92" y="80" font-family="-apple-system, system-ui, 'Segoe UI', Roboto, sans-serif" font-size="56" font-weight="300" letter-spacing="12" fill="currentColor">embr</text>
+  </g>
+</svg>
