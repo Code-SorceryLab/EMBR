@@ -1,4 +1,4 @@
-"""The language-model runner — step 5 of the pipeline.
+"""The language-model runner: step 5 of the pipeline.
 
 EMBR's contribution is the memory layer, not the model, so the model sits behind a tiny
 interface and can be swapped freely. The `StubRunner` lets the whole pipeline run today on
@@ -19,7 +19,7 @@ class ModelRunner(Protocol):
 
 
 class StubRunner:
-    """Deterministic stand-in model — no weights, no network, no GPU.
+    """Deterministic stand-in model: no weights, no network, no GPU.
 
     It does not actually reason; it returns a short, obviously-fake line so the surrounding
     pipeline (logging, state update, scoring, retrieval, prompt building) can be exercised

@@ -1,7 +1,7 @@
 """Turn the character's state and retrieved memories into the text the model sees.
 
 This is step 4 of the per-turn pipeline. Keeping prompt assembly in one small, readable
-place means the exact wording the model receives is easy to audit — which matters for the
+place means the exact wording the model receives is easy to audit, which matters for the
 RQ1 behaviour study (does state change the reply?) and the RQ2 robustness study (what can
 an attacker inject?).
 """

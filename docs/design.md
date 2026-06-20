@@ -1,4 +1,4 @@
-# EMBR — design spec
+# EMBR design spec
 
 *Emotional Memory for Believable Roleplay.* Middleware that gives game NPCs an
 emotion-grounded, persistent memory. Paper title: **Emotion-Grounded Memory for Persistent
@@ -9,7 +9,7 @@ This is the living design record. It tracks decisions; it is not the paper.
 ## 1. Goal
 
 Give an NPC a memory that (a) persists across sessions, (b) is grounded in the character's
-emotional state, and (c) we can measure — does emotion change what the character *says*, is
+emotional state, and (c) we can measure: does emotion change what the character *says*, is
 emotion-tagged memory attackable, and which retrieval signal does the work?
 
 ## 2. Architecture
@@ -17,11 +17,11 @@ emotion-tagged memory attackable, and which retrieval signal does the work?
 The system is a layer between the game's dialogue loop and a local model. Each player turn
 runs five steps, then loops (see `assets/figures/architecture.svg`):
 
-1. **Log event** — write the new event to the store with its affect tags and type.
-2. **Update state** — move the character's mood (fast) and trust (slow).
-3. **Score memories** — score every stored memory with the five-signal composite.
-4. **Build prompt** — persona + current state + top-k memories + player input.
-5. **Run model** — call the local model for the reply.
+1. **Log event**: write the new event to the store with its affect tags and type.
+2. **Update state**: move the character's mood (fast) and trust (slow).
+3. **Score memories**: score every stored memory with the five-signal composite.
+4. **Build prompt**: persona + current state + top-k memories + player input.
+5. **Run model**: call the local model for the reply.
 
 Everything runs locally, no network, no per-token cost.
 
@@ -29,14 +29,14 @@ Everything runs locally, no network, no per-token cost.
 
 Three small contracts carry the whole system; get these right and everything plugs in.
 
-- **`Memory`** (`embr/memory.py`) — `text`, `valence`, `arousal`, `event_type`,
+- **`Memory`** (`embr/memory.py`): `text`, `valence`, `arousal`, `event_type`,
   `timestamp`, `embedding`. These are exactly the fields the five signals consume; nothing
   else is stored. `MemoryStore` is the per-character store (in-memory now; SQLite + vector
   index later, behind the same interface).
-- **`CharacterState`** (`embr/affect.py`) — `persona` (stable, read-only), `mood`
+- **`CharacterState`** (`embr/affect.py`): `persona` (stable, read-only), `mood`
   (valence/arousal, Russell 1980), `trust` (slow scalar). Mood and trust are separate so a
   single hostile remark doesn't erase a long relationship.
-- **`Signal` / `CompositeScorer`** (`embr/scoring.py`) — each scoring term is one small,
+- **`Signal` / `CompositeScorer`** (`embr/scoring.py`): each scoring term is one small,
   pure class with a `name`; the scorer is a weighted sum. **Zeroing a weight disables a
   signal.** This is the single source of truth for all scoring variants.
 
@@ -60,8 +60,8 @@ as weight maps rather than duplicated code, and keeps every signal independently
 
 ## 5. Baselines & protocol
 
-- **Park et al.** — recency + importance + relevance (field-standard).
-- **Emotional RAG** — mood-biased retrieval (closest prior work).
+- **Park et al.**: recency + importance + relevance (field-standard).
+- **Emotional RAG**: mood-biased retrieval (closest prior work).
 
 Both are scorer variants on the same interface, run on the same model and hardware. Every
 system (ours included) is tuned by the same grid search on the same validation set;
@@ -70,11 +70,11 @@ evaluation scenarios and relevance labels are fixed in advance. *(Built in phase
 
 ## 6. Evaluation (summary)
 
-- **RQ1 Behaviour** — vary only the state; measure retrieval shift (Jaccard), tone shift
+- **RQ1 Behaviour**: vary only the state; measure retrieval shift (Jaccard), tone shift
   (classifier + blinded judge), and human preference.
-- **RQ2 Robustness & cost** — 20 memory-injection attacks (4 categories), drift via
+- **RQ2 Robustness & cost**: 20 memory-injection attacks (4 categories), drift via
   valence-arousal cosine distance; per-turn latency p50/p95 (~600 ms target).
-- **RQ3 Retrieval** — precision/recall/nDCG@k vs. pre-registered labels; ablate signals.
+- **RQ3 Retrieval**: precision/recall/nDCG@k vs. pre-registered labels; ablate signals.
 
 ## 7. Build order
 
@@ -83,7 +83,7 @@ evaluation scenarios and relevance labels are fixed in advance. *(Built in phase
 | **0 (done)** | Skeleton, data contracts, applet shell, live demo turn, tests |
 | 1 | Real relevance (BM25 + embeddings), affect appraisal rules, SQLite store |
 | 2 | Eval harness, baselines, metrics, adversarial probes |
-| 3 | Paper assets — figures & tables generated from results |
+| 3 | Paper assets: figures & tables generated from results |
 | 4 | Playable tavern-keeper walkthrough (recorded demo is a primary deliverable) |
 
 ## 8. Conventions
@@ -91,7 +91,7 @@ evaluation scenarios and relevance labels are fixed in advance. *(Built in phase
 - One module per subsystem inside `embr/`; promote to a sub-package only when it outgrows a
   single file. Folders organize; we don't scatter lonely files.
 - Descriptive names, small "why" comments, easy-to-use functions, no duplicated logic
-  (one source of truth — e.g. signals and baselines).
+  (one source of truth, e.g. signals and baselines).
 - Code emits paper-ready figures/tables so an artifact is never made twice.
 - The model is swappable; results about *memory* outlast any one model.
 

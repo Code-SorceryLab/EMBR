@@ -1,4 +1,4 @@
-"""EMBR — Emotional Memory for Believable Roleplay.
+"""EMBR: Emotional Memory for Believable Roleplay.
 
 A middleware layer that gives game NPCs an emotion-grounded, persistent memory. The public
 surface below is the whole spine of the system; everything else is an implementation detail

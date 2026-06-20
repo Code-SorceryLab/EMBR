@@ -1,4 +1,4 @@
-"""The composite memory score — the core contribution of the paper.
+"""The composite memory score: the core contribution of the paper.
 
 Park et al. (2023) blend three signals (recency, importance, relevance) into a single
 number. We decompose that into FIVE independently-weighted signals so each can be isolated
@@ -12,7 +12,7 @@ by simply zeroing its weight. That one design choice buys us three things for fr
                      + w_rel·relevance + w_mood·mood_congruence
 
 Each signal returns a value in roughly [0, 1] given a memory `m`, the player's query `q`,
-and the character's current state `s`. Signals never look at each other — that independence
+and the character's current state `s`. Signals never look at each other, and that independence
 is what makes the decomposition meaningful.
 """
 
@@ -48,7 +48,7 @@ def _tokens(text: str) -> set[str]:
 
 
 def _token_overlap(text: str, query: str) -> float:
-    """Jaccard overlap of word sets — a dependency-free stand-in for real relevance."""
+    """Jaccard overlap of word sets, a dependency-free stand-in for real relevance."""
     a, b = _tokens(text), _tokens(query)
     if not a or not b:
         return 0.0
@@ -146,7 +146,7 @@ def all_signals() -> list[Signal]:
 class CompositeScorer:
     """Weighted sum of signals. Zeroing (or omitting) a weight disables that signal.
 
-    This is the single object every variant uses — EMBR, Park, and Emotional RAG differ
+    This is the single object every variant uses: EMBR, Park, and Emotional RAG differ
     only in their `weights` and which `signals` they carry, never in this code.
     """
 
@@ -161,7 +161,7 @@ class CompositeScorer:
         )
 
     def breakdown(self, memory: Memory, query: str, state: CharacterState) -> dict[str, float]:
-        """Per-signal weighted contributions — handy for figures and debugging."""
+        """Per-signal weighted contributions, handy for figures and debugging."""
         return {
             sig.name: self.weights.get(sig.name, 0.0) * sig.score(memory, query, state)
             for sig in self.signals
@@ -178,7 +178,7 @@ class CompositeScorer:
 def embr_scorer() -> CompositeScorer:
     """EMBR's full composite: all five signals active, equal starting weights.
 
-    These weights are the tuning target for the comparison protocol — every variant,
+    These weights are the tuning target for the comparison protocol: every variant,
     including the baselines, is fit by the same grid search on the same data.
     """
     return CompositeScorer(

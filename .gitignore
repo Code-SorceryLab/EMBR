@@ -16,7 +16,7 @@ env/
 .mypy_cache/
 .ruff_cache/
 
-# Runtime data — memory databases, embeddings, run outputs (keep the folder, not the files)
+# Runtime data: memory databases, embeddings, run outputs (keep the folder, not the files)
 data/*
 !data/.gitkeep
 

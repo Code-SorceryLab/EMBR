@@ -1,8 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 120" width="320" height="120" role="img" aria-label="EMBR — emotional memory for believable roleplay">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 120" width="320" height="120" role="img" aria-label="EMBR: emotional memory for believable roleplay">
   <title>EMBR logo (monochrome)</title>
   <!-- Single-colour lockup for print and greyscale paper figures. The soft glow can't
        survive in one ink, so the ember becomes a simple flame + core-ring glyph.
-       Uses currentColor — set CSS `color` (or `fill`) on the embedding element to recolour. -->
+       Uses currentColor: set CSS `color` (or `fill`) on the embedding element to recolour. -->
   <g color="#1c1917">
     <!-- ember glyph -->
     <g transform="translate(48,64)" fill="currentColor">

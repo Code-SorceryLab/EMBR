@@ -1,4 +1,4 @@
-"""The per-turn pipeline — the spine drawn in the architecture figure.
+"""The per-turn pipeline: the spine drawn in the architecture figure.
 
 On each player turn the `Conversation` runs the five steps in order:
 
@@ -78,7 +78,7 @@ def build_demo_conversation() -> Conversation:
     """A tiny seeded conversation that mirrors the thesis's tavern-keeper example.
 
     Dawn Whitmore once gave the player a discounted room on the strength of a claim to be
-    running an errand for the king. Two sessions later the lie is about to surface — the
+    running an errand for the king. Two sessions later the lie is about to surface. The
     memories below are what a believable keeper should be able to recall and reinterpret.
     """
     dawn = CharacterState(
@@ -107,7 +107,7 @@ def build_demo_conversation() -> Conversation:
     )
     convo.store.add(
         Memory(
-            text="The player asked, in passing, about the late king — as though he had died "
+            text="The player asked, in passing, about the late king, as though he had died "
             "some time ago.",
             valence=-0.3,
             arousal=0.5,

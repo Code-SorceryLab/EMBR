@@ -5,12 +5,12 @@
 # Emotion-Grounded Memory for Persistent Game NPCs
 
 **EMBR** (*Emotional Memory for Believable Roleplay*) is a middleware layer that gives
-game NPCs a persistent, **emotion-grounded** memory — so a character remembers what you
+game NPCs a persistent, **emotion-grounded** memory, so a character remembers what you
 did, *feels* about it, and reacts to a gift and a betrayal differently.
 
 It runs locally on a small model (Ouro 1.4B, 8 GB VRAM budget) and decomposes the standard
 memory score into **five independently-weighted signals**, so we can ask which one actually
-drives believable behaviour — and whether emotion-tagged memory can be attacked.
+drives believable behaviour, and whether emotion-tagged memory can be attacked.
 
 </div>
 
@@ -24,13 +24,13 @@ On each player turn, EMBR runs five steps, then loops:
 <img src="assets/figures/architecture.svg" alt="EMBR per-turn pipeline" width="660">
 </div>
 
-The contribution is the **memory layer**, not the model — so the model sits behind a tiny
+The contribution is the **memory layer**, not the model, so the model sits behind a tiny
 interface and can be swapped freely.
 
 ## The five-signal composite score
 
 Park et al. (2023) blend recency, importance, and relevance into one number. EMBR splits
-that into five signals you can weight — or switch off — independently:
+that into five signals you can weight (or switch off) independently:
 
 | Signal | What it captures | Grounding |
 |---|---|---|
@@ -40,7 +40,7 @@ that into five signals you can weight — or switch off — independently:
 | **Hybrid relevance** | lexical + semantic similarity to the player's input | standard hybrid retrieval |
 | **Mood congruence** | memories matching the current mood surface first | Bower 1981; Emotional RAG |
 
-Setting any weight to zero removes that signal cleanly — which is exactly the **RQ3
+Setting any weight to zero removes that signal cleanly, which is exactly the **RQ3
 ablation**, and lets the **baselines** be expressed as weight maps instead of duplicated code.
 
 ## Quickstart
@@ -56,7 +56,7 @@ pytest -q                   # run the tests
 <details>
 <summary><b>What you'll see in the applet</b> (click to expand)</summary>
 
-A Textual TUI menu. **Run a conversation turn** is live today — it runs a real demo turn
+A Textual TUI menu. **Run a conversation turn** is live today: it runs a real demo turn
 through the pipeline using the thesis's own tavern-keeper example (Dawn Whitmore and the
 player's lie about running an errand for the king), and you can watch the composite scorer
 surface that lie at the top of the recalled memories. The other entries (experiments, paper
@@ -67,7 +67,7 @@ assets, the playable walkthrough) light up as each phase is built.
 ## Research questions
 
 <details>
-<summary>RQ1 — RQ3 (click to expand)</summary>
+<summary>RQ1 to RQ3 (click to expand)</summary>
 
 - **RQ1 (Behaviour):** does an authored emotional state change what the character *says*, or only what it remembers?
 - **RQ2 (Robustness & cost):** is emotion-tagged memory an exploitable target, and is it fast enough for play (~600 ms target on an 8 GB card)?
@@ -82,7 +82,7 @@ Test characters: Dawn Whitmore (invented tavern keeper) and Kenny (Telltale).
 
 ```
 EMBR/
-├── embr/                 # the core runtime — the middleware itself
+├── embr/                 # the core runtime: the middleware itself
 │   ├── memory.py         #   Memory record + MemoryStore
 │   ├── affect.py         #   Mood (valence/arousal) + trust
 │   ├── scoring.py        #   the five signals + composite scorer
@@ -104,11 +104,14 @@ EMBR/
 | 0 | Skeleton, data contracts, applet shell, live demo turn | ✅ done |
 | 1 | Real retrieval (BM25 + embeddings), affect appraisal rules, SQLite store | next |
 | 2 | Eval harness, baselines, metrics, adversarial probes | planned |
-| 3 | Paper assets — figures & tables straight from results | planned |
+| 3 | Paper assets: figures & tables straight from results | planned |
 | 4 | Playable tavern-keeper walkthrough | planned |
 
+**Building EMBR?** The phase-by-phase plan (tasks, deliverables, and the results expected
+from each phase) is in [`docs/roadmap.md`](docs/roadmap.md).
+
 > An interactive web demo (a recorded TUI run + a live page) will be linked here once the
-> walkthrough lands — GitHub can't run JS in a README, so that lives on a companion page.
+> walkthrough lands. GitHub can't run JS in a README, so that lives on a companion page.
 
 ## License
 

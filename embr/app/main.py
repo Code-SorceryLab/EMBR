@@ -42,12 +42,12 @@ def _run_turn_detail() -> str:
         "**Memories EMBR recalled (top-k):**",
     ]
     for memory in turn.retrieved:
-        lines.append(f"- *{memory.event_type.value}* — {memory.text}")
+        lines.append(f"- *{memory.event_type.value}*: {memory.text}")
     lines += [
         "",
         f"**Reply:** {turn.reply}",
         "",
-        "> Notice the lie about the king resurfaces near the top — that is the composite"
+        "> Notice the lie about the king resurfaces near the top: that is the composite"
         " scorer connecting the player's question to the right memory.",
     ]
     return "\n".join(lines)
@@ -61,24 +61,24 @@ MENU: dict[str, tuple[str, object]] = {
         "Run experiment  ·  RQ1 / RQ2 / RQ3",
         "# Run experiment\n\nDrives the RQ1 (behaviour), RQ2 (robustness & latency), and RQ3"
         " (retrieval) studies against the Park and Emotional RAG baselines.\n\n"
-        "▸ *Not built yet — phase 2 (eval harness).*",
+        "▸ *Not built yet (phase 2, eval harness).*",
     ),
     "assets": (
         "Generate paper assets",
         "# Generate paper assets\n\nRe-creates every figure and table for the paper straight"
-        " from the latest results — one command, reproducible.\n\n"
-        "▸ *Not built yet — phase 3 (assets).*",
+        " from the latest results: one command, reproducible.\n\n"
+        "▸ *Not built yet (phase 3, assets).*",
     ),
     "walkthrough": (
         "Play tavern-keeper walkthrough",
         "# Play tavern-keeper walkthrough\n\nAn interactive run of Dawn Whitmore's trust,"
-        " betrayal, and reconciliation arc — the recorded demo is a primary deliverable.\n\n"
-        "▸ *Not built yet — phase 4 (demo).*",
+        " betrayal, and reconciliation arc. The recorded demo is a primary deliverable.\n\n"
+        "▸ *Not built yet (phase 4, demo).*",
     ),
     "settings": (
         "Settings",
         "# Settings\n\nModel runner, VRAM budget, scorer weights, and top-k.\n\n"
-        "▸ *Not built yet — phase 2.*",
+        "▸ *Not built yet (phase 2).*",
     ),
 }
 
@@ -129,7 +129,7 @@ class EmbrApp(App):
 
 
 def main() -> None:
-    """Console entry point — `embr` or `python -m embr`."""
+    """Console entry point: `embr` or `python -m embr`."""
     EmbrApp().run()
 
 

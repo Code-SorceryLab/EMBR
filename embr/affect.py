@@ -1,7 +1,7 @@
 """Character emotional state: a fast-changing mood plus a slow-moving trust level.
 
-The two are kept deliberately separate — Russell's (1980) circumplex for mood, a single
-scalar for trust — so one hostile remark can sour the mood for a turn without erasing a
+The two are kept deliberately separate: Russell's (1980) circumplex for mood, a single
+scalar for trust, so one hostile remark can sour the mood for a turn without erasing a
 relationship that took hours of play to build. The stable *personality* lives in `persona`
 and is never mutated at runtime; only `mood` and `trust` move.
 """
@@ -45,7 +45,7 @@ class Mood:
 class CharacterState:
     """Everything the system tracks about one character across a conversation."""
 
-    persona: str  # authored, stable personality description — read-only at runtime
+    persona: str  # authored, stable personality description, read-only at runtime
     mood: Mood = field(default_factory=Mood)
     trust: float = 0.0  # -1 (hostile) .. +1 (devoted); moves slowly, unlike mood
 
@@ -56,7 +56,7 @@ class CharacterState:
     def adjust_trust(self, delta: float) -> None:
         """Move the slow trust level. Kept small per event so trust accrues over time.
 
-        NOTE: placeholder linear update — the appraisal rules that decide how big each
+        NOTE: placeholder linear update. The appraisal rules that decide how big each
         delta should be (e.g. a betrayal vs. a gift) are designed in the phase-2 affect work.
         """
         self.trust = _clamp(self.trust + delta, -1.0, 1.0)

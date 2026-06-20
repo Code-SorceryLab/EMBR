@@ -1,6 +1,6 @@
 """A stored event (a "memory") and the store that holds a character's memories.
 
-The `Memory` fields are exactly what the five scoring signals consume — text for lexical
+The `Memory` fields are exactly what the five scoring signals consume: text for lexical
 relevance, an embedding for semantic relevance, valence/arousal for affect and mood
 congruence, an event type for the plot-beat gate, and a timestamp for recency. Nothing
 else is stored, so every field earns its place and the store stays lean.
@@ -44,7 +44,7 @@ def _now() -> datetime:
 class Memory:
     """One thing that happened, with the affect tags and type the scorer needs."""
 
-    text: str  # what happened, in words — feeds lexical relevance and the prompt
+    text: str  # what happened, in words; feeds lexical relevance and the prompt
     valence: float = 0.0  # affect tag: -1 (negative) .. +1 (positive)
     arousal: float = 0.0  # affect tag:  0 (calm)     .. +1 (intense)
     event_type: EventType = EventType.NORMAL
@@ -54,7 +54,7 @@ class Memory:
 
     @property
     def is_plot_beat(self) -> bool:
-        """True for turning points (promise, betrayal, ...) — see PLOT_BEATS."""
+        """True for turning points (promise, betrayal, ...); see PLOT_BEATS."""
         return self.event_type in PLOT_BEATS
 
 
