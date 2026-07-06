@@ -20,11 +20,10 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-# Installed when we wire in real retrieval and the local model (phase 2).
+# Real semantic embeddings (and, later, the local model). BM25 is implemented in-tree, so
+# the core needs no ML stack; installing this only adds real sentence embeddings.
 ml = [
-    "numpy>=1.24",
     "sentence-transformers>=2.2",
-    "rank-bm25>=0.2",
 ]
 dev = [
     "pytest>=7.4",

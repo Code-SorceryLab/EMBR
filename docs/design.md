@@ -52,7 +52,7 @@ score(m, q, s) = w_rec·recency + w_aff·affect + w_evt·event_gate
 | Recency | `decay_per_hour ** Δhours` | Park 2023; MemoryBank |
 | Affect intensity | `|valence| · arousal` | Cahill & McGaugh 1998 |
 | Event-type gate | `1[plot beat] · g(trust)` | novel |
-| Hybrid relevance | `γ·BM25 + (1−γ)·cosine` *(placeholder: token overlap)* | standard hybrid retrieval |
+| Hybrid relevance | `γ·BM25 + (1−γ)·cosine(embeddings)` | standard hybrid retrieval |
 | Mood congruence | `cos((v_m,a_m),(v_s,a_s))` | Bower 1981; Emotional RAG |
 
 **Why decomposed:** it makes the RQ3 ablation trivial (zero a weight), expresses baselines
@@ -81,10 +81,15 @@ evaluation scenarios and relevance labels are fixed in advance. *(Built in phase
 | Phase | Scope |
 |---|---|
 | **0 (done)** | Skeleton, data contracts, applet shell, live demo turn, tests |
-| 1 | Real relevance (BM25 + embeddings), affect appraisal rules, SQLite store |
+| **1 (done)** | Hybrid relevance (in-tree BM25 + embedding cosine), pluggable embedder, SQLite store, affect-appraisal rules, config + live Settings |
 | 2 | Eval harness, baselines, metrics, adversarial probes |
 | 3 | Paper assets: figures & tables generated from results |
 | 4 | Playable tavern-keeper walkthrough (recorded demo is a primary deliverable) |
+
+Phase-1 note: BM25 is implemented in-tree (`embr/scoring.py`) so the core needs no numpy; real
+semantic embeddings live behind the `[ml]` extra, with a deterministic fallback embedder for
+tests. Corpus-aware signals expose an optional `prepare(memories, query, state)` hook the
+scorer calls once before per-memory scoring.
 
 ## 8. Conventions
 

@@ -16,8 +16,21 @@ from embr.scoring import (
     EventTypeGate,
     MoodCongruence,
     Recency,
+    Relevance,
     embr_scorer,
 )
+
+
+class _ConstEmbedder:
+    """Test double: encodes every text to the same fixed vector (a chosen query direction)."""
+
+    dim = 3
+
+    def __init__(self, vector: list[float]) -> None:
+        self._vector = vector
+
+    def encode(self, text: str) -> list[float]:
+        return list(self._vector)
 
 
 def _state(valence: float = 0.0, arousal: float = 0.0, trust: float = 0.0) -> CharacterState:
@@ -85,3 +98,33 @@ def test_top_k_returns_best_first_and_respects_k() -> None:
     scorer = embr_scorer()
     ranked = scorer.top_k([irrelevant, relevant], query="news of the king", state=_state(), k=1)
     assert ranked == [relevant]
+
+
+def test_relevance_ranks_lexically_matching_memory_first() -> None:
+    scorer = CompositeScorer(weights={"relevance": 1.0}, signals=[Relevance()])
+    cat = Memory(text="a cat sat by the fire")
+    king = Memory(text="the king rode north at dawn")
+    ranked = scorer.top_k([cat, king], query="news of the king", state=_state(), k=1)
+    assert ranked == [king]
+
+
+def test_relevance_uses_embeddings_to_break_a_lexical_tie() -> None:
+    # gamma=0 -> pure semantic (cosine) relevance. Both memories have identical text, so the
+    # lexical (BM25) half is a tie and only the embedding direction can separate them.
+    relevance = Relevance(gamma=0.0, embedder=_ConstEmbedder([1.0, 0.0, 0.0]))
+    scorer = CompositeScorer(weights={"relevance": 1.0}, signals=[relevance])
+    near = Memory(text="identical filler words", embedding=[1.0, 0.0, 0.0])
+    far = Memory(text="identical filler words", embedding=[0.0, 1.0, 0.0])
+    ranked = scorer.top_k([far, near], query="anything", state=_state(), k=1)
+    assert ranked == [near]
+
+
+def test_relevance_scores_a_lexical_match_without_a_prior_prepare() -> None:
+    # score()/breakdown() are sometimes called directly (e.g. building an ablation figure),
+    # not via top_k(). The relevance term must still reflect a real lexical match, not
+    # silently collapse to 0 just because prepare() was not run first.
+    scorer = CompositeScorer(weights={"relevance": 1.0}, signals=[Relevance()])
+    king = Memory(text="the king rode north at dawn")
+    state = _state()
+    assert scorer.breakdown(king, "news of the king", state)["relevance"] > 0.0
+    assert scorer.score(king, "news of the king", state) > 0.0
