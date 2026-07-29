@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from .affect import CharacterState, Mood
+from .affect import CharacterState, Mood, appraise
 from .memory import EventType, Memory, MemoryStore
 from .model import ModelRunner, StubRunner
 from .prompt import PromptBuilder
@@ -60,10 +60,10 @@ class Conversation:
         # 1. log the new event, if this turn produced one worth remembering
         if event is not None:
             self.store.add(event)
-            # 2. let the event move the character's state
-            self.state.feel(event.valence, event.arousal)
-            if event.is_plot_beat:
-                self.state.adjust_trust(0.2 * event.valence)  # placeholder appraisal
+            # 2. let the event move the character's state, via the appraisal rules
+            valence_delta, arousal_delta, trust_delta = appraise(self.state, event)
+            self.state.feel(valence_delta, arousal_delta)
+            self.state.adjust_trust(trust_delta)
 
         # 3. + 4. score every memory and keep the most relevant few
         retrieved = self.scorer.top_k(self.store.all(), player_input, self.state, self.top_k)

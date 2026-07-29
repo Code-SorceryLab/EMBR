@@ -48,7 +48,7 @@ git switch -c phase-1-runtime      # your phase branch
 | Phase | Scope | Owner | State |
 |---|---|---|---|
 | 0 | Foundation: spine, applet shell, branding, tests | n/a | ✅ done |
-| 1 | Make the runtime real (relevance, appraisal, persistence) | | next |
+| 1 | Make the runtime real (relevance, appraisal, persistence) | | ✅ done |
 | 2 | Evaluation harness (RQ1 / RQ2 / RQ3) | | planned |
 | 3 | Paper assets (figures & tables from results) | | planned |
 | 4 | Playable tavern-keeper walkthrough | | planned |
@@ -97,10 +97,10 @@ Updated `scoring.py`, `affect.py`, `pipeline.py`, `memory.py`; new `embeddings.p
 a populated SQLite DB under `data/` (git-ignored); new tests; `pyproject.toml` `ml` extra confirmed.
 
 ### Expected results (acceptance)
-- **Semantic relevance works:** a memory that is *semantically* related to the query but shares no words ranks **above** a memory that shares a word but is unrelated. *(test)*
-- **Persistence:** add memories → restart the process → `len(store)` and contents are unchanged. *(test)*
+- **Semantic relevance works** (with the `[ml]` extra): a memory *semantically* related to the query but sharing no words ranks **above** a memory that shares a word but is unrelated. *(gated test in `tests/test_embeddings.py`; the deterministic fallback embedder is lexical, so this is proven with real embeddings on the eval box.)*
+- **Persistence:** add memories → restart the process → `len(store)` and contents (including the timestamp recency depends on) are unchanged. *(test)*
 - **Appraisal is ordered:** a `BETRAYAL` when `trust` was high produces a **larger** negative mood swing and trust drop than a `NORMAL` event, with the actual deltas asserted. *(test)*
-- **Demo still holds:** the live demo turn still surfaces the king's-errand lie at the top, now via real embeddings (not token overlap).
+- **Demo still holds:** the live demo turn still surfaces the king's-errand lie at the top, via BM25 lexical relevance plus the affect/event/mood signals (real semantic embeddings sit behind the `[ml]` extra). *(test)*
 - **Green + growing:** `pytest -q` passes; test count clearly increased; no signal/baseline logic duplicated.
 
 ### Verify

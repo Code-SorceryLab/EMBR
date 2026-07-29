@@ -13,6 +13,7 @@ from textual.containers import Horizontal, VerticalScroll
 from textual.widgets import Footer, Header, Label, ListItem, ListView, Markdown
 
 from embr import __version__, build_demo_conversation
+from embr.config import EmbrConfig
 
 WELCOME = f"""\
 # EMBR {__version__}
@@ -53,6 +54,32 @@ def _run_turn_detail() -> str:
     return "\n".join(lines)
 
 
+def _settings_detail(config: EmbrConfig | None = None) -> str:
+    """Render the current runtime configuration (from data/config.json, or defaults)."""
+    if config is None:
+        config = EmbrConfig.load()
+
+    def _format_weight(value: object) -> str:
+        # Weights are numbers, but a hand-edited config.json could leave a string or null
+        # here; show it as-is rather than crashing the screen on the numeric `:g` format.
+        return f"{value:g}" if isinstance(value, (int, float)) else str(value)
+
+    weight_rows = "\n".join(
+        f"| {name} | {_format_weight(value)} |" for name, value in config.weights.items()
+    )
+    return (
+        "# Settings\n\n"
+        "_Live configuration, loaded from `data/config.json` (or defaults if none exists)._\n\n"
+        f"- **top-k retrieved:** {config.top_k}\n"
+        f"- **store backend:** {config.store_backend}\n"
+        f"- **embedding model:** {config.embedding_model}\n"
+        f"- **model runner:** {config.model_runner}\n\n"
+        "**Scorer weights** (zero one to ablate it)\n\n"
+        "| signal | weight |\n|---|---|\n" + weight_rows + "\n\n"
+        "> In-TUI editing is the next step; for now, edit `data/config.json` and reopen."
+    )
+
+
 # Each menu entry: id -> (label, detail). Detail is either markdown text or a callable that
 # produces it on demand (so the demo turn runs fresh each time it is selected).
 MENU: dict[str, tuple[str, object]] = {
@@ -75,11 +102,7 @@ MENU: dict[str, tuple[str, object]] = {
         " betrayal, and reconciliation arc. The recorded demo is a primary deliverable.\n\n"
         "▸ *Not built yet (phase 4, demo).*",
     ),
-    "settings": (
-        "Settings",
-        "# Settings\n\nModel runner, VRAM budget, scorer weights, and top-k.\n\n"
-        "▸ *Not built yet (phase 2).*",
-    ),
+    "settings": ("Settings", _settings_detail),
 }
 
 
@@ -124,7 +147,10 @@ class EmbrApp(App):
         if entry is None:
             return
         _, detail = entry
-        markdown = detail() if callable(detail) else detail
+        try:
+            markdown = detail() if callable(detail) else detail
+        except Exception as error:  # an error boundary: a bad config or failed demo turn
+            markdown = f"# Something went wrong\n\n```\n{error}\n```"  # must not kill the app
         self.query_one("#detail", Markdown).update(markdown)
 
 

@@ -1,4 +1,4 @@
-"""The composite memory score: the core contribution of the paper.
+"""The composite memory score - the core contribution of the paper.
 
 Park et al. (2023) blend three signals (recency, importance, relevance) into a single
 number. We decompose that into FIVE independently-weighted signals so each can be isolated
@@ -8,51 +8,69 @@ by simply zeroing its weight. That one design choice buys us three things for fr
   * the baselines                 -> express them as weight maps, not copy-pasted code
   * a single place to read/trust  -> every signal is one small, pure class below
 
-    score(m, q, s) = w_rec·recency + w_aff·affect + w_evt·event_gate
-                     + w_rel·relevance + w_mood·mood_congruence
+    score(m, q, s) = w_rec*recency + w_aff*affect + w_evt*event_gate
+                     + w_rel*relevance + w_mood*mood_congruence
 
 Each signal returns a value in roughly [0, 1] given a memory `m`, the player's query `q`,
-and the character's current state `s`. Signals never look at each other, and that independence
-is what makes the decomposition meaningful.
+and the character's current state `s`. Signals never look at each other, and that
+independence is what makes the decomposition meaningful.
+
+Most signals score a memory in isolation. Relevance is the exception: BM25 needs the whole
+corpus and the query embedding is computed once, so signals may expose an optional
+`prepare(memories, query, state)` hook that the scorer calls once before per-memory scoring.
 """
 
 from __future__ import annotations
 
 import math
-import re
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Protocol, runtime_checkable
 
 from .affect import CharacterState
+from .embeddings import Embedder, tokenize
 from .memory import Memory
+from .vectors import cosine
 
 
 # --------------------------------------------------------------------------- helpers
 
 
-def _cosine(a: tuple[float, float], b: tuple[float, float]) -> float:
-    """Cosine similarity of two 2-D vectors, mapped to [0, 1] (0.5 = orthogonal)."""
-    dot = a[0] * b[0] + a[1] * b[1]
-    norm = math.hypot(*a) * math.hypot(*b)
-    if norm == 0:
-        return 0.5  # an undefined direction is treated as neutral, not a match
-    return (dot / norm + 1) / 2  # remap [-1, 1] -> [0, 1]
+def _bm25_scores(
+    corpus: list[list[str]], query: list[str], k1: float = 1.5, b: float = 0.75
+) -> list[float]:
+    """Okapi BM25 score of each document against the query (non-negative, unnormalised).
 
+    Implemented in a few lines rather than pulled in as a dependency, so the core stays free
+    of numpy and every consumer reads the same well-known formula.
+    """
+    n_docs = len(corpus)
+    if n_docs == 0:
+        return []
+    doc_lengths = [len(doc) for doc in corpus]
+    avg_length = sum(doc_lengths) / n_docs
 
-_WORD = re.compile(r"[a-z0-9']+")
+    document_frequency: dict[str, int] = {}
+    for doc in corpus:
+        for term in set(doc):
+            document_frequency[term] = document_frequency.get(term, 0) + 1
 
-
-def _tokens(text: str) -> set[str]:
-    return set(_WORD.findall(text.lower()))
-
-
-def _token_overlap(text: str, query: str) -> float:
-    """Jaccard overlap of word sets, a dependency-free stand-in for real relevance."""
-    a, b = _tokens(text), _tokens(query)
-    if not a or not b:
-        return 0.0
-    return len(a & b) / len(a | b)
+    scores: list[float] = []
+    for doc, length in zip(corpus, doc_lengths):
+        term_frequency: dict[str, int] = {}
+        for term in doc:
+            term_frequency[term] = term_frequency.get(term, 0) + 1
+        score = 0.0
+        for term in query:
+            frequency = term_frequency.get(term, 0)
+            if frequency == 0:
+                continue
+            n_containing = document_frequency.get(term, 0)
+            idf = math.log(1 + (n_docs - n_containing + 0.5) / (n_containing + 0.5))
+            denominator = frequency + k1 * (1 - b + b * length / avg_length)
+            score += idf * (frequency * (k1 + 1)) / denominator
+        scores.append(score)
+    return scores
 
 
 # --------------------------------------------------------------------------- signals
@@ -60,8 +78,9 @@ def _token_overlap(text: str, query: str) -> float:
 
 @runtime_checkable
 class Signal(Protocol):
-    """One scoring term. Every signal exposes a stable `name` (used as its weight key)
-    and a pure `score` that depends only on the memory, the query, and the state."""
+    """One scoring term. Every signal exposes a stable `name` (its weight key) and a `score`
+    that depends only on the memory, the query, and the state. A signal that needs the whole
+    corpus may also define `prepare(memories, query, state)`; the scorer calls it first."""
 
     name: str
 
@@ -82,7 +101,7 @@ class Recency:
 
 @dataclass
 class AffectIntensity:
-    """Emotionally charged memories score higher (Cahill & McGaugh 1998): aff = |v| · a."""
+    """Emotionally charged memories score higher (Cahill & McGaugh 1998): aff = |v| * a."""
 
     name: str = field(default="affect", init=False)
 
@@ -94,7 +113,7 @@ class AffectIntensity:
 class EventTypeGate:
     """Plot beats (promise, betrayal, ...) count more when prior trust was high.
 
-    tau(m, T) = 1[type(m) is a plot beat] · g(trust), with g mapping trust (-1..1) to 0..1.
+    tau(m, T) = 1[type(m) is a plot beat] * g(trust), with g mapping trust (-1..1) to 0..1.
     Novel signal: a betrayal lands harder on a character that trusted you.
     """
 
@@ -110,17 +129,48 @@ class EventTypeGate:
 class Relevance:
     """Lexical + semantic similarity to the player's input (standard hybrid retrieval).
 
-    rel = gamma · BM25 + (1 - gamma) · cosine(embeddings).
-    Phase-1 placeholder uses token overlap so the pipeline runs with no embedding model;
-    the real BM25 + embedding cosine drops in here for the RQ3 retrieval study.
+    rel = gamma * BM25 + (1 - gamma) * cosine(embeddings).
+
+    BM25 needs the corpus, so it is computed in `prepare` (once per retrieval) and looked up
+    per memory. Without an embedder, or for a memory that has no embedding, relevance falls
+    back to BM25 alone, so the signal still works with the core alone. A direct
+    `score`/`breakdown` call that skipped `prepare` indexes that one memory on demand, so it
+    never silently returns 0.
     """
 
-    gamma: float = 0.5  # weight on the lexical half once BM25 is wired in
+    gamma: float = 0.5  # weight on the lexical (BM25) half of the blend
+    embedder: Embedder | None = None
     name: str = field(default="relevance", init=False)
 
+    def __post_init__(self) -> None:
+        self._bm25: dict[int, float] = {}  # id(memory) -> normalised BM25 for the last query
+        self._query_embedding: list[float] | None = None
+
+    def prepare(self, memories: list[Memory], query: str, state: CharacterState) -> None:
+        corpus = [tokenize(memory.text) for memory in memories]
+        raw = _bm25_scores(corpus, tokenize(query))
+        top = max(raw, default=0.0)
+        # Normalise BM25 to [0, 1] so it blends on the same scale as cosine.
+        self._bm25 = {
+            id(memory): (value / top if top > 0 else 0.0) for memory, value in zip(memories, raw)
+        }
+        self._query_embedding = self.embedder.encode(query) if self.embedder is not None else None
+
     def score(self, memory: Memory, query: str, state: CharacterState) -> float:
-        # TODO(phase 2): gamma * bm25(memory.text, query) + (1 - gamma) * cosine(embeddings)
-        return _token_overlap(memory.text, query)
+        # A prepared corpus keys every memory (a non-match is stored as 0.0), so a missing
+        # key means prepare() was skipped: index this one memory on demand. `.get` with no
+        # default distinguishes "not prepared" (None) from "prepared, no match" (0.0).
+        bm25 = self._bm25.get(id(memory))
+        query_embedding = self._query_embedding
+        if bm25 is None:
+            raw = _bm25_scores([tokenize(memory.text)], tokenize(query))
+            bm25 = 1.0 if raw and raw[0] > 0 else 0.0  # single-doc BM25 is 1 for any match
+            if self.embedder is not None:
+                query_embedding = self.embedder.encode(query)
+        if query_embedding is not None and memory.embedding is not None:
+            semantic = max(0.0, cosine(memory.embedding, query_embedding))
+            return self.gamma * bm25 + (1 - self.gamma) * semantic
+        return bm25
 
 
 @dataclass
@@ -131,12 +181,18 @@ class MoodCongruence:
     name: str = field(default="mood", init=False)
 
     def score(self, memory: Memory, query: str, state: CharacterState) -> float:
-        return _cosine((memory.valence, memory.arousal), (state.mood.valence, state.mood.arousal))
+        # Remap cosine's [-1, 1] to [0, 1]; a zero mood vector lands neutrally at 0.5.
+        raw = cosine((memory.valence, memory.arousal), (state.mood.valence, state.mood.arousal))
+        return (raw + 1) / 2
 
 
-def all_signals() -> list[Signal]:
-    """The five EMBR signals, freshly constructed. One list so nothing re-declares them."""
-    return [Recency(), AffectIntensity(), EventTypeGate(), Relevance(), MoodCongruence()]
+def all_signals(embedder: Embedder | None = None) -> list[Signal]:
+    """The five EMBR signals, freshly constructed. One list so nothing re-declares them.
+
+    An `embedder` (if given) is handed to the relevance signal so it can score semantic
+    similarity; without one, relevance is BM25-only.
+    """
+    return [Recency(), AffectIntensity(), EventTypeGate(), Relevance(embedder=embedder), MoodCongruence()]
 
 
 # --------------------------------------------------------------------------- scorer
@@ -146,12 +202,19 @@ def all_signals() -> list[Signal]:
 class CompositeScorer:
     """Weighted sum of signals. Zeroing (or omitting) a weight disables that signal.
 
-    This is the single object every variant uses: EMBR, Park, and Emotional RAG differ
-    only in their `weights` and which `signals` they carry, never in this code.
+    This is the single object every variant uses: EMBR, Park, and Emotional RAG differ only
+    in their `weights` and which `signals` they carry, never in this code.
     """
 
     weights: dict[str, float]
     signals: list[Signal] = field(default_factory=all_signals)
+
+    def _prepare(self, memories: list[Memory], query: str, state: CharacterState) -> None:
+        """Let any corpus-aware signal (e.g. Relevance) index the corpus before scoring."""
+        for signal in self.signals:
+            prepare = getattr(signal, "prepare", None)
+            if callable(prepare):
+                prepare(memories, query, state)
 
     def score(self, memory: Memory, query: str, state: CharacterState) -> float:
         """Total score for one memory under the current weights."""
@@ -161,7 +224,7 @@ class CompositeScorer:
         )
 
     def breakdown(self, memory: Memory, query: str, state: CharacterState) -> dict[str, float]:
-        """Per-signal weighted contributions, handy for figures and debugging."""
+        """Per-signal weighted contributions - handy for figures and debugging."""
         return {
             sig.name: self.weights.get(sig.name, 0.0) * sig.score(memory, query, state)
             for sig in self.signals
@@ -171,17 +234,18 @@ class CompositeScorer:
         self, memories: list[Memory], query: str, state: CharacterState, k: int
     ) -> list[Memory]:
         """The k highest-scoring memories for this query and state, best first."""
+        self._prepare(memories, query, state)
         ranked = sorted(memories, key=lambda m: self.score(m, query, state), reverse=True)
         return ranked[:k]
 
 
-def embr_scorer() -> CompositeScorer:
+def embr_scorer(embedder: Embedder | None = None) -> CompositeScorer:
     """EMBR's full composite: all five signals active, equal starting weights.
 
-    These weights are the tuning target for the comparison protocol: every variant,
-    including the baselines, is fit by the same grid search on the same data.
+    These weights are the tuning target for the comparison protocol: every variant, including
+    the baselines, is fit by the same grid search on the same data.
     """
     return CompositeScorer(
         weights={"recency": 1.0, "affect": 1.0, "event_gate": 1.0, "relevance": 1.0, "mood": 1.0},
-        signals=all_signals(),
+        signals=all_signals(embedder=embedder),
     )

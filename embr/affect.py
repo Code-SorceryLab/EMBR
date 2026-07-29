@@ -9,6 +9,12 @@ and is never mutated at runtime; only `mood` and `trust` move.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
+
+from .memory import EventType
+
+if TYPE_CHECKING:
+    from .memory import Memory
 
 
 def _clamp(value: float, low: float, high: float) -> float:
@@ -54,9 +60,48 @@ class CharacterState:
         self.mood = self.mood.nudged(valence_delta, arousal_delta, inertia)
 
     def adjust_trust(self, delta: float) -> None:
-        """Move the slow trust level. Kept small per event so trust accrues over time.
-
-        NOTE: placeholder linear update. The appraisal rules that decide how big each
-        delta should be (e.g. a betrayal vs. a gift) are designed in the phase-2 affect work.
-        """
+        """Move the slow trust level, clamped to [-1, 1]. Deltas come from `appraise`."""
         self.trust = _clamp(self.trust + delta, -1.0, 1.0)
+
+
+@dataclass(frozen=True)
+class EventResponse:
+    """How strongly one type of event moves the character, before trust-scaling.
+
+    Values are deliberately small so state accrues over many turns rather than swinging on a
+    single line. Each field has a clear job:
+    """
+
+    trust: float  # base trust move (positive builds, negative erodes)
+    arousal_boost: float  # how much the event's arousal raises the character's arousal
+    mood_weight: float  # how strongly the event's valence moves the character's mood
+
+
+# The rules table. One row per event type; the plot beats (threat, betrayal) carry the
+# strongest negative trust and mood weights, since those are the turning points a believable
+# character should feel most sharply.
+APPRAISAL: dict[EventType, EventResponse] = {
+    EventType.NORMAL: EventResponse(trust=0.02, arousal_boost=0.30, mood_weight=1.0),
+    EventType.GIFT: EventResponse(trust=0.10, arousal_boost=0.40, mood_weight=1.1),
+    EventType.PROMISE: EventResponse(trust=0.15, arousal_boost=0.50, mood_weight=1.1),
+    EventType.CONFESSION: EventResponse(trust=0.05, arousal_boost=0.60, mood_weight=1.2),
+    EventType.THREAT: EventResponse(trust=-0.25, arousal_boost=0.70, mood_weight=1.3),
+    EventType.BETRAYAL: EventResponse(trust=-0.40, arousal_boost=0.80, mood_weight=1.5),
+}
+
+
+def appraise(state: CharacterState, event: "Memory") -> tuple[float, float, float]:
+    """Decide how an event moves the character. Returns (valence_delta, arousal_delta, trust_delta).
+
+    The event's own valence drives the mood, amplified by the event type's `mood_weight`. A
+    plot beat with a negative response (a betrayal, a threat) additionally scales by how much
+    trust there was to lose: the same betrayal stings more from someone you trusted. This is
+    the novelty the paper's event-type gate is built around.
+    """
+    response = APPRAISAL.get(event.event_type, APPRAISAL[EventType.NORMAL])
+    valence_delta = event.valence * response.mood_weight
+    arousal_delta = event.arousal * response.arousal_boost
+    trust_delta = response.trust
+    if event.is_plot_beat and response.trust < 0:
+        trust_delta *= 1 + max(0.0, state.trust)  # up to 2x when fully trusting
+    return valence_delta, arousal_delta, trust_delta
