@@ -82,7 +82,7 @@ evaluation scenarios and relevance labels are fixed in advance. *(Built in phase
 |---|---|
 | **0 (done)** | Skeleton, data contracts, applet shell, live demo turn, tests |
 | **1 (done)** | Hybrid relevance (in-tree BM25 + embedding cosine), pluggable embedder, SQLite store, affect-appraisal rules, config + live Settings |
-| 2 | Eval harness, baselines, metrics, adversarial probes |
+| **2 (done)** | Eval harness, baselines, metrics, adversarial probes (see `docs/phase2.md`) |
 | 3 | Paper assets: figures & tables generated from results |
 | 4 | Playable tavern-keeper walkthrough (recorded demo is a primary deliverable) |
 

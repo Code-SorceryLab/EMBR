@@ -1,0 +1,81 @@
+"""Dependency-free statistics for the runner: CIs, paired tests, and Holm correction.
+
+Phase 2's runner criteria ask for effects with confidence intervals and a correction for
+multiple comparisons across variants. Three primitives cover that without numpy or scipy:
+
+  * `bootstrap_ci`: percentile bootstrap CI for a mean, on a fixed-seed RNG.
+  * `paired_permutation_pvalue`: exact two-sided sign-flip test for paired samples.
+  * `holm_bonferroni`: step-down adjusted p-values for a family of comparisons.
+
+Everything here is deterministic (fixed seed, exact enumeration), so the statistics obey
+the same reproducibility contract as the retrieval numbers they describe.
+"""
+
+from __future__ import annotations
+
+import random
+from collections.abc import Mapping, Sequence
+from itertools import product
+
+
+def bootstrap_ci(
+    values: Sequence[float],
+    confidence: float = 0.95,
+    resamples: int = 10_000,
+    seed: int = 0,
+) -> tuple[float, float]:
+    """Percentile bootstrap confidence interval for the mean of `values`.
+
+    The seed is fixed so two runs of the harness report identical intervals; an empty
+    input reports (0.0, 0.0) so a missing stage reads as zero rather than crashing.
+    """
+    if not values:
+        return (0.0, 0.0)
+    rng = random.Random(seed)
+    count = len(values)
+    means = sorted(
+        sum(rng.choice(values) for _ in range(count)) / count for _ in range(resamples)
+    )
+    tail = (1.0 - confidence) / 2.0
+    low_index = int(tail * resamples)
+    high_index = min(resamples - 1, int((1.0 - tail) * resamples))
+    return (means[low_index], means[high_index])
+
+
+def paired_permutation_pvalue(a: Sequence[float], b: Sequence[float]) -> float:
+    """Exact two-sided sign-flip permutation p-value for paired samples.
+
+    Under the null the sign of each per-pair difference is arbitrary, so every one of the
+    2**n sign patterns is enumerated and the p-value is the exact fraction whose |mean|
+    reaches the observed |mean|. Exhaustive, so keep n small (the harness pairs ten
+    queries: 1024 patterns).
+    """
+    if len(a) != len(b):
+        raise ValueError("paired samples must have equal lengths")
+    differences = [x - y for x, y in zip(a, b)]
+    if not differences:
+        return 1.0
+    observed = abs(sum(differences) / len(differences))
+    tolerance = 1e-12  # float-equal pattern means must count as "at least as extreme"
+    hits = 0
+    for signs in product((1.0, -1.0), repeat=len(differences)):
+        mean = abs(sum(s * d for s, d in zip(signs, differences)) / len(differences))
+        if mean >= observed - tolerance:
+            hits += 1
+    return hits / (2 ** len(differences))
+
+
+def holm_bonferroni(pvalues: Mapping[str, float]) -> dict[str, float]:
+    """Holm-Bonferroni adjusted p-values, keyed like the input.
+
+    Step-down: the smallest raw p is multiplied by the family size, the next by one less,
+    and so on; a running maximum enforces monotonicity and everything caps at 1.0.
+    """
+    ordered = sorted(pvalues.items(), key=lambda item: item[1])
+    family_size = len(ordered)
+    adjusted: dict[str, float] = {}
+    running = 0.0
+    for rank, (name, p) in enumerate(ordered):
+        running = max(running, min(1.0, (family_size - rank) * p))
+        adjusted[name] = running
+    return adjusted

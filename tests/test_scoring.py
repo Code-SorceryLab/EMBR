@@ -45,6 +45,24 @@ def test_recency_prefers_newer_memories() -> None:
     assert signal.score(fresh, "q", _state()) > signal.score(stale, "q", _state())
 
 
+def test_recency_decays_from_an_injected_clock() -> None:
+    # The eval pins its clock so recency scores are structural, never run-date dependent.
+    anchor = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    memory = Memory(text="a day before the anchor", timestamp=anchor - timedelta(hours=24))
+    pinned = Recency(now=lambda: anchor)
+    assert abs(pinned.score(memory, "q", _state()) - 0.995**24) < 1e-12
+    # The default stays the live wall clock, so game behaviour is unchanged.
+    assert Recency().now is None
+
+
+def test_embr_scorer_threads_the_clock_to_recency() -> None:
+    anchor = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    scorer = embr_scorer(now=lambda: anchor)
+    recency = next(signal for signal in scorer.signals if signal.name == "recency")
+    assert recency.now is not None
+    assert recency.now() == anchor
+
+
 def test_affect_intensity_rewards_charged_memories() -> None:
     calm = Memory(text="a quiet evening", valence=0.1, arousal=0.1)
     charged = Memory(text="a furious row", valence=-0.9, arousal=0.9)
