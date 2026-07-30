@@ -9,7 +9,7 @@ description = "Emotional Memory for Believable Roleplay: emotion-grounded memory
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
-authors = [{ name = "Kevin Chua" }]
+authors = [{ name = "AL Shifan", email = "codeandsorcerylab@gmail.com" }]
 keywords = ["LLM", "NPC", "memory", "affective-computing", "retrieval", "game-ai"]
 
 # Core stays tiny on purpose: only the applet needs a third-party package. The heavy ML
