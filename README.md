@@ -131,12 +131,20 @@ from each phase) is in [`docs/roadmap.md`](docs/roadmap.md). What each phase act
 delivered is in [`docs/phase2.md`](docs/phase2.md) and
 [`docs/phase3-4.md`](docs/phase3-4.md).
 
+**Setting up on a new machine?** [`docs/handoff.md`](docs/handoff.md) has the verified setup
+steps, the version constraints that matter, what git does not carry, the measured numbers, and
+what to do next.
+
 **Where the numbers stand.** The evaluation runs end to end and the figures regenerate from
 it, but every result so far is preliminary: the reported runs use a stub model and a lexical
 embedder, the labels are a v1 single-author set, and at ten queries every confidence interval
-spans zero with no significant comparison after correction. The figures say so on their face.
-Two things close that gap, and both are outstanding: a blind multi-annotator label pass, and
-a full run on the eval hardware with the real model.
+spans zero with no significant comparison after correction. The figures say so on their face,
+and no ordering should be read off them yet.
+
+Two things close that gap. The first is a larger ground-truth set drawn from a shipped game's
+authored dialogue, where the writers already encoded which line fires at which relationship
+state, so the labels exist without recruiting annotators. The second is a run on real GPU
+hardware inside the 8 GB budget. Both are planned; see [`docs/handoff.md`](docs/handoff.md).
 
 > A recorded playthrough and a companion page for the interactive demo will be linked here.
 > GitHub cannot run JS in a README, so the live version has to live off-site.
