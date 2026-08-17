@@ -104,9 +104,31 @@ def read_ollama_api_key(
 
     source = Path(env_file)
     try:
-        lines = source.read_text(encoding="utf-8").splitlines()
+        raw = source.read_bytes()
     except OSError:
         return None  # no .env here (or unreadable): absent, not an error
+
+    # Windows shells do not write UTF-8 by default: PowerShell's `>` emits UTF-16LE with a
+    # BOM and Set-Content uses the ANSI codepage, so a hand-made .env is routinely not UTF-8.
+    # Decoding strictly raises inside build_model and takes down the entire model path, which
+    # is a hostile failure for a file that is optional in the first place. Detect the encoding
+    # from the byte-order mark, fall back to a NUL scan for BOM-less UTF-16, and treat bytes
+    # that decode as nothing the same way as a missing file.
+    if raw.startswith((b"\xff\xfe", b"\xfe\xff")):
+        candidates = ("utf-16",)
+    elif b"\x00" in raw:
+        candidates = ("utf-16-le", "utf-16-be")
+    else:
+        candidates = ("utf-8-sig",)
+
+    for encoding in candidates:
+        try:
+            lines = raw.decode(encoding).splitlines()
+            break
+        except UnicodeDecodeError:
+            continue
+    else:
+        return None
 
     for line in lines:
         entry = line.strip()

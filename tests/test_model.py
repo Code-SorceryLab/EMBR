@@ -274,6 +274,28 @@ def test_read_api_key_survives_an_unreadable_dotenv(monkeypatch, tmp_path: Path)
     assert read_ollama_api_key(env_file=tmp_path) is None
 
 
+def test_read_api_key_reads_a_dotenv_windows_shells_actually_write(
+    monkeypatch, tmp_path: Path
+) -> None:
+    # `echo KEY=v > .env` in PowerShell writes UTF-16LE with a BOM, and Set-Content defaults
+    # to the ANSI codepage. Decoding those as strict UTF-8 raises inside build_model and takes
+    # down the whole model path, so the byte-order marks have to be handled rather than assumed
+    # away. Absent is an acceptable answer here; crashing is not.
+    monkeypatch.delenv("OLLAMA_API_KEY", raising=False)
+    for encoding in ("utf-16", "utf-16-le", "utf-8-sig"):
+        env_file = tmp_path / f"{encoding}.env"
+        env_file.write_text("OLLAMA_API_KEY=from-file\n", encoding=encoding)
+        assert read_ollama_api_key(env_file=env_file) == "from-file", encoding
+
+
+def test_read_api_key_treats_undecodable_bytes_as_absent(monkeypatch, tmp_path: Path) -> None:
+    # Same contract as the unreadable .env above: a corrupt file is absent, not an exception.
+    monkeypatch.delenv("OLLAMA_API_KEY", raising=False)
+    env_file = tmp_path / ".env"
+    env_file.write_bytes(b"\x80\x81\x82 not text at all")
+    assert read_ollama_api_key(env_file=env_file) is None
+
+
 # --------------------------------------------------------------------------------------
 # OuroRunner helpers that need no weights
 # --------------------------------------------------------------------------------------

@@ -1,0 +1,12 @@
+# Line endings are part of the reproducibility contract, not a style preference.
+# eval/scenarios.py hashes the label file's raw bytes to stamp every run, so a CRLF checkout
+# produces a different stamp for byte-identical labels and the stamp stops being verifiable
+# off the machine that made it. Normalising to LF keeps that hash, and the generated .tex
+# and .csv assets, identical on every platform.
+* text=auto eol=lf
+
+# Generated figures and the slide deck are binary. Never line-ending normalise these: the
+# .pptx is a zip archive and normalising it would corrupt the file.
+*.png binary
+*.pdf binary
+*.pptx binary
