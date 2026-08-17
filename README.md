@@ -47,22 +47,36 @@ ablation**, and lets the **baselines** be expressed as weight maps instead of du
 
 ```bash
 python3.11 -m venv .venv && source .venv/bin/activate
-pip install -e ".[dev]"     # core + test deps
+pip install -e ".[dev]"     # core + tests: enough for the menu and the full evaluation
+pip install -e ".[dev,figures,ml]"   # add paper figures and the real models
 
-embr                        # launch the applet  (or: python -m embr)
+embr                        # open the menu  (or: python -m embr)
 pytest -q                   # run the tests
+python -m eval.run          # the full RQ1 + RQ2 + RQ3 protocol
 ```
 
-<details>
-<summary><b>What you'll see in the applet</b> (click to expand)</summary>
+The core deliberately needs almost nothing. `figures` adds matplotlib for the paper assets,
+and `ml` adds real sentence embeddings plus the local model. Note that Ouro needs
+transformers 4.x, which the extra pins: on 5.x its remote code does not load.
 
-A Textual TUI menu. **Run a conversation turn** runs a real demo turn through the pipeline
-using the thesis's own tavern-keeper example (Dawn Whitmore and the player's lie about
-running an errand for the king), and you can watch the composite scorer surface that lie at
-the top of the recalled memories. **Run experiment** is live too: it scores the three
-retrieval variants at published default weights and renders the nDCG@5 scoreboard instantly
-(`python -m eval.run` runs the full protocol). **Generate paper assets** and the **playable
-walkthrough** are still placeholders, and light up with phases 3 and 4.
+<details>
+<summary><b>What you'll see in the menu</b> (click to expand)</summary>
+
+A Rich menu, shaped like [RIDGE's](https://github.com/Code-SorceryLab/RIDGE) so the two
+projects feel like one toolkit. Nine options, all wired to real work:
+
+- **Conversation Turn** runs a real turn through the pipeline on the thesis's own example
+  (Dawn Whitmore and the player's lie about running an errand for the king), and you watch
+  the composite scorer surface that lie at the top of the recalled memories.
+- **Tavern-Keeper Walkthrough** plays Dawn's five-beat arc, showing the memories she recalled
+  and her mood and trust on both sides of every appraisal. Pick the stub for an instant
+  playthrough, a local Ollama model, or Ouro 1.4B for the real thing.
+- **Quick Scoreboard** scores the three retrieval variants at published defaults instantly;
+  **Full Evaluation** runs the whole protocol and writes a run directory.
+- **Generate Paper Assets** rebuilds every figure and table from the latest run.
+- **Model Bake-Off** compares the looped model against conventional ones. Not built yet, and
+  the option says so.
+- **Latest Results**, **Settings**, and a run-data wipe that demands the word `DELETE`.
 
 </details>
 
@@ -85,16 +99,19 @@ Test characters: Dawn Whitmore (invented tavern keeper) and Kenny (Telltale).
 ```
 EMBR/
 ├── embr/                 # the core runtime: the middleware itself
-│   ├── memory.py         #   Memory record + MemoryStore
-│   ├── affect.py         #   Mood (valence/arousal) + trust
+│   ├── memory.py         #   Memory record + MemoryStore (in-memory and SQLite)
+│   ├── affect.py         #   Mood (valence/arousal), trust, appraisal rules
 │   ├── scoring.py        #   the five signals + composite scorer
 │   ├── prompt.py         #   prompt construction
-│   ├── model.py          #   model runner (stub now, Ouro later)
+│   ├── model.py          #   model runners: stub, Ollama, Ouro 1.4B
 │   ├── pipeline.py       #   the five-step per-turn loop
-│   └── app/              #   the Textual applet
+│   ├── walkthrough.py    #   Dawn's five-beat playable arc
+│   └── menu.py           #   the Rich menu, the front door
 ├── eval/                 # RQ1 / RQ2 / RQ3 harness            (phase 2)
-├── assets/               # branding, figures & tables for the paper
-├── docs/                 # design spec
+├── assets/               # branding, plus figures & tables built from results
+│   ├── build_tables.py   #   five paper tables: LaTeX + CSV
+│   └── build_figures.py  #   five paper figures: PDF + PNG
+├── docs/                 # design spec, roadmap, per-phase reports
 ├── tests/                # unit tests
 └── data/                 # memory DBs, embeddings, run outputs (git-ignored)
 ```
@@ -103,17 +120,26 @@ EMBR/
 
 | Phase | Scope | State |
 |---|---|---|
-| 0 | Skeleton, data contracts, applet shell, live demo turn | ✅ done |
+| 0 | Skeleton, data contracts, menu shell, live demo turn | ✅ done |
 | 1 | Real retrieval (BM25 + embeddings), affect appraisal rules, SQLite store | ✅ done |
 | 2 | Eval harness, baselines, metrics, adversarial probes | ✅ done |
-| 3 | Paper assets: figures & tables straight from results | next |
-| 4 | Playable tavern-keeper walkthrough | planned |
+| 3 | Paper assets: figures & tables straight from results | ✅ done |
+| 4 | Real model runners, playable walkthrough, the menu | ✅ done |
 
 **Building EMBR?** The phase-by-phase plan (tasks, deliverables, and the results expected
-from each phase) is in [`docs/roadmap.md`](docs/roadmap.md).
+from each phase) is in [`docs/roadmap.md`](docs/roadmap.md). What each phase actually
+delivered is in [`docs/phase2.md`](docs/phase2.md) and
+[`docs/phase3-4.md`](docs/phase3-4.md).
 
-> An interactive web demo (a recorded TUI run + a live page) will be linked here once the
-> walkthrough lands. GitHub can't run JS in a README, so that lives on a companion page.
+**Where the numbers stand.** The evaluation runs end to end and the figures regenerate from
+it, but every result so far is preliminary: the reported runs use a stub model and a lexical
+embedder, the labels are a v1 single-author set, and at ten queries every confidence interval
+spans zero with no significant comparison after correction. The figures say so on their face.
+Two things close that gap, and both are outstanding: a blind multi-annotator label pass, and
+a full run on the eval hardware with the real model.
+
+> A recorded playthrough and a companion page for the interactive demo will be linked here.
+> GitHub cannot run JS in a README, so the live version has to live off-site.
 
 ## License
 

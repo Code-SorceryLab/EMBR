@@ -20,7 +20,7 @@ see*. Pair this with [`design.md`](design.md) (the architecture) and the thesis
 - **Clean structure:** one module per subsystem inside `embr/`; promote a module to a package only when it genuinely outgrows one file. Folders organise; don't scatter lonely files.
 - **Style:** descriptive names, small "why" comments, easy-to-call functions. Match the patterns already in `embr/`.
 - **Reproducibility:** every figure and table is generated *from code* into `assets/`. Never hand-make a paper asset.
-- **Definition of Done (global), every phase:** code + tests green + docs updated (`design.md` / this file) + the relevant applet menu item works + any figures/tables regenerate from one command.
+- **Definition of Done (global), every phase:** code + tests green + docs updated (`design.md` / this file) + the relevant menu option works + any figures/tables regenerate from one command.
 
 ### Picking up a phase (first 5 minutes)
 
@@ -29,7 +29,7 @@ git clone <repo> && cd EMBR
 python3.11 -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev,ml]"        # ml extra needed from Phase 1 on
 pytest -q                          # confirm a green baseline
-git switch -c phase-1-runtime      # your phase branch
+git switch -c phase-5-yourwork     # your own phase branch
 ```
 
 ### What you hand back (per-phase report template)
@@ -47,11 +47,11 @@ git switch -c phase-1-runtime      # your phase branch
 
 | Phase | Scope | Owner | State |
 |---|---|---|---|
-| 0 | Foundation: spine, applet shell, branding, tests | n/a | ✅ done |
+| 0 | Foundation: spine, menu shell, branding, tests | n/a | ✅ done |
 | 1 | Make the runtime real (relevance, appraisal, persistence) | | ✅ done |
 | 2 | Evaluation harness (RQ1 / RQ2 / RQ3) | | ✅ done |
-| 3 | Paper assets (figures & tables from results) | | planned |
-| 4 | Playable tavern-keeper walkthrough | | planned |
+| 3 | Paper assets (figures & tables from results) | | ✅ done |
+| 4 | Real models, playable walkthrough, the menu | | ✅ done |
 
 ---
 
@@ -60,8 +60,8 @@ git switch -c phase-1-runtime      # your phase branch
 Already done, so you know what "live" means before you extend it:
 `Memory`/`MemoryStore` (in-memory), `Mood`/`CharacterState`, the five-signal
 `CompositeScorer`, `PromptBuilder`, a swappable `ModelRunner` (`StubRunner`), the five-step
-`Conversation` pipeline, and the Textual applet. `pytest` is green (7 tests). The applet's
-**Run a conversation turn** runs a live demo turn that surfaces the tavern-keeper's lie.
+`Conversation` pipeline, and the menu. `pytest` is green (7 tests). The menu's
+**Conversation Turn** runs a live demo turn that surfaces the tavern-keeper's lie.
 
 **The contract you must not break:** the public interfaces in `embr/__init__.py`. Swap
 implementations *behind* them; don't change their shapes without updating every caller.
@@ -89,7 +89,7 @@ something honest to measure. **Foundation for all three RQs.**
 4. **Affect appraisal rules**: `embr/affect.py` + `embr/pipeline.py`
    - Replace the placeholder `0.2 * valence` trust nudge with a small rules table: per `EventType`, how much mood (valence/arousal) and trust move, and how a plot beat scales with prior trust.
    - Document each number with a one-line rationale; this is a design artefact, keep it readable.
-5. **Settings**: applet `Settings` screen + a `embr/config.py`
+5. **Settings**: a menu `Settings` view + a `embr/config.py`
    - Expose: scorer weights, `top_k`, store backend, embedding model, model runner. Persist to a config file under `data/`.
 
 ### Deliverables
@@ -136,11 +136,11 @@ produce the numbers the paper reports. **This phase carries the contribution.**
    - 20 attacks, 4 categories × 5 (role override, false-memory injection, emotion flipping, persona dissolution), adapted from MINJA.
 5. **Tuning**: `eval/tuning.py`
    - One grid search over weights on a fixed validation set, applied **identically** to EMBR, Park, and Emotional RAG. Also record each baseline at its published defaults.
-6. **Runner**: `eval/run.py` + applet "Run experiment" menu
+6. **Runner**: `eval/run.py` + the menu's evaluation options
    - Run RQ1/RQ2/RQ3, write results to `data/runs/<timestamp>/` as JSON/CSV. Deterministic seeds; effects with confidence intervals; correct for multiple comparisons across variants.
 
 ### Deliverables
-`eval/` modules, pre-registered label files, results under `data/runs/`, the experiment runner wired into the applet.
+`eval/` modules, pre-registered label files, results under `data/runs/`, the experiment runner wired into the menu.
 
 ### Expected results (from the thesis's anticipated results, hold interns to these)
 - **RQ1 (Behaviour).** Varying *only* the state (a) changes the surfaced top-k set (non-zero Jaccard across mood conditions) **and** (b) changes reply tone: the classifier correlates with the intended mood, the blinded judge agrees above chance, and human raters prefer the emotion-grounded replies above chance (report with CIs). *A null result (state changes retrieval but not generation) is a valid, reportable finding; do not massage it away.*
@@ -165,7 +165,7 @@ command. Zero hand-made assets.
    - The signal table, the RQ metric definitions, and each results table (retrieval shift, retrieval quality, latency p50/p95, drift-under-attack). LaTeX `booktabs` + a CSV twin.
 2. **Figures**: `assets/build_figures.py` → `assets/figures/*.svg` (+ `*.pdf` for the paper)
    - Retrieval-shift (Jaccard) plot, tone-shift plot, latency p50/p95 bars, retrieval PR / nDCG curves, the ablation bars, drift-under-attack by category. Use the EMBR ember palette consistently. The architecture figure already exists.
-3. **One command**: `embr assets` / applet "Generate paper assets" regenerates **everything** from the latest run.
+3. **One command**: the menu's "Generate Paper Assets" option regenerates **everything** from the latest run.
 
 ### Deliverables
 `assets/build_tables.py`, `assets/build_figures.py`, regenerated `assets/figures/*`, `assets/tables/*`.
@@ -190,21 +190,34 @@ recorded, playable walkthrough is a primary deliverable for this venue: a workin
 carries as much weight as the measurements.*
 
 ### Tasks
-1. **Interactive turn loop**: applet "Play tavern-keeper walkthrough" screen: real player input, real model, live mood/trust/latency readouts.
+1. **Interactive turn loop**: the menu's "Tavern-Keeper Walkthrough" option: real player input, real model, live mood/trust/latency readouts.
 2. **The arc**: `embr/scenarios/dawn_whitmore.py`: the scripted beats (the discounted room, the lie surfacing, the reckoning, reconciliation) with branch points driven by the player's choices and the keeper's state.
 3. **Recording + companion page**: a recorded playthrough (asciinema or video) and a GitHub Pages companion page hosting the interactive web demo the README links to (GitHub can't run JS in a README, so the live widget lives there).
 
 ### Deliverables
-Walkthrough screen, `dawn_whitmore.py` arc, a recording file, a companion `docs/site/` page, README link.
+Walkthrough screen, the arc, a recording file, a companion `docs/site/` page, README link.
 
 ### Expected results (acceptance)
 - A player can walk the full arc; the keeper **recalls and reinterprets** the king's-errand lie as a betrayal and refuses the next request, exactly as the thesis's motivating scenario describes.
 - The recording exists and is linked from the README; the companion page loads the interactive demo.
 
+### What actually shipped
+The arc lives in `embr/walkthrough.py` rather than a `scenarios/` package, because one module
+covers it and the house rule is to promote to a package only when a module outgrows itself. Two
+real runners landed alongside it (`OllamaRunner` for a local daemon or the cloud host, and
+`OuroRunner` for the thesis model), so the walkthrough plays on a real model rather than the
+stub. Details and the measured looped-versus-conventional latency gap are in
+[`phase3-4.md`](phase3-4.md).
+
+**Still open from this phase:** the recording and the companion page, and `eval/bakeoff.py`,
+the measured model comparison the menu already has an option for.
+
 ---
 
 ## Out of scope (future work, not these phases)
-- The real **Ouro 1.4B** runner on eval hardware (8 GB VRAM budget) behind `ModelRunner`. Dev stays on the stub / MPS; full-budget runs happen on the eval machine.
+- A full-budget **Ouro 1.4B** run on the eval hardware (8 GB VRAM). The runner itself landed in
+  phase 4 and works on MPS; what remains is measuring it inside the real VRAM budget, which
+  needs that machine. Note the transformers 4.x pin.
 - **Multi-character** memory (a lie passed from one keeper to another; rumours; a character acting on false information), the natural next paper, not this one.
 
 ---
@@ -216,4 +229,4 @@ Walkthrough screen, `dawn_whitmore.py` arc, a recording file, a companion `docs/
 | 1 | the working system | Method |
 | 2 | the numbers | Evaluation, Anticipated Results |
 | 3 | the figures & tables | all results-bearing sections |
-| 4 | the demo | Scope & feasibility (primary deliverable) |
+| 4 | the demo, and the model-choice evidence | Scope & feasibility (primary deliverable); Method |
