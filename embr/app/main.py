@@ -54,6 +54,34 @@ def _run_turn_detail() -> str:
     return "\n".join(lines)
 
 
+def _experiment_detail() -> str:
+    """Run the fast RQ3 subset (published defaults, k=5) and render the scoreboard."""
+    # The eval harness is a repo-level package, deliberately never imported by the core
+    # at module load (the harness measures embr, not the other way round). The applet
+    # reaches for it lazily on selection, and degrades honestly when embr is installed
+    # somewhere without the repo checkout on the path.
+    try:
+        from eval.run import fast_rq3_defaults
+    except ImportError:
+        return (
+            "# Run experiment\n\nThe `eval/` harness is not importable from here. Launch"
+            " the applet from the repo root, or run `python -m eval.run` directly."
+        )
+
+    scores = fast_rq3_defaults()
+    rows = "\n".join(f"| {variant} | {value:.3f} |" for variant, value in scores.items())
+    return (
+        "# Run experiment\n\n"
+        "_Fast subset: RQ3 retrieval quality at **published default weights**, k=5, over"
+        " the pre-registered Dawn Whitmore labels (tuning skipped to stay instant)._\n\n"
+        "| variant | ndcg@5 |\n|---|---|\n" + rows + "\n\n"
+        "Higher is better: 1.0 would mean every labelled memory sat at the very top of"
+        " the ranking for every query.\n\n"
+        "> The full protocol (tuned weights, ablations, RQ1, RQ2, latency) is"
+        " `python -m eval.run`; it writes `data/runs/<stamp>/results.json`."
+    )
+
+
 def _settings_detail(config: EmbrConfig | None = None) -> str:
     """Render the current runtime configuration (from data/config.json, or defaults)."""
     if config is None:
@@ -84,12 +112,7 @@ def _settings_detail(config: EmbrConfig | None = None) -> str:
 # produces it on demand (so the demo turn runs fresh each time it is selected).
 MENU: dict[str, tuple[str, object]] = {
     "run_turn": ("Run a conversation turn", _run_turn_detail),
-    "experiment": (
-        "Run experiment  ·  RQ1 / RQ2 / RQ3",
-        "# Run experiment\n\nDrives the RQ1 (behaviour), RQ2 (robustness & latency), and RQ3"
-        " (retrieval) studies against the Park and Emotional RAG baselines.\n\n"
-        "▸ *Not built yet (phase 2, eval harness).*",
-    ),
+    "experiment": ("Run experiment  ·  RQ1 / RQ2 / RQ3", _experiment_detail),
     "assets": (
         "Generate paper assets",
         "# Generate paper assets\n\nRe-creates every figure and table for the paper straight"

@@ -23,6 +23,7 @@ corpus and the query embedding is computed once, so signals may expose an option
 from __future__ import annotations
 
 import math
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Protocol, runtime_checkable
@@ -89,13 +90,20 @@ class Signal(Protocol):
 
 @dataclass
 class Recency:
-    """Recent events score higher (Park 2023; MemoryBank). Exponential time decay."""
+    """Recent events score higher (Park 2023; MemoryBank). Exponential time decay.
+
+    `now` is an injectable clock: the game leaves it None (live wall clock), while the
+    eval pins it to its reference time so recency scores are structural properties of the
+    scenario rather than artefacts of whatever day the run happens on.
+    """
 
     decay_per_hour: float = 0.995  # lambda in lambda**hours
+    now: Callable[[], datetime] | None = None  # None means the live clock
     name: str = field(default="recency", init=False)
 
     def score(self, memory: Memory, query: str, state: CharacterState) -> float:
-        hours = max(0.0, (datetime.now(timezone.utc) - memory.timestamp).total_seconds() / 3600)
+        current = self.now() if self.now is not None else datetime.now(timezone.utc)
+        hours = max(0.0, (current - memory.timestamp).total_seconds() / 3600)
         return self.decay_per_hour ** hours
 
 
@@ -186,13 +194,22 @@ class MoodCongruence:
         return (raw + 1) / 2
 
 
-def all_signals(embedder: Embedder | None = None) -> list[Signal]:
+def all_signals(
+    embedder: Embedder | None = None, now: Callable[[], datetime] | None = None
+) -> list[Signal]:
     """The five EMBR signals, freshly constructed. One list so nothing re-declares them.
 
     An `embedder` (if given) is handed to the relevance signal so it can score semantic
-    similarity; without one, relevance is BM25-only.
+    similarity; without one, relevance is BM25-only. A `now` clock (if given) is handed to
+    the recency signal; without one, recency decays from the live wall clock.
     """
-    return [Recency(), AffectIntensity(), EventTypeGate(), Relevance(embedder=embedder), MoodCongruence()]
+    return [
+        Recency(now=now),
+        AffectIntensity(),
+        EventTypeGate(),
+        Relevance(embedder=embedder),
+        MoodCongruence(),
+    ]
 
 
 # --------------------------------------------------------------------------- scorer
@@ -239,13 +256,16 @@ class CompositeScorer:
         return ranked[:k]
 
 
-def embr_scorer(embedder: Embedder | None = None) -> CompositeScorer:
+def embr_scorer(
+    embedder: Embedder | None = None, now: Callable[[], datetime] | None = None
+) -> CompositeScorer:
     """EMBR's full composite: all five signals active, equal starting weights.
 
     These weights are the tuning target for the comparison protocol: every variant, including
-    the baselines, is fit by the same grid search on the same data.
+    the baselines, is fit by the same grid search on the same data. `now` is the optional
+    recency clock (see Recency); the eval pins it, the game leaves it None.
     """
     return CompositeScorer(
         weights={"recency": 1.0, "affect": 1.0, "event_gate": 1.0, "relevance": 1.0, "mood": 1.0},
-        signals=all_signals(embedder=embedder),
+        signals=all_signals(embedder=embedder, now=now),
     )

@@ -35,7 +35,7 @@ git switch -c phase-1-runtime      # your phase branch
 ### What you hand back (per-phase report template)
 
 > **Phase N: <name>** · branch `phase-N-…` · PR #__
-> - **Built:** <2–4 bullets>
+> - **Built:** <2-4 bullets>
 > - **Tests added:** <count, what they cover>
 > - **Expected vs. actual results:** <table: each acceptance criterion → met / not met + evidence>
 > - **Assets produced:** <figures/tables, with paths>
@@ -49,7 +49,7 @@ git switch -c phase-1-runtime      # your phase branch
 |---|---|---|---|
 | 0 | Foundation: spine, applet shell, branding, tests | n/a | ✅ done |
 | 1 | Make the runtime real (relevance, appraisal, persistence) | | ✅ done |
-| 2 | Evaluation harness (RQ1 / RQ2 / RQ3) | | planned |
+| 2 | Evaluation harness (RQ1 / RQ2 / RQ3) | | ✅ done |
 | 3 | Paper assets (figures & tables from results) | | planned |
 | 4 | Playable tavern-keeper walkthrough | | planned |
 
@@ -126,7 +126,7 @@ produce the numbers the paper reports. **This phase carries the contribution.**
 2. **Scenarios & labels**: `eval/scenarios.py`, `eval/labels/`
    - Dawn Whitmore five-session arc (full ground-truth control); a Kenny (Telltale) / Stardew fallback fixture.
    - **Pre-registered** relevance labels per step, authored *before* results are seen, by annotators blind to which variant is tested; record inter-annotator agreement.
-3. **Metrics**: `eval/metrics/`
+3. **Metrics**: `eval/metrics.py`
    - Retrieval-shift: Jaccard distance between top-k sets across warm / neutral / suspicious states.
    - Tone: off-the-shelf valence-arousal classifier wrapper **and** a blinded model-judge harness.
    - Retrieval quality: precision@k, recall@k, nDCG@k for k ∈ {3, 5, 10}.

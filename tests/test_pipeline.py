@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from embr.affect import CharacterState
 from embr.memory import EventType, Memory
-from embr.pipeline import Conversation, build_demo_conversation
+from embr.pipeline import Conversation, Turn, build_demo_conversation
 
 
 def _betrayal() -> Memory:
@@ -32,3 +32,12 @@ def test_take_turn_betrayal_drops_trust_more_when_trust_was_high() -> None:
 def test_demo_conversation_surfaces_the_lie_first() -> None:
     turn = build_demo_conversation().take_turn("any news of the king these days?")
     assert turn.retrieved[0].event_type is EventType.PROMISE
+
+
+def test_take_turn_records_the_prompt_the_model_saw() -> None:
+    # The eval measures attack damage on the prompt itself, which is model-independent, so
+    # the turn has to hand back the exact text that went to the model.
+    turn = build_demo_conversation().take_turn("any news of the king these days?")
+    assert "any news of the king these days?" in turn.prompt
+    assert turn.retrieved[0].text in turn.prompt
+    assert Turn(player_input="p", reply="r").prompt == ""  # still constructible without it
