@@ -1,8 +1,8 @@
-"""Launch the EMBR applet with `python -m embr`."""
+"""Launch the EMBR menu with `python -m embr`."""
 
 from __future__ import annotations
 
-from embr.app.main import main
+from embr.menu import run_menu
 
 if __name__ == "__main__":
-    main()
+    run_menu()

@@ -345,19 +345,15 @@ def test_borderline_label_admissions_outweigh_the_park_embr_gap() -> None:
     assert abs(borderline["park"] - v1["park"]) > abs(v1["park"] - v1["embr"])
 
 
-def test_experiment_menu_entry_runs_a_fast_defaults_only_subset() -> None:
-    from embr.app.main import MENU
-
-    label, detail = MENU["experiment"]
-    assert "experiment" in label.lower() or "RQ" in label
-    assert callable(detail)
+def test_fast_defaults_subset_stays_snappy_enough_for_the_menu() -> None:
+    # The menu runs this synchronously when the user picks the quick scoreboard, so a
+    # regression that quietly starts tuning would strand them at a blank screen.
+    from eval.run import fast_rq3_defaults
 
     started = time.perf_counter()
-    markdown = detail()
+    scores = fast_rq3_defaults()
     elapsed = time.perf_counter() - started
 
-    # The TUI runs this synchronously on selection, so it has to stay snappy.
     assert elapsed < 3.0
-    assert "ndcg@5" in markdown
-    # The fast path skips tuning and must point at the full protocol instead.
-    assert "python -m eval.run" in markdown
+    assert set(scores) == {"embr", "park", "emo_rag"}
+    assert all(0.0 <= value <= 1.0 for value in scores.values())

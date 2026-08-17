@@ -8,10 +8,18 @@ behind these few small contracts.
 from __future__ import annotations
 
 from .affect import APPRAISAL, CharacterState, EventResponse, Mood, appraise
-from .config import EmbrConfig, build_embedder, build_scorer, build_store
+from .config import EmbrConfig, build_embedder, build_model, build_scorer, build_store
 from .embeddings import DeterministicEmbedder, Embedder, SentenceTransformerEmbedder, tokenize
 from .memory import EventType, Memory, MemoryStore, PLOT_BEATS, SQLiteMemoryStore
-from .model import ModelRunner, StubRunner
+from .model import (
+    GenerationSettings,
+    ModelRunner,
+    ModelUnavailableError,
+    OllamaRunner,
+    OuroRunner,
+    StubRunner,
+    read_ollama_api_key,
+)
 from .pipeline import Conversation, Turn, build_demo_conversation
 from .prompt import PromptBuilder
 from .scoring import (
@@ -51,6 +59,11 @@ __all__ = [
     # model
     "ModelRunner",
     "StubRunner",
+    "OllamaRunner",
+    "OuroRunner",
+    "GenerationSettings",
+    "ModelUnavailableError",
+    "read_ollama_api_key",
     # pipeline
     "Conversation",
     "Turn",
@@ -71,5 +84,6 @@ __all__ = [
     "build_embedder",
     "build_store",
     "build_scorer",
+    "build_model",
     "__version__",
 ]

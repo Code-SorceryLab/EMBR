@@ -12,18 +12,22 @@ license = { text = "MIT" }
 authors = [{ name = "AL Shifan", email = "codeandsorcerylab@gmail.com" }]
 keywords = ["LLM", "NPC", "memory", "affective-computing", "retrieval", "game-ai"]
 
-# Core stays tiny on purpose: only the applet needs a third-party package. The heavy ML
-# stack (embeddings, the local model) goes in the optional extras below so a fresh clone
-# runs the skeleton and the demo with almost nothing installed.
+# Core stays tiny on purpose: the menu and the eval harness both run on this alone. The
+# heavy ML stack goes in the optional extras below, so a fresh clone runs the skeleton,
+# the demo turn, and the full evaluation with almost nothing installed.
 dependencies = [
-    "textual>=0.50",
+    "rich>=13.0",
 ]
 
 [project.optional-dependencies]
-# Real semantic embeddings (and, later, the local model). BM25 is implemented in-tree, so
-# the core needs no ML stack; installing this only adds real sentence embeddings.
+# Real semantic embeddings and the real local model (Ouro 1.4B, the thesis model). BM25 is
+# implemented in-tree, so nothing here is needed to run the eval; installing it swaps the
+# deterministic embedder and the echo stub for the real thing.
 ml = [
     "sentence-transformers>=2.2",
+    "torch>=2.2",
+    "transformers>=4.44",
+    "accelerate>=0.30",
 ]
 # Paper figures. Kept out of the core so the harness stays dependency-light; only the
 # asset build step needs a plotting library.
@@ -35,7 +39,7 @@ dev = [
 ]
 
 [project.scripts]
-embr = "embr.app.main:main"
+embr = "embr.menu:run_menu"
 
 [tool.setuptools.packages.find]
 include = ["embr*"]

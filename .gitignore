@@ -23,3 +23,7 @@ data/*
 # OS
 .DS_Store
 .git.broken-backup/
+
+# Local secrets (API keys). Never committed.
+.env
+.env.local
