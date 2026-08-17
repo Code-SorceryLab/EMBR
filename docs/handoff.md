@@ -148,18 +148,25 @@ retrieval-based metrics miss entirely. It deserves a paragraph in RQ2.
 
 ### 7.1 Fix the related-work hole first, since it is paper work and costs nothing
 
-Several LLM dialogue mods for Stardew Valley already exist and are not cited in the proposal:
+Done and verified: see [`related-work.md`](related-work.md), which has the citation table,
+draft paper prose, and the follow-ups. Three things that document corrects, recorded here
+because they change the argument:
 
-- [ValleyTalk](https://github.com/dandm1/ValleyTalk) ([Nexus](https://www.nexusmods.com/stardewvalley/mods/30319)), open source, feeds friendship level, season, weather, location, schedule and family into generated dialogue. It had [press coverage in December 2025](https://www.gamingbible.com/news/platform/pc/stardew-valley-valleytalk-endless-dialogue-mod-pc-961075-20251223).
-- [ChatWithNPCs](https://www.nexusmods.com/stardewvalley/mods/48922), runs on a **local** LLM or any OpenAI-compatible API, which overlaps EMBR's on-device claim directly.
-- [StardewSpeak](https://www.nexusmods.com/stardewvalley/mods/42023), claims responses grounded in "past conversations".
-- [LLM Dialog Replacement](https://www.nexusmods.com/stardewvalley/mods/39591).
+- **The hole is bigger than four mods.** It is an active cluster of at least nine, several
+  with persistent memory and offline local inference.
+- **On-device inference is not the differentiator.** ValleyTalk ships a LlamaCpp backend and
+  [Pelican Town AI](https://www.nexusmods.com/stardewvalley/mods/46853) headlines "100%
+  offline" on Ollama, plus villager mood, friendship change and gossip propagation. It is the
+  closest prior art by a distance, and it shipped in May 2026 with no paper attached.
+- **"StardewSpeak" is two different mods.** Nexus 42023 is the LLM one, Nexus 7929 is an
+  unrelated voice-control mod. Always cite the ID.
 
-A reviewer who plays Stardew will know ValleyTalk. Address it head-on: none of these decompose
-retrieval into weighted signals, report nDCG or ablations against baselines, separate mood from
-trust, or test whether the memory can be poisoned. The Motivation section already argues the
-field runs on vendor claims with no controlled comparisons, and these mods are that gap made
-concrete. Cited properly, they become the motivation instead of the competition.
+The contribution claim has to move from the system to the measurement: ablatable signals,
+nDCG against published baselines, mood separated from trust, and the poisoning result. That
+last one is the strongest card, because the mods are the installed base that makes it matter.
+
+**Note:** the proposal itself is not in this repo and is not gitignored, so it lives only on
+the Mac or in a hosted editor. `related-work.md` is written to be pasted in.
 
 ### 7.2 Stardew as ground truth, which replaces the user study
 
