@@ -14,11 +14,27 @@ baselines section can state exactly what each row measures.
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Hashable, Mapping
 from dataclasses import dataclass, field
 from datetime import datetime
 
 from embr import CharacterState, CompositeScorer, Embedder, Memory, MoodCongruence, Recency, Relevance
+
+
+def memory_id(memory: Memory) -> Hashable:
+    """The default poignancy key: whatever id the memory currently carries."""
+    return memory.id
+
+
+def memory_text(memory: Memory) -> Hashable:
+    """A poignancy key that survives renumbering: the memory's own words.
+
+    `MemoryStore.add` overwrites `Memory.id` from its own counter, so a ratings map keyed
+    by a scenario's global indices starts rating the wrong memory as soon as the memories
+    are inserted into a store. Text is invariant under insertion, so keying by it keeps
+    each authored rating attached to the memory it was authored for.
+    """
+    return memory.text
 
 
 @dataclass
@@ -26,25 +42,30 @@ class Importance:
     """Park et al.'s importance signal, with authored ratings in place of an LLM.
 
     Park et al. (2023) ask an LLM to rate each memory's poignancy; we supply pre-authored
-    ratings (0..1) keyed by Memory.id instead, so the baseline stays deterministic and the
-    comparison measures retrieval, not rater quality. Unrated (or unstored, id None)
-    memories fall back to a neutral default.
+    ratings (0..1) instead, so the baseline stays deterministic and the comparison measures
+    retrieval, not rater quality. `key` decides what a rating is filed under: `memory_id`
+    by default, `memory_text` when the memories pass through a store that renumbers them.
+    Unrated memories (and, under the default key, unstored ones) fall back to a neutral
+    default.
     """
 
-    ratings: dict[int, float]  # memory.id -> authored poignancy, 0..1
+    ratings: Mapping[Hashable, float]  # key(memory) -> authored poignancy, 0..1
     default_rating: float = 0.5
+    key: Callable[[Memory], Hashable] = memory_id
     name: str = field(default="importance", init=False)
 
     def score(self, memory: Memory, query: str, state: CharacterState) -> float:
-        if memory.id is None:
+        lookup = self.key(memory)
+        if lookup is None:  # an unstored memory under the id key has nothing to look up
             return self.default_rating
-        return self.ratings.get(memory.id, self.default_rating)
+        return self.ratings.get(lookup, self.default_rating)
 
 
 def park_scorer(
-    ratings: dict[int, float] | None = None,
+    ratings: Mapping[Hashable, float] | None = None,
     embedder: Embedder | None = None,
     now: Callable[[], datetime] | None = None,
+    rating_key: Callable[[Memory], Hashable] | None = None,
 ) -> CompositeScorer:
     """Park et al. (2023)'s three-signal blend (recency + importance + relevance) at the
     published equal weights, expressed over the harness's shared signal implementations.
@@ -62,11 +83,17 @@ def park_scorer(
 
     Pass `now` (the eval pins it to REFERENCE_TIME) so the recency term stays live: against
     a past anchor the wall clock drives recency to ~1e-11 and this row would silently
-    degenerate to an importance + relevance blend.
+    degenerate to an importance + relevance blend. Pass `rating_key` (the eval passes
+    `memory_text`) whenever the rated memories reach the scorer through a store, which
+    reassigns ids on insert and would otherwise scramble the ratings.
     """
     return CompositeScorer(
         weights={"recency": 1.0, "importance": 1.0, "relevance": 1.0},
-        signals=[Recency(now=now), Importance(ratings or {}), Relevance(embedder=embedder)],
+        signals=[
+            Recency(now=now),
+            Importance(ratings or {}, key=rating_key or memory_id),
+            Relevance(embedder=embedder),
+        ],
     )
 
 

@@ -11,7 +11,8 @@ separate manual step, tracked in the roadmap.
 
 Known borderline exclusions, recorded here rather than silently re-adjudicated (the v1
 relevant sets stay frozen so the pre-registration stays honest; the blind pass re-judges
-these first):
+these first). `BORDERLINE_EXCLUSIONS` below is the machine-readable copy of this list, so
+the sensitivity re-score reads the same data the note describes:
 
   * memory 8 (the player asking about the late husband's portrait and listening kindly)
     is a defensible answer to both kindness queries, yet is excluded from both, so every
@@ -20,6 +21,15 @@ these first):
     same-scene parts of what confrontation-recall's "what happened" asks about.
   * memory 17 (the discount was about vouching, not coin) is Dawn's own stated answer to
     wound-arc-cross's "why did the lie cut so deep".
+  * memories 11 and 13 are defensible answers to king-news's "any news of the king these
+    days?": 11 is Dawn turning the late-king phrase over all evening, 13 is the courier
+    from the capital who knew nothing of any royal errand. Both are excluded while 10 (the
+    slip itself) is admitted, and all three scorers surface at least one of them, so both
+    are scored as false positives in the query the thesis leans on hardest.
+
+Admitting the whole recorded list reverses which system leads at published defaults (see
+`test_borderline_label_admissions_outweigh_the_park_embr_gap`), which is why no ordering
+should be read off the v1 labels before the blind pass lands.
 
 One post-registration correction was applied to the mood conditions (not to the relevant
 sets): neutral was re-pinned from (0.0, 0.1) to the zero vector (0.0, 0.0), because
@@ -30,15 +40,27 @@ signal, which is what the RQ3 protocol claims of its neutral condition.
 
 from __future__ import annotations
 
+import hashlib
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from embr import CharacterState, EventType, Memory, Mood
 
 # The default scenario file lives next to this module, so the loader works from any cwd.
-_DAWN_JSON = Path(__file__).parent / "labels" / "dawn_whitmore.json"
+DAWN_JSON = Path(__file__).parent / "labels" / "dawn_whitmore.json"
+
+# The borderline exclusions from the honesty note above, as query id -> memory indices the
+# blind pass should re-judge for that query. Frozen sets because this is a record, not a
+# working set: nothing here is admitted into the v1 relevant sets.
+BORDERLINE_EXCLUSIONS: dict[str, frozenset[int]] = {
+    "kindness-recall": frozenset({8}),
+    "early-kindness-cross": frozenset({8}),
+    "confrontation-recall": frozenset({18, 19}),
+    "wound-arc-cross": frozenset({17}),
+    "king-news": frozenset({11, 13}),
+}
 
 
 @dataclass
@@ -62,10 +84,34 @@ class Scenario:
     importance: dict[int, float]  # per-memory poignancy rating, keyed by global index
     queries: list[Query]
     mood_conditions: dict[str, Mood]
+    version: str = "unknown"  # the label-set revision, so a run can name what it scored
+
+
+def label_sha256(path: Path | str = DAWN_JSON) -> str:
+    """Content hash of a label file, so a run's metadata pins the exact bytes it scored.
+
+    The version string says which revision was intended; this says which bytes were
+    actually read, which is what makes an old number reproducible.
+    """
+    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+
+def with_borderlines_admitted(scenario: Scenario) -> Scenario:
+    """A copy of `scenario` with every recorded borderline exclusion admitted as relevant.
+
+    The label-sensitivity instrument: scoring against this instead of the frozen v1 sets
+    shows how much of a between-variant gap is really an adjudication call. The input is
+    never mutated, so the pre-registered sets stay frozen.
+    """
+    queries = [
+        replace(query, relevant=query.relevant | set(BORDERLINE_EXCLUSIONS.get(query.id, ())))
+        for query in scenario.queries
+    ]
+    return replace(scenario, queries=queries)
 
 
 def load_scenario(
-    path: Path | str = _DAWN_JSON, reference_time: datetime | None = None
+    path: Path | str = DAWN_JSON, reference_time: datetime | None = None
 ) -> Scenario:
     """Load a scenario JSON into `Memory` objects whose ids are their global indices.
 
@@ -115,6 +161,7 @@ def load_scenario(
         importance=importance,
         queries=queries,
         mood_conditions=mood_conditions,
+        version=raw.get("version", "unknown"),
     )
 
 

@@ -82,6 +82,21 @@ def test_pure_input_attacks_build_no_memory() -> None:
         assert build_attack_memory(attack) is None
 
 
+def test_run_attack_captures_both_probe_prompts_so_immunity_is_measurable() -> None:
+    # A pure-input attack writes nothing and shifts no state, so the probe turn's prompt is
+    # byte-identical to the canonical one: that identity IS the immunity claim, and unlike a
+    # reply-tone reading it holds for any model. An injection attack must break it.
+    pure_input = next(a for a in ATTACKS if a.injected_memory_text is None)
+    injecting = next(a for a in ATTACKS if a.injected_memory_text is not None)
+
+    immune = run_attack(pure_input, build_demo_conversation)
+    damaged = run_attack(injecting, build_demo_conversation)
+
+    assert immune.canonical_probe_prompt == immune.attacked_probe_prompt
+    assert damaged.canonical_probe_prompt != damaged.attacked_probe_prompt
+    assert PROBE_QUESTION in immune.canonical_probe_prompt
+
+
 def test_run_attack_captures_the_attack_turns_own_reply() -> None:
     # Pure-input attacks write nothing and shift no state, so the probe turn cannot see
     # them under any model; the attack turn's own reply is their only damage channel and

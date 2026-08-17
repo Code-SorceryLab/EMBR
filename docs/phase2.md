@@ -43,7 +43,7 @@ it. Pair this with [`design.md`](design.md) (architecture) and
   a pinned `REFERENCE_TIME` (2026-01-01 UTC) and writes an auditable run directory;
   `fast_rq3_defaults()` is the sub-second subset the applet calls.
 
-### Tests (nine new files, 74 tests, plus `conftest.py`)
+### Tests (nine new files, 89 tests, plus `conftest.py`)
 
 - **`tests/test_baselines.py`**: both baselines are weight maps with the published
   ranking behaviour, and Park's recency term is live under the injected clock.
@@ -62,7 +62,7 @@ it. Pair this with [`design.md`](design.md) (architecture) and
   queries.
 - **`tests/test_stats.py`**: the three statistical primitives, including the fixed-seed
   determinism the reproducibility contract requires.
-- **`tests/test_run.py`**: the run contract: eleven RQ3 variants with CIs and corrected
+- **`tests/test_run.py`**: the run contract: ten RQ3 variants with CIs and corrected
   paired tests, 20 attacks by 4 systems in the CSV, a latency table per system, non-zero
   RQ1 divergence, and retrieval numbers that are identical run to run.
 - **`conftest.py`** (repo root): puts the repo root on `sys.path` so tests import the
@@ -97,16 +97,22 @@ launched away from the repo checkout.
 
 ```bash
 source .venv/bin/activate
-pytest -q            # full suite: 115 passed, 1 skipped (main had 40 tests)
+pytest -q            # full suite: 130 passed, 1 skipped (main had 40 tests)
 python -m eval.run   # the full protocol; prints the RQ3 summary table when done
 embr                 # applet -> "Run experiment" for the instant defaults-only scoreboard
 ```
 
 Each `python -m eval.run` writes a run directory `data/runs/<stamp>/` containing:
 
-- **`results.json`**: the full nested record (rq1, rq2, rq3, and metadata: branch,
-  model, reference time, timestamp).
+- **`results.json`**: the full nested record. RQ3 carries `variants` (the summary rows),
+  `per_query` (every rank metric for every query), and `variant_meta` (family, condition,
+  published weights, and the per-fold tuned weight maps). RQ1 carries the divergence
+  values with their CIs plus the `mood_ablated_divergence_jaccard` attribution control.
+  The metadata records the model, reference time, git branch, git commit, dirty flag,
+  python version, and the label set with its version and content hash.
 - **`rq3.csv`**: one row per variant with all rank metrics and the nDCG@5 CI bounds.
+- **`rq3_per_query.csv`**: the flat per-query twin (100 rows), so the CI and p-value
+  columns can be audited or recomputed from the run directory alone.
 - **`rq2_attacks.csv`**: 80 rows, 20 attacks by 4 systems, with drift and poisoning
   columns.
 
@@ -116,7 +122,7 @@ are byte-identical across repeated runs (verified sha256-equal).
 ## 4. First headline numbers
 
 RQ3 nDCG@5 over the ten pre-registered queries, from the freshest run
-(`data/runs/20260729-221819/`). Tuned rows are leave-one-query-out cross-validated;
+(`data/runs/20260817-160244/`). Tuned rows are leave-one-query-out cross-validated;
 ablations zero one signal in each fold's tuned weights.
 
 | Variant | nDCG@5 | 95% CI |
@@ -131,7 +137,13 @@ ablations zero one signal in each fold's tuned weights.
 | embr_no_affect | 0.556 | [0.301, 0.791] |
 | embr_no_event_gate | 0.573 | [0.311, 0.819] |
 | embr_no_relevance | 0.414 | [0.163, 0.667] |
-| embr_no_mood | 0.556 | [0.301, 0.791] |
+
+These per-variant intervals are marginal. Each comparison row also carries a paired
+interval on the difference against tuned EMBR, which is the quantity the paired test
+actually asks about, and an attainable p floor, the smallest p its own sample size could
+ever produce. There is no mood ablation row: under the neutral zero-mood condition
+mood congruence is a constant for every candidate, so zeroing it cannot reorder anything.
+Mood is measured in RQ1 instead, where it is live.
 
 Read these as a harness shakedown, not as results. Everything ran on the stub model (it
 echoes the player's line) and the deterministic content-hash embedder, so relevance here
@@ -139,30 +151,49 @@ is lexical rather than semantic; the real model runner and real embeddings land 
 eval hardware. The labels are the v1 pre-registered set, authored by one person before
 any retrieval was run; the blind multi-annotator pass with agreement statistics is still
 to come, and it re-judges the recorded borderline cases first (see the honesty note in
-`eval/scenarios.py`). Ten queries buy very little power: the CIs are wide, no
-Holm-corrected comparison is significant (minimum corrected p is 1.0; the smallest raw p
-is 0.1875, for the no-relevance ablation), and with the recency clock fixed, Park at
-published defaults currently edges EMBR at defaults on this label set. The tuned rows
-are honest held-out estimates, which is why they sit below the optimistic in-sample fits
-an earlier draft reported. What the table does already say, directionally: relevance
-carries the most weight (dropping it costs the most), and on these folds the tuner
-zeroes the affect and mood weights, which is why those two ablations match tuned EMBR
-exactly.
+`eval/scenarios.py`). Ten queries buy very little power: the CIs are wide, every paired
+interval spans zero, and no Holm-corrected comparison is significant (the minimum
+corrected p is 0.75, for the no-relevance ablation, whose attainable floor is 0.03125).
+The tuned rows are honest held-out estimates, which is why they sit below the optimistic
+in-sample fits an earlier draft reported.
+
+Do not read an ordering off this table. The default-weight gap between Park and EMBR is
+0.014, which is smaller than the swing produced by admitting the borderline label
+exclusions the honesty note already records: admitting the four originally recorded ones
+gives EMBR 0.578 against Park 0.577, and admitting all six gives EMBR 0.581 against Park
+0.577. Both orderings reverse, so the direction is inside label-adjudication noise until
+the blind multi-annotator pass lands. `test_borderline_label_admissions_outweigh_the_park_embr_gap`
+pins that re-score rather than asserting it in prose.
+
+What the table does say, directionally: relevance carries the most weight, since dropping
+it costs the most. The affect ablation matching tuned EMBR exactly is not the tuner
+switching affect off. Affect keeps a nonzero weight in 7 of the 10 folds (0.5 in six, 1.0
+in the remaining one) and still fails to reorder any held-out top-5, so that ablation is
+uninformative on this label set rather than disabled. The per-fold weight maps ship in
+`rq3.variant_meta`, so this is auditable from the run directory.
 
 The other two studies produced their first numbers too. RQ1: mood alone moves the
-retrieved top-5 (mean Jaccard distance 0.142 warm vs neutral, 0.388 warm vs suspicious,
-0.271 neutral vs suspicious); reply tone is flat because of the stub. RQ2: injected
-poison reaches the probe top-5 for 9 of 10 injection attacks under EMBR, 0 of 10 under
-Park, 4 of 10 under Emotional RAG, and 10 of 10 under the recency-only floor;
+retrieved top-5 (mean Jaccard distance 0.142 warm vs neutral, CI [0.000, 0.308]; 0.388
+warm vs suspicious, CI [0.207, 0.562]; 0.271 neutral vs suspicious, CI [0.124, 0.419]).
+The warm vs neutral interval touches zero, so that pair is the weak one of the three.
+Zeroing the mood weight collapses all three divergences to exactly 0.0, which is what
+attributes the effect to the mood term rather than to run-to-run noise. Reply tone is flat
+because of the stub. RQ2: injected poison reaches the probe top-5 for 9 of 10 injection
+attacks under EMBR, 2 of 10 under Park, 4 of 10 under Emotional RAG, and 10 of 10 under
+the recency-only floor;
 score-and-retrieve p95 is about 0.9 ms for the three composites versus about 0.02 ms for
 recency only, measured on the evaluated configuration (full 24-memory store, embedded
 writes and queries, stub model).
 
 ## 5. Known caveats and audit trail
 
-The phase closed with an adversarial audit of the harness: 19 findings raised, 16
-confirmed, all 16 fixed, each behavioural fix pinned by a test (the suite grew from 97
-to 115 passing across the fix pass). The larger fixes: the injectable recency clock
+The phase closed with two adversarial audits of the harness. The first raised 19
+findings, confirmed 16, and fixed all 16 (the suite grew from 97 to 115 passing). A
+second, merge-readiness pass then verified those fixes empirically rather than trusting
+them, and raised 15 more: 12 confirmed and fixed, 3 refuted (the suite grew to 130). It
+caught one blocker, a Park importance lookup keyed by an id the store reassigns, which had
+published a wrong poison figure, plus a Holm family with no attainable power and intervals
+sitting on the wrong quantities. The larger fixes: the injectable recency clock
 described in section 2; tuned scores moved from in-sample grid maxima to
 leave-one-query-out cross-validation; RQ2 went from measuring one system to comparing
 four against the full memory store, gaining the retrieval_drift and poison_retrieved
@@ -179,11 +210,15 @@ The caveats that remain are declared in the run output itself:
 - **Pure-input attacks are immune by construction.** Role override and persona
   dissolution write nothing to the store and shift no state, so their zero probe drift
   is architectural immunity by non-persistence, a design property rather than an
-  experimental finding. Their live measurement is immediate_drift, rated on the attack
-  turn's own reply.
-- **The label set is v1.** Three borderline exclusions are documented next to the
-  honesty note in `eval/scenarios.py` and frozen; the blind pass re-judges them rather
-  than the author quietly re-adjudicating his own labels.
+  experimental finding. The measurement that establishes it is `probe_prompt_identical`,
+  true for all 10 pure-input attacks and false for all 10 injections in every system.
+  It compares the prompt the model was handed rather than a reply, so it holds
+  independently of which model runs. `immediate_drift` is kept only as a stub-limited
+  diagnostic and is constant across systems.
+- **The label set is v1.** Six borderline exclusions are documented next to the honesty
+  note in `eval/scenarios.py`, exposed machine-readably as `BORDERLINE_EXCLUSIONS`, and
+  frozen; the blind pass re-judges them rather than the author quietly re-adjudicating his
+  own labels. Admitting them reverses the Park and EMBR ordering, so they matter.
 - **Park is a shared-scorer port**, not a byte-for-byte reimplementation. Its docstring
   lists the three deviations: hybrid relevance, no per-retrieval min-max scaling, and
   decay from creation time via the injected clock.
@@ -196,9 +231,10 @@ Phase 3 (paper assets) reads `data/runs/<stamp>/` and nothing else:
   metrics plus CI bounds), `rq3.stats` (Holm-corrected paired tests, for significance
   marks), `rq1.retrieval_divergence_jaccard` plus the per-condition tone summaries, and
   `rq2.variants` (attack tables, category mean drift, per-stage latency).
-- **`rq3.csv`** and **`rq2_attacks.csv`** are the flat twins for anything tabular.
-- **The metadata** (branch, model, reference_time, generated_at) gives each asset its
-  provenance caption, and the per-RQ notes (stub model, pure-input immunity, latency
+- **`rq3.csv`**, **`rq3_per_query.csv`**, and **`rq2_attacks.csv`** are the flat twins for
+  anything tabular; the per-query file is what makes a CI or p-value in a figure auditable.
+- **The metadata** (model, reference_time, generated_at, git commit, dirty flag, label
+  version and hash) gives each asset its provenance caption, and the per-RQ notes (stub model, pure-input immunity, latency
   configuration) belong in the captions of the assets they qualify.
 - **Determinism** makes asset generation idempotent: rerunning the eval and rebuilding
   assets must produce identical files, except the latency block, the one declared

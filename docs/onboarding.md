@@ -1,10 +1,15 @@
 # EMBR engineering intern plan (first ~8 weeks)
 
+> **Phase 2 has shipped.** The `eval/` harness described below now exists (see
+> [`phase2.md`](phase2.md)), so tasks 2 to 6 are history rather than work to pick up. This
+> document is kept as the ramp-up reading path: the task descriptions still say what each
+> piece is for and why, which is the fastest way to understand the harness you inherit.
+
 A progressive, onboarding-to-contribution path for a new engineer. It complements
 [`roadmap.md`](roadmap.md): the roadmap holds the detailed per-phase specs, this document
 sequences them for one person over roughly eight weeks, ramping from *understand it* to
-*own the evaluation harness*. Phases 0 and 1 are done, so the real contribution here is
-**Phase 2 (the eval harness)**, with a taste of paper assets (Phase 3) at the end.
+*own the evaluation harness*. Phases 0, 1, and 2 are done, so the live contribution is now
+**Phase 3 (paper assets)**, on top of the harness the tasks below describe.
 
 ## What EMBR is (for a coder)
 
@@ -42,7 +47,7 @@ embr                            # try the applet: "Run a conversation turn"
 |---|---|---|---|
 | 1 | Orient + ship one tiny change | Week 1 | env working, small merged PR, "in my words" note |
 | 2 | Baselines (Park, Emotional RAG) | Weeks 1 to 2 | `eval/baselines.py` + tests |
-| 3 | Retrieval & cost metrics | Weeks 2 to 3 | `eval/metrics/` + tests |
+| 3 | Retrieval & cost metrics | Weeks 2 to 3 | `eval/metrics.py` + tests |
 | 4 | Scenarios, labels, experiment runner | Weeks 3 to 4 | `eval/scenarios.py`, `eval/run.py`, first results |
 | 5 | Adversarial probes | Weeks 4 to 5 | `eval/attacks.py` + tests |
 | 6 | RQ3 ablation run | Weeks 5 to 6 | results + findings note |
@@ -75,10 +80,11 @@ embr                            # try the applet: "Run a conversation turn"
 ### Task 3: Retrieval & cost metrics (Weeks 2 to 3)
 
 - **Why:** the measuring stick for RQ3 and latency.
-- **Do:** in `eval/metrics/`, implement precision@k, recall@k, nDCG@k for k in {3, 5, 10};
+- **Do:** in `eval/metrics.py`, implement precision@k, recall@k, nDCG@k for k in {3, 5, 10};
   Jaccard distance between top-k sets across warm / neutral / suspicious states; per-stage
-  latency timers (p50, p95). TDD each metric against a hand-computed toy example.
-- **Deliverable:** `eval/metrics/` + tests.
+  latency timers (p50, p95, in `eval/latency.py`). TDD each metric against a hand-computed
+  toy example.
+- **Deliverable:** `eval/metrics.py` + tests.
 - **Done when:** every metric matches a worked example. *(roadmap Phase 2, task 3)*
 
 ### Task 4: Scenarios, labels & the experiment runner (Weeks 3 to 4)
@@ -132,8 +138,15 @@ embr                            # try the applet: "Run a conversation turn"
 
 ## If you finish early
 
-Pull more Phase 2 from the roadmap: the weight-tuning grid search (task 5) and the RQ1 tone
-classifier + blinded-judge harness (task 3).
+The open work is what Phase 2 deliberately left behind a seam, all of it in the roadmap:
+
+- the **blind multi-annotator label pass** with agreement statistics, which re-judges the
+  borderline exclusions recorded in `eval/scenarios.py` before any ordering is read off the
+  retrieval table;
+- the **real model runner** in place of `StubRunner`, which is what makes every tone and
+  drift number in RQ1 and RQ2 mean something;
+- the **off-the-shelf affect classifier and blinded model judge** behind the existing
+  `ToneRater` protocol in `eval/tone.py`, replacing `LexiconToneRater`.
 
 ## Cadence
 

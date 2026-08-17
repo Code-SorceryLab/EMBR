@@ -13,7 +13,13 @@ from pathlib import Path
 
 from embr import EventType, Mood
 
-from eval.scenarios import dawn_state, load_scenario
+from eval.scenarios import (
+    BORDERLINE_EXCLUSIONS,
+    dawn_state,
+    label_sha256,
+    load_scenario,
+    with_borderlines_admitted,
+)
 
 _JSON_PATH = Path(__file__).resolve().parent.parent / "eval" / "labels" / "dawn_whitmore.json"
 
@@ -127,6 +133,37 @@ def test_the_motivating_beat_is_present() -> None:
     assert lie.valence > 0
     assert "king" in lie.text
     assert any(memory.event_type is EventType.BETRAYAL for memory in scenario.memories)
+
+
+def test_label_set_declares_its_version_and_a_content_hash() -> None:
+    # The v1 pre-registration claim has to be machine-checkable from a run artifact, not
+    # only prose in a docstring, and the hash pins the exact bytes a number was scored on.
+    scenario = load_scenario(reference_time=_REFERENCE)
+    assert scenario.version == "v1"
+    assert _raw()["version"] == scenario.version
+    assert len(label_sha256()) == 64
+
+
+def test_recorded_borderlines_are_machine_readable_and_defensible() -> None:
+    # The honesty note's borderline exclusions must be data, so the blind pass and the
+    # sensitivity re-score both read the same list instead of re-deriving it from prose.
+    scenario = load_scenario(reference_time=_REFERENCE)
+    queries = {query.id: query for query in scenario.queries}
+    session_of = _session_by_index(_raw())
+    assert BORDERLINE_EXCLUSIONS
+
+    for query_id, indices in BORDERLINE_EXCLUSIONS.items():
+        assert query_id in queries, query_id
+        for index in indices:
+            assert 0 <= index < len(scenario.memories)
+            # Still excluded in v1 (that is the point), and never a future leak.
+            assert index not in queries[query_id].relevant
+            assert session_of[index] <= queries[query_id].after_session
+
+    admitted = {query.id: query.relevant for query in with_borderlines_admitted(scenario).queries}
+    for query_id, indices in BORDERLINE_EXCLUSIONS.items():
+        assert indices <= admitted[query_id]
+        assert queries[query_id].relevant <= admitted[query_id]  # v1 labels are additive
 
 
 def test_dawn_state_uses_the_named_mood_condition_and_pinned_trust() -> None:

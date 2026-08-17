@@ -126,7 +126,7 @@ produce the numbers the paper reports. **This phase carries the contribution.**
 2. **Scenarios & labels**: `eval/scenarios.py`, `eval/labels/`
    - Dawn Whitmore five-session arc (full ground-truth control); a Kenny (Telltale) / Stardew fallback fixture.
    - **Pre-registered** relevance labels per step, authored *before* results are seen, by annotators blind to which variant is tested; record inter-annotator agreement.
-3. **Metrics**: `eval/metrics/`
+3. **Metrics**: `eval/metrics.py`
    - Retrieval-shift: Jaccard distance between top-k sets across warm / neutral / suspicious states.
    - Tone: off-the-shelf valence-arousal classifier wrapper **and** a blinded model-judge harness.
    - Retrieval quality: precision@k, recall@k, nDCG@k for k ∈ {3, 5, 10}.

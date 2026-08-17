@@ -56,11 +56,13 @@ pytest -q                   # run the tests
 <details>
 <summary><b>What you'll see in the applet</b> (click to expand)</summary>
 
-A Textual TUI menu. **Run a conversation turn** is live today: it runs a real demo turn
-through the pipeline using the thesis's own tavern-keeper example (Dawn Whitmore and the
-player's lie about running an errand for the king), and you can watch the composite scorer
-surface that lie at the top of the recalled memories. The other entries (experiments, paper
-assets, the playable walkthrough) light up as each phase is built.
+A Textual TUI menu. **Run a conversation turn** runs a real demo turn through the pipeline
+using the thesis's own tavern-keeper example (Dawn Whitmore and the player's lie about
+running an errand for the king), and you can watch the composite scorer surface that lie at
+the top of the recalled memories. **Run experiment** is live too: it scores the three
+retrieval variants at published default weights and renders the nDCG@5 scoreboard instantly
+(`python -m eval.run` runs the full protocol). **Generate paper assets** and the **playable
+walkthrough** are still placeholders, and light up with phases 3 and 4.
 
 </details>
 
@@ -102,9 +104,9 @@ EMBR/
 | Phase | Scope | State |
 |---|---|---|
 | 0 | Skeleton, data contracts, applet shell, live demo turn | ✅ done |
-| 1 | Real retrieval (BM25 + embeddings), affect appraisal rules, SQLite store | next |
-| 2 | Eval harness, baselines, metrics, adversarial probes | planned |
-| 3 | Paper assets: figures & tables straight from results | planned |
+| 1 | Real retrieval (BM25 + embeddings), affect appraisal rules, SQLite store | ✅ done |
+| 2 | Eval harness, baselines, metrics, adversarial probes | ✅ done |
+| 3 | Paper assets: figures & tables straight from results | next |
 | 4 | Playable tavern-keeper walkthrough | planned |
 
 **Building EMBR?** The phase-by-phase plan (tasks, deliverables, and the results expected

@@ -25,11 +25,17 @@ from .scoring import CompositeScorer, embr_scorer
 
 @dataclass
 class Turn:
-    """The visible result of one turn, plus the memories that shaped it (for inspection)."""
+    """The visible result of one turn, plus the memories that shaped it (for inspection).
+
+    `prompt` is the exact text handed to the model, kept so a caller can audit what the
+    character was told without re-deriving it. It defaults to empty, so a hand-built Turn
+    (tests, fixtures) stays valid; `take_turn` always fills it in.
+    """
 
     player_input: str
     reply: str
     retrieved: list[Memory] = field(default_factory=list)
+    prompt: str = ""
 
 
 class Conversation:
@@ -71,7 +77,9 @@ class Conversation:
 
         # 5. generate the reply
         reply = self.model.generate(prompt)
-        return Turn(player_input=player_input, reply=reply, retrieved=retrieved)
+        return Turn(
+            player_input=player_input, reply=reply, retrieved=retrieved, prompt=prompt
+        )
 
 
 def build_demo_conversation() -> Conversation:

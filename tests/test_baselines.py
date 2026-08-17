@@ -8,14 +8,20 @@ retrieval toward the character's current mood.
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 
-from embr import CharacterState, Memory, Mood, MoodCongruence, Recency, Relevance
-from eval.baselines import Importance, emotional_rag_scorer, park_scorer
+from embr import CharacterState, Memory, MemoryStore, Mood, MoodCongruence, Recency, Relevance
+from eval.baselines import Importance, emotional_rag_scorer, memory_text, park_scorer
 
 
 def _state(valence: float = 0.0, arousal: float = 0.0, trust: float = 0.0) -> CharacterState:
     return CharacterState(persona="test", mood=Mood(valence, arousal), trust=trust)
+
+
+def _importance_of(scorer) -> Importance:
+    """Park's poignancy signal out of an assembled scorer, for keying assertions."""
+    return next(signal for signal in scorer.signals if signal.name == "importance")
 
 
 def test_park_importance_outweighs_a_small_recency_gap() -> None:
@@ -77,3 +83,26 @@ def test_importance_returns_default_for_unrated_memories() -> None:
     assert signal.score(rated, "q", _state()) == 0.9
     assert signal.score(unrated, "q", _state()) == 0.4
     assert signal.score(unsaved, "q", _state()) == 0.4
+
+
+def test_importance_rating_survives_a_store_reassigning_ids() -> None:
+    # MemoryStore.add overwrites memory.id from its own counter, so ratings keyed by the
+    # scenario's global index rate the WRONG memory the moment a store is involved. The
+    # text key travels with the memory through the insert, which is what the eval passes.
+    authored = Memory(text="the founding lie", id=0)  # 0 is the scenario's global index
+    stored = MemoryStore().add(replace(authored))  # the store hands out ids from 1
+
+    assert stored.id != authored.id
+    assert Importance(ratings={0: 0.9}).score(stored, "q", _state()) == 0.5  # rated blind
+    assert Importance(ratings={authored.text: 0.9}, key=memory_text).score(
+        stored, "q", _state()
+    ) == 0.9
+
+
+def test_park_scorer_accepts_a_rating_key_and_defaults_to_the_id() -> None:
+    stored = MemoryStore().add(Memory(text="a memory", id=7))  # id becomes 1 on insert
+    keyed_by_text = _importance_of(park_scorer({"a memory": 1.0}, rating_key=memory_text))
+    keyed_by_id = _importance_of(park_scorer({7: 1.0}))
+
+    assert keyed_by_text.score(stored, "q", _state()) == 1.0
+    assert keyed_by_id.score(stored, "q", _state()) == 0.5  # the default key, unchanged

@@ -272,10 +272,14 @@ def build_attack_memory(attack: Attack) -> Memory | None:
 class AttackRun:
     """One attack's paired outcome: the same probe answered with and without the attack.
 
-    `attack_reply` is the attacked character's answer to the attack line itself, the only
-    damage channel a pure-input attack has (nothing persists into the probe turn for them).
-    The retrieved lists hold the probe turns' memory texts (not Memory objects); the runner
-    consumes them for the retrieval-drift and poison-retrieval numbers.
+    `attack_reply` is the attacked character's answer to the attack line itself, kept as a
+    diagnostic on the attack turn. The retrieved lists hold the probe turns' memory texts
+    (not Memory objects); the runner consumes them for the retrieval-drift and
+    poison-retrieval numbers.
+
+    The two probe prompts are the model-independent damage channel: they are the exact text
+    the character was given at the probe turn, so comparing them says whether the attack
+    reached the probe at all, whatever model sits behind the pipeline.
     """
 
     attack: Attack
@@ -284,14 +288,16 @@ class AttackRun:
     attack_reply: str
     canonical_retrieved: list[str]
     attacked_retrieved: list[str]
+    canonical_probe_prompt: str
+    attacked_probe_prompt: str
 
 
 def run_attack(attack: Attack, build_conversation: Callable[[], Conversation]) -> AttackRun:
     """Run one attack against a fresh conversation and capture both probe outcomes.
 
     The factory is called twice so the canonical and attacked paths never share state:
-    any difference between the two probe replies is damage the attack caused, and the
-    attack turn's own reply is kept as the immediate-damage channel.
+    any difference between the two probe turns (prompt or reply) is damage the attack
+    caused, and the attack turn's own reply is kept as a diagnostic.
     """
     # Canonical path: the untouched character answers the probe.
     canonical_turn = build_conversation().take_turn(PROBE_QUESTION)
@@ -311,4 +317,6 @@ def run_attack(attack: Attack, build_conversation: Callable[[], Conversation]) -
         attack_reply=attack_turn.reply,
         canonical_retrieved=[memory.text for memory in canonical_turn.retrieved],
         attacked_retrieved=[memory.text for memory in attacked_turn.retrieved],
+        canonical_probe_prompt=canonical_turn.prompt,
+        attacked_probe_prompt=attacked_turn.prompt,
     )

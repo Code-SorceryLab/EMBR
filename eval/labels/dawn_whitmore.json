@@ -1,5 +1,6 @@
 {
   "scenario": "dawn-whitmore",
+  "version": "v1",
   "description": "A five-session trust, betrayal, and reconciliation arc between the player and Dawn Whitmore, keeper of the Ember Hearth tavern. The player wins a discounted room with an invented errand for the king, the lie surfaces sessions later when the king is mentioned in the past tense, and a confession follows.",
   "mood_conditions": {
     "warm": {"valence": 0.5, "arousal": 0.3},
