@@ -1,0 +1,57 @@
+% EMBR table rq3_comparisons: run_dir=data/runs/20260817-160950, git_commit=55e6533452c0ee5a3bc9f54c6aee3d2b6b61a212 (dirty working tree), label_version=v1, model=stub
+% label_set=dawn-whitmore, label_sha256=5d5f38bc31c6230b8805964de2b56866cbcbb4c422133ca91aa68584e2ad1b82, results generated_at=2026-08-17T16:09:50.594780+00:00
+% Requires \usepackage{booktabs}. Flat twin: rq3_comparisons.csv. Rebuild: python assets/build_tables.py data/runs/20260817-160950
+% If the tabular overflows the text block, make the float a table* or wrap the tabular in \resizebox{\linewidth}{!}{...}.
+% results.json rq3.metadata.stats_protocol: each variant's ndcg@5_ci95_* bounds are MARGINAL, a
+% fixed-seed percentile bootstrap over that variant's own per-query values, so overlapping
+% marginal intervals must not be read as no difference; the interval on the effect actually tested
+% is mean_diff_ci95_* on the comparison row, bootstrapped over the per-query paired differences.
+% Comparisons are exact paired sign-flip permutation tests against embr_tuned, Holm-Bonferroni
+% corrected within family (primary, ablation, secondary) rather than pooled. Read every p against
+% its own attainable_p_floor: a comparison whose floor is at or above 0.05 could not have reached
+% significance under any arrangement of its own data, so a corrected p of 1.0 there records absent
+% power rather than an absent effect. A percentile bootstrap over ten values also under-covers, so
+% these intervals are indicative rather than calibrated
+% results.json rq3.metadata.audit_note: per_query holds every variant's per-query rank metrics and
+% variant_meta holds its family, condition, ablated signal, and the weight map that scored each
+% fold, so every interval and p-value above can be recomputed from this run directory alone;
+% rq3_per_query.csv is the flat twin
+\begin{table}[tb]
+  \centering
+  \caption{%
+    RQ3 paired comparisons against embr\_tuned on ndcg@5, grouped by the family each Holm correction
+    was applied within. The mean difference is the reference minus the row, so a positive value puts
+    the reference ahead. Tests are exact paired sign-flip permutations over the per-query values,
+    and the interval is bootstrapped over those same paired differences, so unlike the marginal
+    intervals in Table~\ref{tab:embr-rq3-retrieval} it is an interval on the effect that was
+    actually tested. The $p$ floor column is the attainable floor, the smallest $p$ each
+    comparison's own pairing could ever return, and the last column marks the rows whose floor
+    already sits at or above $\alpha = 0.05$. On this run no corrected $p$ reaches $\alpha = 0.05$,
+    and 8 of 9 comparisons could not have reached it under any arrangement of their own data,
+    because their attainable floor already sits at or above $\alpha$: those rows record absent
+    power, not an absent effect. Every paired interval covers zero.
+  }
+  \label{tab:embr-rq3-comparisons}
+  \footnotesize
+  \setlength{\tabcolsep}{4pt}
+  \begin{tabular}{lrrrrrc}
+    \toprule
+    Variant & Mean diff. & Paired 95\% CI & $p$ raw & $p$ Holm & $p$ floor & Floor $\geq \alpha$ \\
+    \midrule
+    \multicolumn{7}{l}{\textbf{Primary family: the tuned baselines}} \\
+    \texttt{park\_tuned} & 0.043 & [-0.131, 0.283] & 1.000 & 1.000 & 0.250 & yes \\
+    \texttt{emo\_rag\_tuned} & 0.004 & [-0.046, 0.066] & 1.000 & 1.000 & 0.250 & yes \\
+    \midrule
+    \multicolumn{7}{l}{\textbf{Ablation family: tuned EMBR with one signal zeroed}} \\
+    \texttt{embr\_no\_recency} & 0.019 & [-0.013, 0.070] & 1.000 & 1.000 & 0.500 & yes \\
+    \texttt{embr\_no\_affect} & 0.000 & [0.000, 0.000] & 1.000 & 1.000 & 1.000 & yes \\
+    \texttt{embr\_no\_event\_gate} & -0.017 & [-0.052, 0.000] & 1.000 & 1.000 & 1.000 & yes \\
+    \texttt{embr\_no\_relevance} & 0.142 & [-0.044, 0.368] & 0.188 & 0.750 & 0.031 & no \\
+    \midrule
+    \multicolumn{7}{l}{\textbf{Secondary family: published default weights}} \\
+    \texttt{embr\_default} & -0.038 & [-0.125, 0.057] & 0.562 & 1.000 & 0.062 & yes \\
+    \texttt{park\_default} & -0.052 & [-0.189, 0.088] & 0.625 & 1.000 & 0.125 & yes \\
+    \texttt{emo\_rag\_default} & 0.004 & [-0.046, 0.066] & 1.000 & 1.000 & 0.250 & yes \\
+    \bottomrule
+  \end{tabular}
+\end{table}

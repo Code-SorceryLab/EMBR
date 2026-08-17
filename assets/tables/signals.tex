@@ -1,0 +1,32 @@
+% EMBR table signals: run_dir=data/runs/20260817-160950, git_commit=55e6533452c0ee5a3bc9f54c6aee3d2b6b61a212 (dirty working tree), label_version=v1, model=stub
+% label_set=dawn-whitmore, label_sha256=5d5f38bc31c6230b8805964de2b56866cbcbb4c422133ca91aa68584e2ad1b82, results generated_at=2026-08-17T16:09:50.594780+00:00
+% Requires \usepackage{booktabs}. Flat twin: signals.csv. Rebuild: python assets/build_tables.py data/runs/20260817-160950
+% If the tabular overflows the text block, make the float a table* or wrap the tabular in \resizebox{\linewidth}{!}{...}.
+% authored content: the five-signal reference is transcribed from the design specification
+% (docs/design.md section 4) into SIGNAL_REFERENCE in assets/build_tables.py. It is the only table
+% here that is not read out of a run directory, so its provenance line records the run whose
+% assets it was built alongside rather than a source for its values
+\begin{table}[tb]
+  \centering
+  \caption{%
+    The five signals of the EMBR composite score. The score is a weighted sum of these terms, so
+    zeroing a weight disables a signal: that is exactly how the RQ3 ablations and both baselines are
+    expressed, as weight maps over one scorer rather than as duplicated retrieval code. Formula
+    sketches and groundings follow the design specification; this table is authored specification,
+    not measured output.
+  }
+  \label{tab:embr-signals}
+  \footnotesize
+  \setlength{\tabcolsep}{4pt}
+  \begin{tabular}{llp{0.15\linewidth}p{0.25\linewidth}}
+    \toprule
+    Signal & Formula (sketch) & Grounding & What it captures \\
+    \midrule
+    Recency & $\lambda^{\Delta t}$ & Park et al. 2023; MemoryBank & How long ago the memory formed. Ordinary chatter fades from retrieval while nothing is ever deleted from the store. \\
+    Affect intensity & $|v|\cdot a$ & Cahill and McGaugh 1998 & How strongly the moment was felt, on the arousal-modulated consolidation finding that emotional events are remembered better than neutral ones. \\
+    Event-type gate & $\mathbf{1}[\mathrm{plot\,beat}]\cdot g(\mathrm{trust})$ & novel (this thesis) & Whether the memory is a promise, gift, or betrayal, gated by how far the NPC trusts the speaker, so plot beats outrank small talk. \\
+    Hybrid relevance & $\gamma\,\mathrm{BM25} + (1-\gamma)\cos(e_m,e_q)$ & standard hybrid retrieval & Whether the memory is about what was just said, mixing lexical overlap with embedding similarity so neither rare wording nor paraphrase is missed. \\
+    Mood congruence & $\cos((v_m,a_m),(v_s,a_s))$ & Bower 1981; Emotional RAG & Whether the memory's affect matches the NPC's current mood, the mood-congruent recall effect. This is the term RQ1 measures. \\
+    \bottomrule
+  \end{tabular}
+\end{table}

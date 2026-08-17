@@ -25,6 +25,11 @@ dependencies = [
 ml = [
     "sentence-transformers>=2.2",
 ]
+# Paper figures. Kept out of the core so the harness stays dependency-light; only the
+# asset build step needs a plotting library.
+figures = [
+    "matplotlib>=3.8",
+]
 dev = [
     "pytest>=7.4",
 ]

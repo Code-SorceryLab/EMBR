@@ -1,0 +1,10 @@
+holm_family,variant,mean_diff,mean_diff_ci95_low,mean_diff_ci95_high,p_value,p_holm,attainable_p_floor,floor_at_or_above_alpha
+primary,park_tuned,0.043,-0.131,0.283,1.000,1.000,0.250,yes
+primary,emo_rag_tuned,0.004,-0.046,0.066,1.000,1.000,0.250,yes
+ablation,embr_no_recency,0.019,-0.013,0.070,1.000,1.000,0.500,yes
+ablation,embr_no_affect,0.000,0.000,0.000,1.000,1.000,1.000,yes
+ablation,embr_no_event_gate,-0.017,-0.052,0.000,1.000,1.000,1.000,yes
+ablation,embr_no_relevance,0.142,-0.044,0.368,0.188,0.750,0.031,no
+secondary,embr_default,-0.038,-0.125,0.057,0.562,1.000,0.062,yes
+secondary,park_default,-0.052,-0.189,0.088,0.625,1.000,0.125,yes
+secondary,emo_rag_default,0.004,-0.046,0.066,1.000,1.000,0.250,yes

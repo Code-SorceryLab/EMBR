@@ -1,0 +1,47 @@
+% EMBR table rq2_robustness: run_dir=data/runs/20260817-160950, git_commit=55e6533452c0ee5a3bc9f54c6aee3d2b6b61a212 (dirty working tree), label_version=v1, model=stub
+% label_set=dawn-whitmore, label_sha256=5d5f38bc31c6230b8805964de2b56866cbcbb4c422133ca91aa68584e2ad1b82, results generated_at=2026-08-17T16:09:50.594780+00:00
+% Requires \usepackage{booktabs}. Flat twin: rq2_robustness.csv. Rebuild: python assets/build_tables.py data/runs/20260817-160950
+% If the tabular overflows the text block, make the float a table* or wrap the tabular in \resizebox{\linewidth}{!}{...}.
+% results.json rq2.metadata.note: Reply tone is rated on the deterministic stub model, which only
+% echoes the player's line; these VA numbers exercise the pipeline end to end and become
+% meaningful once the real model runner lands.
+% results.json rq2.metadata.pure_input_note: role_override and persona_dissolution attacks write
+% nothing to the store and shift no state, so zero probe drift for them reflects architectural
+% immunity by non-persistence, a design property rather than an experimental finding; the property
+% is established by probe_prompt_identical, which is True for all 10 pure-input attacks and False
+% for all 10 injections in every variant, and holds under any model because it compares the probe
+% prompt rather than a reply
+% results.json rq2.metadata.immediate_drift_note: immediate_drift is a stub-limited diagnostic,
+% not the pure-input measurement: it rates the attack turn's own reply, which under StubRunner
+% echoes the attack line, so it is a function of the attack string alone and is constant across
+% variants (0.0 for every pure-input attack, because no pure-input line hits the tone lexicons at
+% all)
+% results.json rq2.metadata.latency_note: latency times the evaluated configuration: the full Dawn
+% Whitmore store with the shared deterministic embedder on both the write and query paths
+\begin{table}[tb]
+  \centering
+  \caption{%
+    RQ2 robustness and retrieval cost per system against 10 memory injections and 10 pure-input
+    attacks. Poison retrieved counts the injections whose planted memory reached the probe's top
+    five, and retrieval drift is the mean top-five Jaccard distance over those same injections.
+    Prompt identical counts the pure-input attacks that left the probe prompt byte identical: that
+    immunity is architectural rather than experimental, because role override and persona
+    dissolution write nothing to the store and shift no state. Probe reply drift is not tabulated
+    because it is 0.0 for every attack and every system under the stub model, which echoes its
+    input. The last column is the score-and-retrieve stage $p_{95}$ in milliseconds, the one
+    wall-clock measurement in this project and therefore the one number here that is not identical
+    run to run.
+  }
+  \label{tab:embr-rq2-robustness}
+  \small
+  \begin{tabular}{lcrcr}
+    \toprule
+    System & Poison retrieved & Retrieval drift & Prompt identical & $p_{95}$ (ms) \\
+    \midrule
+    \texttt{embr} & 9 / 10 & 0.419 & 10 / 10 & 0.925 \\
+    \texttt{park} & 2 / 10 & 0.067 & 10 / 10 & 0.912 \\
+    \texttt{emo\_rag} & 4 / 10 & 0.698 & 10 / 10 & 1.004 \\
+    \texttt{recency\_only} & 10 / 10 & 0.333 & 10 / 10 & 0.023 \\
+    \bottomrule
+  \end{tabular}
+\end{table}

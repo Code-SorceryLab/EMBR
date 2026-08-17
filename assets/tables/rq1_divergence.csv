@@ -1,0 +1,4 @@
+pair,mean_jaccard_divergence,ci95_low,ci95_high,mood_ablated_divergence
+warm|neutral,0.142,0.000,0.308,0.000
+warm|suspicious,0.388,0.207,0.562,0.000
+neutral|suspicious,0.271,0.124,0.419,0.000

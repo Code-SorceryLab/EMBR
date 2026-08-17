@@ -1,0 +1,6 @@
+signal,formula,grounding,captures
+Recency,decay_per_hour ** hours_since_memory,Park et al. 2023; MemoryBank,How long ago the memory formed. Ordinary chatter fades from retrieval while nothing is ever deleted from the store.
+Affect intensity,abs(valence) * arousal,Cahill and McGaugh 1998,"How strongly the moment was felt, on the arousal-modulated consolidation finding that emotional events are remembered better than neutral ones."
+Event-type gate,is_plot_beat * gate(trust),novel (this thesis),"Whether the memory is a promise, gift, or betrayal, gated by how far the NPC trusts the speaker, so plot beats outrank small talk."
+Hybrid relevance,"gamma * bm25 + (1 - gamma) * cosine(memory_vec, query_vec)",standard hybrid retrieval,"Whether the memory is about what was just said, mixing lexical overlap with embedding similarity so neither rare wording nor paraphrase is missed."
+Mood congruence,"cosine((valence_mem, arousal_mem), (valence_state, arousal_state))",Bower 1981; Emotional RAG,"Whether the memory's affect matches the NPC's current mood, the mood-congruent recall effect. This is the term RQ1 measures."
