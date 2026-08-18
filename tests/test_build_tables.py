@@ -127,6 +127,14 @@ def test_each_table_writes_a_latex_file_and_a_csv_twin(
         assert path.stat().st_size > 0, f"{path} is empty"
 
 
+def test_generated_tables_are_lf_on_every_platform(run_dir: Path, tmp_path: Path) -> None:
+    # Same contract as the label hash: a paper asset whose bytes depend on the operating
+    # system that built it is not reproducible. write_text follows os.linesep unless told
+    # otherwise, and csv.writer terminates rows with CRLF by default, so both need pinning.
+    for path in build_all_tables(run_dir, tmp_path):
+        assert b"\r\n" not in path.read_bytes(), f"{path.name} was written with CRLF"
+
+
 @pytest.mark.parametrize("stem", sorted(TABLE_BUILDERS))
 def test_latex_uses_booktabs_markup(stem: str, run_dir: Path, tmp_path: Path) -> None:
     tex_path, _ = TABLE_BUILDERS[stem](run_dir, tmp_path)

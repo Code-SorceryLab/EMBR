@@ -12,6 +12,27 @@ import pytest
 import menu
 
 
+def test_delete_removes_every_generated_directory_and_reports_what_went(tmp_path) -> None:
+    # The confirmation names what will be deleted, so the delete has to match the promise:
+    # a wipe that quietly leaves figures behind is worse than one that deletes nothing.
+    directories = [tmp_path / name for name in ("runs", "figures", "tables")]
+    for directory in directories:
+        directory.mkdir()
+        (directory / "generated.txt").write_text("built by the pipeline")
+    absent = tmp_path / "never-created"
+
+    removed = menu.delete_generated_data([*directories, absent])
+
+    assert removed == directories  # the absent one is not reported as deleted
+    assert not any(directory.exists() for directory in directories)
+
+
+def test_delete_targets_only_generated_data_never_hand_written_assets() -> None:
+    # assets/ holds the branding, the architecture diagram and the builders themselves.
+    # Nothing under it is regenerable, so nothing under it may ever be a delete target.
+    assert all(str(path).startswith("data") for path in menu.GENERATED_DATA_DIRS)
+
+
 def test_every_menu_row_has_a_handler_and_the_reverse() -> None:
     keys = {key for key, _label, _desc in menu._MENU_ITEMS if key != "0"}
     assert keys == set(menu._ACTIONS)  # a row with no dispatch is a dead option

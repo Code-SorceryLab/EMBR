@@ -111,22 +111,63 @@ testable. Neither has been tested yet.
 **Do not run heavy work in parallel.** On the Mac, two multi-agent workflows plus Ouro on MPS
 froze a 16 GB machine outright. One thing at a time, or a machine with headroom.
 
+**Python 3.11 may be installed where the `py` launcher cannot see it.** On the PC it came
+from uv, so `py -3.11` reports nothing while the interpreter is sitting in
+`%APPDATA%\uv\python\`. `py -0p` lists everything. `uv venv --python 3.11 .venv` builds the
+environment against it directly.
+
+**On Windows, torch from PyPI is CPU only.** The whole point of the eval box is CUDA, so
+install from the matching index or the run silently falls back to the processor:
+
+```bash
+uv pip install --index-url https://download.pytorch.org/whl/cu130 torch
+```
+
+`cu130` resolves torch 2.13.0, the same version the Mac verified. Confirm with
+`torch.cuda.is_available()` before trusting a single latency number.
+
+**Write `.env` as UTF-8, not with `echo >`.** PowerShell's redirect emits UTF-16LE with a
+byte-order mark. The reader now handles that, but a shell that writes ANSI or UTF-16 is
+still worth knowing about, and the failure used to spill the file's contents into a
+traceback.
+
+**Line endings are part of the reproducibility contract.** `.gitattributes` pins the tree
+to LF. Without it the label file checks out CRLF on Windows and hashes differently, which
+breaks the very stamp a reviewer would use to verify a published number.
+
 **Watch out for cloud-synced folders.** The repo lived under iCloud-synced `Documents` and
 git's internals plus 21 working files were evicted mid-session. It was recovered only because
 everything had been pushed. Keep the repo outside any synced folder on the PC, and push often.
 
 ## 6. Measured facts worth not re-deriving
 
-**Model latency**, measured on an M-series Mac, MPS, fp16:
+**Model latency and VRAM**, measured on the PC: RTX 4060 Ti, CUDA, torch 2.13.0+cu130,
+fp16. These supersede the Mac numbers. One bake-off turn is a realistic prompt: character
+card plus five retrieved memories.
 
-| Model | Kind | Result |
-|---|---|---|
-| Ouro-1.4B | looped, 1.43B params | about 10 s to load, then about 8.5 s for 60 tokens |
-| llama3.2:3b via Ollama | conventional, roughly 2x params | about 3.8 s for 80 tokens |
+| Model | Kind | p50 per turn | p95 |
+|---|---|---|---|
+| Ouro-1.4B | looped, 1.43B params | **32.4 s** | 46.9 s |
+| llama3.2:3b via Ollama | conventional, roughly 2x params | 3.9 s | 7.2 s |
+| gemma4:31b (cloud) | hosted | 3.9 s | 7.2 s |
+| gpt-oss:120b (cloud) | hosted | 2.2 s | 4.3 s |
+| mistral-large-3:675b (cloud) | hosted | 7.4 s | 10.9 s |
 
-The looped model is roughly four times slower per token than a conventional model twice its
-size. It trades repeated internal computation for parameter count, and that compute lands in
-latency. Re-measure on CUDA before putting any number in the paper; these are Mac numbers.
+**The 8 GB VRAM budget holds, with room.** Measured in isolation, Ouro peaks at **2.78 GB
+allocated, 3.01 GB reserved**. `nvidia-smi` reports about 5.4 GB for the process because that
+includes the CUDA context; the allocator figure is the one to quote.
+
+**The roughly 600 ms per-turn target does not hold, and is not close.** Ouro is 54x over it
+on a realistic prompt, and 10.8 s even on a short one once the weights are warm (loading
+costs a further 33 s on the first call). The conventional local model is still 6x over. No
+locally hosted arm tested here comes within an order of magnitude of 600 ms.
+
+Worse for the looped story: Ouro is **8.3x slower than a conventional model with twice the
+parameters**, and slower than every cloud model measured, including a 675B one answering
+over the internet. Repeated internal computation buys parameter efficiency and spends it all
+in latency. If the thesis wants the on-device claim, either the target moves, the model
+changes, or the generation settings need work: GPU utilisation sat at only 36 to 40 percent
+throughout, which is worth investigating before treating 32 s as final.
 
 **Evaluation headline** (stub model, deterministic embedder, v1 labels, ten queries):
 `park_default` 0.608 nDCG@5 edges `embr_default` 0.594. **Do not report an ordering.** The gap
@@ -138,6 +179,20 @@ zero; nothing survives Holm correction. A test pins that sensitivity result.
 EMBR, 2 of 10 under Park, 4 of 10 under Emotional RAG, 10 of 10 under a recency-only floor. So
 the emotional memory is measurably *more* poisonable than the standard baseline, which is a
 publishable result rather than a bug.
+
+**The harness reproduces exactly.** Three replicate runs on the same model produced
+byte-identical nDCG and poisoning counts, with zero divergences. Latency is the only reading
+that moves, and it moves by up to 19 percent run to run, which is the error bar any quoted
+latency figure needs. `eval/experiments.py` runs this.
+
+**Bigger models respond more to mood, and the local ones barely respond at all.** Spread in
+rated warmth across the three pinned moods: gemma4:31b 1.278, gpt-oss:120b 0.762,
+mistral-large-3:675b 0.378, Ouro-1.4B 0.333, llama3.2:3b 0.333, stub 0.000. The architecture
+feeds the same mood to every arm, so this is the model's sensitivity to it, and the small
+local models the thesis targets are the least sensitive. That is a threat to the on-device
+story worth confronting: the affect signal does the most work on the models EMBR does not
+run on. Grounding shows the same direction more mildly, 100 percent for every cloud arm
+against 89 percent for both local ones.
 
 **One finding nobody has written up yet:** Park's probe prompt changes on 10 of 10 injections
 while its retrieval drift moves on only 2, because appraising an injected event shifts mood and

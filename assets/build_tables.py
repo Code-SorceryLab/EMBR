@@ -378,10 +378,13 @@ def write_table(table: Table, provenance: Provenance, out_dir: Path | str) -> li
     directory.mkdir(parents=True, exist_ok=True)
     tex_path = directory / f"{table.name}.tex"
     csv_path = directory / f"{table.name}.csv"
-    tex_path.write_text(render_latex(table, provenance))
+    # LF explicitly on both, because a paper asset whose bytes depend on the machine that
+    # built it is not reproducible: write_text would follow os.linesep, and csv.writer
+    # terminates rows with CRLF unless told otherwise.
+    tex_path.write_text(render_latex(table, provenance), encoding="utf-8", newline="\n")
     header, rows = render_csv(table)
-    with csv_path.open("w", newline="") as handle:
-        writer = csv.writer(handle)
+    with csv_path.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.writer(handle, lineterminator="\n")
         writer.writerow(header)
         writer.writerows(rows)
     return [tex_path, csv_path]

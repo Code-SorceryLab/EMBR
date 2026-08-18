@@ -229,9 +229,14 @@ def run_arm(
     }
 
 
-#: The three hosted models the bake-off uses as a quality ceiling. A size ladder inside one
-#: family plus one other family, so "bigger" and "different" are separable.
-CLOUD_MODELS = ("gpt-oss:20b", "gpt-oss:120b", "qwen3.5:397b")
+#: The three hosted models the bake-off uses as a quality ceiling: three different families
+#: and a wide size spread, so "bigger" and "different lineage" are separable.
+#:
+#: Chosen for answering directly. Heavier reasoning models (gpt-oss:20b, qwen3.5:397b) spend
+#: the entire token budget on a hidden thinking channel against EMBR's prompt and return an
+#: empty reply, at 120 tokens and still at 700. They are excluded because an arm that never
+#: speaks is not a measurement, not because they are worse models.
+CLOUD_MODELS = ("gemma4:31b", "gpt-oss:120b", "mistral-large-3:675b")
 
 OLLAMA_CLOUD_HOST = "https://ollama.com"
 

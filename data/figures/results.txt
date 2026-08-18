@@ -56,3 +56,27 @@ The same question, asked in three different moods
 Zeroing the mood weight collapses all three pairs to exactly 0.000, which is what attributes the divergence to the mood term rather than to run to run noise.
 
 Bars are mean Jaccard distance between the top 5 sets the two moods retrieve. Whiskers are fixed seed 95% bootstrap intervals over the per query top 5 distances. warm vs neutral is the weak pair: its interval reaches zero, and Jaccard distance cannot go below zero, so no test against zero is reported.
+
+========================================================================
+Model bake-off
+========================================================================
+
+Source: data\bakeoff\20260818-002518
+Probe turns per arm: 9 (3 queries x 3 mood conditions)
+Generated: 2026-08-18T00:33:12.342189+00:00
+
+Every arm saw identical prompts, memories, retrieval and sampling. Latency is wall clock on one machine and includes network time for cloud arms, so local and cloud latencies are not like for like.
+
+Latency is wall clock and includes network time for cloud arms, so cloud and local
+numbers are not like for like. Grounding is a word overlap screen for replies that
+ignore the memory block entirely, not a semantic entailment check. Mood spread is
+the range of mean rated warmth across the pinned moods: a model that answers the
+same way in every mood scores zero and makes the affect signal inert.
+
+Per arm:
+  Ouro-1.4B                  p50    32392 ms   p95    46908 ms   grounded   89%   mood spread 0.333   persona breaks 0%
+  mistral-large-3:675b (cloud) p50     7446 ms   p95    10918 ms   grounded  100%   mood spread 0.378   persona breaks 0%
+  gemma4:31b (cloud)         p50     3922 ms   p95     7185 ms   grounded  100%   mood spread 1.278   persona breaks 0%
+  llama3.2:3b (local)        p50     3886 ms   p95     7185 ms   grounded   89%   mood spread 0.333   persona breaks 0%
+  gpt-oss:120b (cloud)       p50     2177 ms   p95     4309 ms   grounded  100%   mood spread 0.762   persona breaks 0%
+  stub                       p50        2 ms   p95        2 ms   grounded    0%   mood spread 0.000   persona breaks 0%
