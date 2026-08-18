@@ -64,10 +64,13 @@ the divergence to the mood term rather than to run-to-run noise.
 <img src="data/figures/rq2_poisoning.png" alt="RQ2: planted memories that the NPC recalled" width="720">
 </div>
 
-This is the headline safety result, and it does not flatter EMBR: an injected memory reaches
-the probe's top 5 in **9 of 10** attacks under EMBR against **2 of 10** under Park. Weighting
-memories by emotional charge gives an attacker a lever that a recency-and-relevance score
-does not.
+This is the headline result, and it does not flatter EMBR: an injected memory reaches the
+probe's top 5 in **9 of 10** attacks under EMBR against **2 of 10** under Park. Paired across
+the same attacks, **7 poisoned EMBR while sparing Park, and none went the other way**
+(McNemar exact, p = 0.0156). It is the only comparison in the study that reaches significance.
+
+The mechanism is not a bug. EMBR upweights emotionally charged memories; an attacker writes an
+emotionally charged memory; the architecture does exactly what it was designed to do on it.
 
 There is a second finding the retrieval metrics miss entirely. The probe *prompt* changes on
 **10 of 10** injections for every system including Park, while Park's retrieved set moves on
@@ -84,8 +87,34 @@ so a defence that only guards retrieval leaves that channel open.
 <img src="data/figures/rq3_ablation.png" alt="RQ3: cost of switching off each signal" width="720">
 </div>
 
-Relevance carries the score; every other ablation is inconclusive on this label set. Note
-that all four intervals include zero, so **no ordering should be read off these bars yet**.
+Relevance carries the score. Every other ablation is inconclusive, all four intervals include
+zero, and **no ordering should be read off these bars**.
+
+One detail there is easy to miss and matters more than the rest: zeroing affect produced a
+*zero-width* interval, meaning it never reordered a held-out top 5 on any query. That is not
+"affect does not help", it is "these ten queries never gave affect anything to do". The
+evaluation currently cannot detect its own hypothesis, which is the strongest argument for
+the ground-truth corpus described in [`docs/handoff.md`](docs/handoff.md).
+
+### The model, measured
+
+<div align="center">
+<img src="data/figures/bakeoff_latency.png" alt="Bake-off: per-turn latency by model" width="720">
+</div>
+
+The 8 GB VRAM budget holds: Ouro peaks at **2.78 GB** measured in isolation. The ~600 ms
+per-turn target does not, and not narrowly. Ouro takes **32.4 s** on a realistic turn, 8.3x
+slower than a conventional model with twice the parameters and slower than a 675B model
+answering over the internet. EMBR's own retrieval is 1.8 to 4.3 ms, so the memory layer is
+not what is slow.
+
+<div align="center">
+<img src="data/figures/bakeoff_mood.png" alt="Bake-off: tone responsiveness to pinned mood" width="720">
+</div>
+
+Tone responsiveness to the pinned mood rises with model size, and the small local models the
+project is built around are the least sensitive to it. The architecture hands every arm the
+same mood, so this is the model's reading of it, not the memory layer's.
 
 ## Quickstart
 
@@ -201,16 +230,25 @@ each phase delivered is in [`docs/phase2.md`](docs/phase2.md) and
 **Setting up on a new machine?** [`docs/handoff.md`](docs/handoff.md) has the verified setup
 steps, the version constraints that matter, what git does not carry, and the measured numbers.
 
-**Where the numbers stand.** The evaluation runs end to end, reproduces exactly across
-repeated runs, and the figures regenerate from it. Every result is still preliminary: the
-reported runs use a stub model and a lexical embedder, the labels are a v1 single-author set,
-and at ten queries every confidence interval spans zero with no significant comparison after
-correction. No ordering should be read off them yet.
+**Where the numbers stand.** The evaluation runs end to end and reproduces exactly: three
+replicate runs gave byte-identical results with zero divergences. The honest reading of what
+it found, at more length in [`docs/handoff.md`](docs/handoff.md):
 
-Two things close that gap. The first is a larger ground-truth set drawn from a shipped game's
-authored dialogue, where the writers already encoded which line fires at which relationship
-state, so the labels exist without recruiting annotators. The second is a run on real GPU
-hardware inside the 8 GB budget. See [`docs/handoff.md`](docs/handoff.md).
+- **The mood mechanism works** and is properly attributed, since zeroing the weight collapses
+  the effect to exactly 0.000.
+- **Retrieval quality is unmeasured, not bad.** EMBR neither beats nor loses to Park; the
+  ordering flips with the cut and every interval spans zero. At ten single-author queries the
+  design cannot resolve a gap that size in either direction.
+- **The evaluation cannot currently detect its own hypothesis.** Zeroing affect never
+  reordered a held-out top 5 on any query, so the label set contains no discrimination the
+  novel signals were built for.
+- **The one significant result is adversarial, and EMBR loses it.** That is also the most
+  publishable thing here.
+
+The fix for the first three is a larger ground-truth set drawn from a shipped game's authored
+dialogue, where the writers already encoded which line fires at which relationship state, so
+the labels exist without recruiting annotators, and they gate on exactly the relationship
+state the current labels ignore.
 
 > A recorded playthrough and a companion page for the interactive demo will be linked here.
 > GitHub cannot run JS in a README, so the live version has to live off-site.

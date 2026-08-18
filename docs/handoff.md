@@ -200,6 +200,92 @@ while its retrieval drift moves on only 2, because appraising an injected event 
 trust even when the retrieved set is unchanged. That is a state-channel attack surface that
 retrieval-based metrics miss entirely. It deserves a paragraph in RQ2.
 
+## 6a. Reading the results: what is actually good, bad, and unmeasured
+
+Written because the numbers do not speak for themselves and the honest reading is not the
+obvious one.
+
+### The one thing that reaches significance is the one where EMBR loses
+
+Across the whole study, exactly one comparison survives a proper test, and it is the
+poisoning result. Paired across the same ten injection attacks (McNemar exact, which is the
+right test here because every system faces the identical attacks):
+
+| Comparison | Poisoned EMBR only | Poisoned the other only | p |
+|---|---|---|---|
+| EMBR vs Park | **7** | **0** | 0.0156 |
+| EMBR vs Emotional RAG | 5 | 0 | 0.0625 |
+| EMBR vs recency-only floor | 0 | 1 | 1.0 |
+
+Not one attack poisoned a baseline while sparing EMBR. Every disagreement runs the same
+direction. The mechanism is not mysterious and not a bug: EMBR upweights emotionally charged
+memories, an attacker writes an emotionally charged memory, and the architecture does exactly
+what it was built to do on it.
+
+**This is the paper.** It is a real, clean, adversarial finding about a class of system that,
+per [`related-work.md`](related-work.md), thousands of people are already running on their own
+machines, and that nobody in that cluster has tested. Everything else here is groundwork.
+
+### The mood mechanism works, and is properly attributed
+
+RQ1 is the clean positive. Pinned mood moves the retrieved set by 0.388 Jaccard between warm
+and suspicious, and zeroing the mood weight collapses all three pairs to **exactly 0.000**.
+A control that lands on precisely zero is strong evidence: the divergence is the mood term
+and not run to run noise. The warm vs neutral pair is weak (0.142, interval reaching zero),
+the other two are not.
+
+### Retrieval quality is not bad, it is unmeasured
+
+EMBR does not beat Park, but it does not lose to it either: 0.594 against 0.608 at defaults,
+0.556 against 0.513 tuned, the ordering flipping with the cut, every interval spanning zero,
+nothing surviving Holm. At ten queries this design cannot resolve a gap that size in either
+direction. Reading "EMBR is worse" off these bars is as unsupported as reading "EMBR is
+better".
+
+**The ablations say something sharper, and it is easy to miss.** Zeroing affect produced a
+*zero-width* interval: it never reordered a held-out top 5, on any query. Event gate is
+nearly the same. That is not the finding "affect does not help". It is the finding that **on
+these ten queries, affect never had an opportunity to matter.** The label set does not
+contain the discriminations the signal was built for, so the study cannot detect its own
+hypothesis. Only relevance moves the score (0.594 to 0.414 when zeroed).
+
+That is a study design problem, not a system problem, and it is the single strongest argument
+for the Stardew corpus in section 7.2. More queries will not help if they are the same kind of
+query; the corpus matters because authored dialogue is gated on relationship state, which is
+precisely the discrimination the current labels lack.
+
+### The latency claim, as written, is dead
+
+Ouro takes 32.4 s per realistic turn against a roughly 600 ms target. No local model tested
+comes within an order of magnitude, and the conventional 3B model is still 6x over. Three
+honest options, in order of how much they cost:
+
+1. **The target is about the memory layer, not generation.** Retrieval is 1.8 to 4.3 ms, so
+   EMBR clears 600 ms with three orders of magnitude to spare. If the thesis meant retrieval
+   latency, it already passes and the claim needs restating, not rescuing.
+2. **Ouro is the wrong model.** It is 8.3x slower than a conventional model with twice the
+   parameters and slower than a 675B model over the internet. Nothing requires the thesis to
+   ship a looped model.
+3. **The generation path is misconfigured.** GPU utilisation sat at 36 to 40 percent
+   throughout. Worth an hour before conceding anything.
+
+The 8 GB VRAM budget, by contrast, holds comfortably at 2.78 GB.
+
+### The uncomfortable one nobody asked about
+
+Tone responsiveness to pinned mood rises with model size: gemma4:31b 1.278, gpt-oss:120b
+0.762, mistral-large-3:675b 0.378, Ouro-1.4B 0.333, llama3.2:3b 0.333. The architecture hands
+every arm the same mood. The small local models the thesis is built around are the least
+sensitive to it, so the affect signal does most of its work on models EMBR does not run. This
+needs confronting in the paper rather than waiting for a reviewer to find it.
+
+### Verdict
+
+A weak "my retrieval is better" paper and a strong "emotional memory is measurably more
+attackable, and the field is shipping it untested" paper. The second framing is supported by
+the only significant result in the study, is novel, and has an installed base to point at.
+Lead with it.
+
 ## 7. What to do next, in priority order
 
 ### 7.1 Fix the related-work hole first, since it is paper work and costs nothing
