@@ -453,6 +453,23 @@ def test_rebuilding_the_same_run_is_byte_identical(
         assert left.read_bytes() == right.read_bytes(), f"{left.name} is not reproducible"
 
 
+def test_a_hint_that_would_be_clipped_raises_instead_of_vanishing(tmp_path: Path) -> None:
+    # Every real figure builds, which is the positive case. This pins the negative one: a
+    # margin too small must fail loudly, because a hint that silently falls off the canvas
+    # is invisible in a diff and only shows up when someone opens the PNG.
+    import matplotlib.pyplot as plt
+
+    from assets.build_figures import _arrow_hint
+
+    figure, ax = plt.subplots()
+    try:
+        figure.subplots_adjust(bottom=0.02, top=0.98)
+        with pytest.raises(ValueError, match="clipped"):
+            _arrow_hint(ax, axis="x", text="lower is better")
+    finally:
+        plt.close(figure)
+
+
 def test_building_never_touches_the_handwritten_architecture_svg(
     run_dir: Path, tmp_path: Path
 ) -> None:

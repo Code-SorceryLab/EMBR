@@ -11,9 +11,10 @@
 A progressive, onboarding-to-contribution path for a new engineer. It complements
 [`roadmap.md`](roadmap.md): the roadmap holds the detailed per-phase specs, this document
 sequences them for one person over roughly eight weeks, ramping from *understand it* to
-*own the evaluation harness*. Phases 0 through 4 are done, so a newcomer's live contribution is
-one of the outstanding items rather than a phase: the blind multi-annotator label pass, the
-model bake-off, or the eval-hardware run.
+*own the evaluation harness*. Phases 0 through 4 are done, and so are the bake-off and the
+first CUDA run, so a newcomer's live contribution is one of the outstanding items rather than
+a phase: the blind multi-annotator label pass, the Stardew ground-truth corpus, or working out
+why Ouro runs 54x over the latency target at 40 percent GPU utilisation.
 
 ## What EMBR is (for a coder)
 

@@ -12,7 +12,7 @@ tables generate from the results, the walkthrough plays, and the menu is the fro
 **Suite: 271 passed, 1 skipped** (the skip is a semantic test gated on `sentence-transformers`,
 which was never installed on the Mac).
 
-What is **not** done: the model bake-off, the Stardew ground-truth work, a run on real GPU
+What is **not** done: the Stardew ground-truth work, a run on real GPU
 hardware, and the demo recording. Section 7 has the priorities.
 
 ## 2. Branches and pull requests
@@ -102,7 +102,8 @@ worth knowing you are running their code.
 **The PC is probably the eval box, and that unblocks real work.** `OuroRunner` already picks
 cuda before mps before cpu, so on an NVIDIA card it should use CUDA with no code change. This
 is what finally makes the thesis's 8 GB VRAM budget and the roughly 600 ms per-turn target
-testable. Neither has been tested yet.
+testable. Both have now been tested: see section 6. The VRAM budget holds; the latency target
+does not.
 
 **Ollama** must be running for the local model path: `ollama serve`, then
 `ollama pull llama3.2:3b`. The Mac had `qwen2.5:7b`, `qwen3:8b`, `llama3.2:3b`,
@@ -264,24 +265,32 @@ can only be fixture-tested until the game is present. Check for the game under
 `steamapps/common/Stardew Valley`, and note that dialogue ships as `.xnb` needing unpacking,
 though many installs have an unpacked `Content (unpacked)` folder.
 
-### 7.3 The model bake-off
+### 7.3 The model bake-off, now built
 
-`eval/bakeoff.py` does not exist yet; the menu already has an option that explains itself
-until it does. It should hold prompts, memories and sampling equal and vary only the model,
-comparing Ouro (looped) against conventional local models and a cloud model as a quality
-ceiling, reporting latency percentiles, memory grounding, mood responsiveness via the tone
-rater, and persona breaks, with transcripts saved for human judgement.
+`eval/bakeoff.py` holds prompts, memories, retrieval and sampling equal and varies only the
+model, over Ouro, a local conventional model and three hosted ones. It reports latency
+percentiles, memory grounding, mood responsiveness through the tone rater and persona breaks,
+and saves transcripts. `python -m eval.bakeoff` runs it; menu option 6 is wired to it.
 
-**Ollama is already wired for both local and cloud.** One `OllamaRunner` serves both, differing
-only by a bearer token, with tests for the cloud request shape and one confirming the key never
-leaks. So local versus cloud is ready to measure.
+Section 6 has the numbers. Two things to know before rerunning it:
+
+- **Hosted reasoning models need a bigger token budget than the local arms.** gpt-oss:20b and
+  qwen3.5:397b spend the entire budget on a hidden thinking channel and return nothing, at 120
+  tokens and still at 700, so they are excluded. The three that ship answer directly. The
+  asymmetry is recorded per arm in the run artifact rather than hidden.
+- **Cloud latency includes network time**, so cloud and local numbers are not like for like.
+  Cloud arms are a quality ceiling, not a speed comparison.
+
+An arm that cannot be built or that raises mid-run is recorded as unavailable with its error,
+so one dead endpoint costs that arm only.
 
 ### 7.4 Still open beyond that
 
-- A run on real GPU hardware inside the 8 GB VRAM budget, and the roughly 600 ms target.
+- A defensible answer to the latency result: move the target, change the model, or fix the
+  generation path. The current numbers make the on-device real-time claim untenable as written.
 - The demo recording and a companion page for the interactive demo.
-- `sentence-transformers` was never installed, so the real-embeddings path is untested. One
-  test skips because of it.
+- Why Ouro sits at 36 to 40 percent GPU utilisation. Until that is understood, 32.4 s per
+  turn is a measurement rather than a conclusion about looped models.
 
 ## 8. House rules that are easy to forget
 

@@ -100,8 +100,8 @@ promoting to a package only when a module outgrows itself.
 toolkit: an ASCII banner in a bordered panel, a rounded three-column keyed table, and a
 dim-red Exit row below a section break. The palette is EMBR's ember rather than RIDGE's cyan.
 
-Nine options: a demo turn, the walkthrough, the quick scoreboard, the full evaluation, asset
-generation, the bake-off, the latest results, settings, and a run-data wipe that demands the
+Ten options: a demo turn, the walkthrough, the quick scoreboard, the full evaluation, asset
+generation, the bake-off, the latest results, seeded runs, settings, and a data wipe that demands the
 typed word `DELETE` rather than a y/n, because a stray keypress should never delete a run.
 
 Two decisions worth recording. An error boundary wraps every action, so one failing option
@@ -117,19 +117,20 @@ refusing anything but the exact word. Textual is dropped from the core; `rich` r
 
 Neither phase is a clean sweep, and the gaps matter more than the tick marks:
 
-- **`eval/bakeoff.py` does not exist.** The measured looped-versus-conventional comparison is
-  designed and the menu already has an option that explains itself, but the numbers in section
-  2 are hand measurements rather than a harness run. Holding prompts, memories and sampling
-  equal, it should report latency percentiles, memory grounding, mood responsiveness via the
-  tone rater, and persona breaks, with transcripts saved for human judgement.
 - **No recording, no companion page.** Phase 4's brief asks for both. The walkthrough plays,
   so this is a capture task rather than a build task.
 - **The label set is still v1 and single-author.** This is the largest gap in the whole
   project. At ten queries every interval spans zero, no comparison survives correction, and
   admitting the recorded borderline exclusions reverses the Park and EMBR ordering. Until a
   blind multi-annotator pass lands, the figures can show direction and nothing more.
-- **No eval-hardware run.** Everything reported so far used the stub model and the
-  deterministic embedder. The 8 GB VRAM budget and the 600 ms target are untested.
+- **The latency target is missed by a wide margin.** The bake-off has since run on CUDA and
+  the hand measurements in section 2 are superseded: Ouro takes 32.4 s per realistic turn
+  against a roughly 600 ms target. The VRAM budget, by contrast, holds at 2.78 GB. See
+  section 6 of [`handoff.md`](handoff.md). This needs a response in the paper, not a footnote.
+
+The bake-off gap is closed: `eval/bakeoff.py` holds prompts, memories, retrieval and sampling
+equal and varies only the model, and `eval/experiments.py` replicates a run to show the
+harness reproduces exactly.
 
 ## 6. Running it
 

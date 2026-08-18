@@ -171,27 +171,27 @@ def build_bakeoff_figures(
         (
             "bakeoff_latency",
             [arm["latency_ms"]["p50"] for arm in arms],
-            "How long each model takes to answer one turn",
-            "typical time for one reply, milliseconds (log scale)",
-            "further left = faster",
+            "Bake-off: per-turn generation latency by model",
+            "median end-to-end turn latency, milliseconds (log scale)",
+            "lower is better; cloud arms include network time",
             "{:,.0f} ms",
             True,
         ),
         (
             "bakeoff_grounding",
             [arm["grounded_rate"] for arm in arms],
-            "How often each model used the memory it was given",
-            "share of replies that reused a retrieved memory",
-            "further right = better use of memory",
+            "Bake-off: memory grounding by model",
+            "share of replies reusing a retrieved memory",
+            "higher is better",
             "{:.0%}",
             False,
         ),
         (
             "bakeoff_mood",
             [arm["mood_valence_spread"] for arm in arms],
-            "How much each model changes tone with the NPC's mood",
-            "spread in rated warmth across the three moods",
-            "further right = more responsive to mood",
+            "Bake-off: tone responsiveness to pinned mood",
+            "range of mean rated valence across the three mood conditions",
+            "higher = more sensitive to the affect signal",
             "{:.3f}",
             False,
         ),
@@ -283,13 +283,13 @@ def build_replicate_figure(
         highs = [spread[v]["max_ms"] for v in variants]
         ax.set_xlim(min(lows) * 0.6, max(highs) * 4.0)
         ax.set_xlabel(
-            f"time to choose the memories, milliseconds, across "
+            f"score-and-retrieve p95 latency, milliseconds, over "
             f"{report['replicates']} identical runs (log scale)"
         )
         _value_grid(ax, axis="x")
-        _arrow_hint(ax, axis="x", text="further left = faster")
+        _arrow_hint(ax, axis="x", text="bar width is the run-to-run spread")
         ax.set_title(
-            "The same run, three times: how much the timing moves",
+            f"Replication: latency spread across {report['replicates']} identical runs",
             loc="left",
             pad=15.0,
             color=NEAR_BLACK,

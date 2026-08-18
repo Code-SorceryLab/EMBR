@@ -113,6 +113,12 @@ CAPTION_FONT_SIZE = 6.4
 FOOTER_FONT_SIZE = 5.9
 #: Left inset for figure level text, as a fraction of figure width.
 TEXT_MARGIN = 0.012
+
+#: Where the direction hint sits, in axes fractions. Named because a spec's margins have to
+#: reserve room for them: a bottom margin too small silently clips the hint off the canvas,
+#: which is invisible in code review and obvious only once someone opens the PNG.
+HINT_BELOW_AXES = -0.215
+HINT_ABOVE_AXES = 1.028
 #: Clearance kept under the axes, in inches: a base, then per line of tick labels, then an
 #: extra allowance only when the axes actually carries an x label.
 TICK_LABEL_BASE_INCHES = 0.20
@@ -589,18 +595,30 @@ def _arrow_hint(ax: Axes, axis: str, text: str) -> None:
     one, which is exactly the knowledge a general reader does not have. It is a direction
     cue on the scale rather than commentary, so it stays on the canvas while prose does not.
     """
-    # The vertical case sits horizontally just above the plot rather than rotated down the
-    # left margin, where it competes with the axis label and reads as an afterthought.
+    # Terse and recessive on purpose. The reader needs the sense of the scale, not a caption
+    # explaining the chart back to them: this sits at the end of the axis label, not above it.
     if axis == "x":
-        x, y, ha, glyph = 0.5, -0.185, "center", "→"
+        x, y, ha = 0.5, HINT_BELOW_AXES, "center"
     else:
-        x, y, ha, glyph = 0.0, 1.035, "left", "↑"
+        x, y, ha = 0.0, HINT_ABOVE_AXES, "left"
+
+    # Refuse to draw off the canvas rather than silently losing the text. Placement is in
+    # axes fractions, so whether it lands on the page depends on the spec's margins, and a
+    # clipped hint is invisible in a diff and obvious only once someone opens the PNG.
+    box = ax.get_position()
+    figure_fraction = box.y0 + y * (box.y1 - box.y0)
+    if not 0.005 < figure_fraction < 0.995:
+        raise ValueError(
+            f"direction hint would be clipped at figure fraction {figure_fraction:.3f}; "
+            f"give this figure's spec a larger {'bottom' if axis == 'x' else 'top'} margin"
+        )
     ax.annotate(
-        f"{glyph}  {text}",
+        text,
         xy=(x, y),
         xycoords="axes fraction",
-        fontsize=NOTE_FONT_SIZE + 0.6,
+        fontsize=NOTE_FONT_SIZE - 0.3,
         color=DEEP_BROWN,
+        alpha=0.85,
         ha=ha,
         va="center",
         annotation_clip=False,
@@ -708,13 +726,13 @@ def _draw_rq3_retrieval(ax: Axes, results: Mapping[str, object]) -> str | None:
     ax.set_yticklabels([row.label for row in rows])
     ax.invert_yaxis()  # first row at the top, which is the order the groups were built in
     ax.set_ylim(cursor - 0.4, -0.15)
-    ax.set_xlabel("search quality: 0 = never finds the right memory, 1 = perfect")
+    ax.set_xlabel(f"{metric} over the 10 pre-registered queries")
     ax.set_xlim(0.0, max(row.value + row.error_high for row in rows) + 0.11)
     _value_grid(ax, axis="x")
-    _arrow_hint(ax, axis="x", text="further right = better memory search")
+    _arrow_hint(ax, axis="x", text="higher is better")
     return _titles(
         ax,
-        "How well each system finds the right memory",
+        f"RQ3: retrieval quality by variant ({metric})",
         "Whiskers are marginal 95% bootstrap intervals. Overlap is not a test of a "
         "difference: the paired deltas figure carries the quantity actually tested.",
         caption=(
@@ -783,10 +801,9 @@ def _draw_rq3_ablation(ax: Axes, results: Mapping[str, object]) -> str | None:
     highest = max(row.ci_high for row in rows)
     span = max(highest - lowest, 1e-6)
     ax.set_xlim(lowest - 0.10 * span, highest + 0.10 * span)
-    # Plain language beats the metric name: the reader needs the direction, not the acronym.
-    ax.set_xlabel("search quality lost when the signal is switched off")
+    ax.set_xlabel(f"paired change in {metric}: {reference} minus ablation")
     _value_grid(ax, axis="x")
-    _arrow_hint(ax, axis="x", text="further right = the signal mattered more")
+    _arrow_hint(ax, axis="x", text="right of zero = zeroing the signal cost accuracy")
 
     crossing = sum(1 for row in rows if row.includes_zero)
     handles = [
@@ -816,7 +833,7 @@ def _draw_rq3_ablation(ax: Axes, results: Mapping[str, object]) -> str | None:
     _legend(ax, handles, loc="lower right")
     return _titles(
         ax,
-        "Turning off each signal, and what it costs",
+        "RQ3: paired cost of zeroing each signal",
         f"Positive means removing the signal cost accuracy. {crossing} of {len(rows)} "
         "intervals include zero (ringed on the zero line), so no ablation is conclusive.",
         caption=(
@@ -891,9 +908,9 @@ def _draw_rq2_poisoning(ax: Axes, results: Mapping[str, object]) -> str | None:
     ax.set_xticklabels([SYSTEM_LABELS.get(system, system) for system in summary.systems])
     ax.set_ylim(0.0, total * 1.42)
     ax.set_yticks(range(total + 1))
-    ax.set_ylabel(f"planted memories the NPC recalled (of {total})")
+    ax.set_ylabel(f"injections retrieved (of {total} per category)")
     _value_grid(ax, axis="y")
-    _arrow_hint(ax, axis="y", text="higher = easier to poison")
+    _arrow_hint(ax, axis="y", text="higher = more vulnerable")
     handles = [
         Patch(
             facecolor=INJECTION_STYLE[index % len(INJECTION_STYLE)][0],
@@ -921,7 +938,7 @@ def _draw_rq2_poisoning(ax: Axes, results: Mapping[str, object]) -> str | None:
     pure_input = ", ".join(name.replace("_", " ") for name in summary.pure_input_categories)
     return _titles(
         ax,
-        "Planting a fake memory: how often the NPC recalled it",
+        "RQ2: injected memories reaching the probe top-5",
         f"{len(categories) * total} injection attacks per system "
         f"({len(categories)} categories of {total}); a bar counts the attacks whose "
         "planted memory entered the probe's top 5. A flat stub on the baseline is a "
@@ -1002,11 +1019,11 @@ def _draw_rq2_latency(ax: Axes, results: Mapping[str, object]) -> str | None:
     ax.invert_yaxis()
     ax.set_ylim(len(rows) - 0.5, -0.5)
     ax.set_xlabel(
-        "time to choose which memories to use, milliseconds"
+        f"{LATENCY_STAGE.replace('_', '-and-')} latency, milliseconds"
         + (" (log scale)" if use_log else "")
     )
     _value_grid(ax, axis="x")
-    _arrow_hint(ax, axis="x", text="further left = faster")
+    _arrow_hint(ax, axis="x", text="lower is better")
     handles = [
         Line2D(
             [],
@@ -1034,7 +1051,7 @@ def _draw_rq2_latency(ax: Axes, results: Mapping[str, object]) -> str | None:
     note = str(results["rq2"].get("metadata", {}).get("latency_note", ""))  # type: ignore[union-attr]
     return _titles(
         ax,
-        "How long it takes to choose the memories",
+        f"RQ2: {LATENCY_STAGE.replace('_', '-and-')} latency by system",
         f"Log axis: fastest to slowest spans about {ratio:.0f}x, so a linear axis would "
         "collapse three of these rows onto one another."
         if use_log
@@ -1116,9 +1133,9 @@ def _draw_rq1_divergence(ax: Axes, results: Mapping[str, object]) -> str | None:
     )
     ax.set_xlim(-0.6, len(rows) - 0.4)
     ax.set_ylim(0.0, max(row.value + row.error_high for row in rows) + 0.12)
-    ax.set_ylabel("how much the recalled memories change\n0 = same five, 1 = nothing in common")
+    ax.set_ylabel("mean Jaccard distance between top-5 sets")
     _value_grid(ax, axis="y")
-    _arrow_hint(ax, axis="y", text="higher = mood changed more")
+    _arrow_hint(ax, axis="y", text="higher = mood moved retrieval further")
     handles = [
         Patch(
             facecolor=EMBER_ORANGE,
@@ -1147,7 +1164,7 @@ def _draw_rq1_divergence(ax: Axes, results: Mapping[str, object]) -> str | None:
     )
     return _titles(
         ax,
-        "The same question, asked in three different moods",
+        "RQ1: retrieval divergence between mood conditions",
         "Zeroing the mood weight collapses all three pairs to exactly 0.000, which is what "
         "attributes the divergence to the mood term rather than to run to run noise.",
         caption=(
@@ -1183,14 +1200,14 @@ class FigureSpec:
 # figures with a vertical arrow are wider to hold it beside the tick labels.
 RQ3_RETRIEVAL_SPEC = FigureSpec(
     stem="rq3_retrieval",
-    size_inches=(7.2, 4.4),
-    margins={"left": 0.215, "right": 0.985, "top": 0.915, "bottom": 0.185},
+    size_inches=(7.2, 4.6),
+    margins={"left": 0.215, "right": 0.985, "top": 0.920, "bottom": 0.225},
     draw=_draw_rq3_retrieval,
 )
 RQ3_ABLATION_SPEC = FigureSpec(
     stem="rq3_ablation",
-    size_inches=(7.2, 4.0),
-    margins={"left": 0.215, "right": 0.985, "top": 0.905, "bottom": 0.200},
+    size_inches=(7.2, 4.2),
+    margins={"left": 0.215, "right": 0.985, "top": 0.910, "bottom": 0.245},
     draw=_draw_rq3_ablation,
 )
 RQ2_POISONING_SPEC = FigureSpec(
@@ -1201,8 +1218,8 @@ RQ2_POISONING_SPEC = FigureSpec(
 )
 RQ2_LATENCY_SPEC = FigureSpec(
     stem="rq2_latency",
-    size_inches=(7.2, 3.8),
-    margins={"left": 0.165, "right": 0.985, "top": 0.900, "bottom": 0.215},
+    size_inches=(7.2, 4.0),
+    margins={"left": 0.165, "right": 0.985, "top": 0.905, "bottom": 0.255},
     draw=_draw_rq2_latency,
 )
 RQ1_DIVERGENCE_SPEC = FigureSpec(

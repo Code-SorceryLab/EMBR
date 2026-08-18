@@ -34,7 +34,6 @@ from pathlib import Path
 from typing import Any, Callable
 
 from embr import Conversation, DeterministicEmbedder, MemoryStore, embr_scorer
-from embr.model import ModelUnavailableError
 
 from eval.run import _eval_clock, load_eval_scenario
 from eval.scenarios import Scenario, dawn_state
@@ -174,7 +173,7 @@ def run_arm(
         started = time.perf_counter()
         try:
             reply = conversation.take_turn(query).reply
-        except (ModelUnavailableError, Exception) as error:  # one bad turn, not one bad arm
+        except Exception as error:  # one bad turn costs this arm, never the whole bake-off
             return {
                 "model": arm.name,
                 "kind": arm.kind,
