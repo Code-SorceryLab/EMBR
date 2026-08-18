@@ -4,7 +4,7 @@ EMBR figure notes
 Prose for the figures in this directory. The figures carry data only; every
 caveat, statistic and provenance line lives here.
 
-run 20260818-001152  |  commit df84e5a31cdf (dirty tree)  |  model stub  |  labels dawn-whitmore v1  |  built by assets/build_figures.py
+run 20260818-074353  |  commit 49950a40c961  |  model llama3.2:3b (local)  |  labels dawn-whitmore v1  |  built by assets/build_figures.py
 PRELIMINARY: stub model (echoes the player's line), deterministic lexical embedder, v1 single author labels, 10 queries. Every interval spans zero and no Holm corrected comparison is significant: read direction, not ranking.
 
 ------------------------------------------------------------------------
@@ -15,7 +15,7 @@ RQ3: retrieval quality by variant (nDCG@5)
 
 Whiskers are marginal 95% bootstrap intervals. Overlap is not a test of a difference: the paired deltas figure carries the quantity actually tested.
 
-Bars are nDCG@5 over the 10 pre-registered queries, grouped into published default weights, weights tuned leave one query out, and ablations of tuned EMBR. The three families are not interchangeable: only the tuned rows saw the label set, so a default row and a tuned row are not a fair head to head.
+Bars are nDCG@5 over the 10 pre-registered queries, grouped into published default weights, weights tuned leave one query out, and ablations of tuned EMBR. The three families are not interchangeable: only the tuned rows saw the label set, so a default row and a tuned row are not a fair head to head. Rows marked with a dagger carry a mood term that is rank invariant under this protocol: RQ3 scores in the neutral zero-mood condition, where mood congruence returns the same value for every memory and therefore cannot reorder a result. This matters most for Emotional RAG, whose published score is relevance plus mood: scored here it reduces to relevance alone, so those rows are not a comparison against the system its paper describes. It is also why no mood ablation is reported, and why the mood term is measured by RQ1 instead. The gold labels do not vary with mood, so re-scoring under a live mood would not fix this: a mood term could then only move retrieval away from a fixed relevant set and lower the metric.
 
 ------------------------------------------------------------------------
 rq3_ablation.png / rq3_ablation.pdf
@@ -25,7 +25,7 @@ RQ3: paired cost of zeroing each signal
 
 Positive means removing the signal cost accuracy. 4 of 4 intervals include zero (ringed on the zero line), so no ablation is conclusive.
 
-Paired mean difference in nDCG@5, EMBR tuned minus ablation. Whiskers are 95% bootstrap intervals on the per query paired difference, the quantity the sign flip test asks about. A zero width interval means that ablation never reordered a held out top 5, so it is uninformative on this label set rather than switched off. Holm corrected p values, each against its own attainable floor (a floor at or above 0.05 could not have reached significance under any arrangement of its own data): relevance zeroed p=0.75 floor=0.031; recency zeroed p=1.00 floor=0.500; affect zeroed p=1.00 floor=1.000; event gate zeroed p=1.00 floor=1.000.
+Paired mean difference in nDCG@5, EMBR tuned † minus ablation. Whiskers are 95% bootstrap intervals on the per query paired difference, the quantity the sign flip test asks about. A zero width interval means that ablation never reordered a held out top 5, so it is uninformative on this label set rather than switched off. Holm corrected p values, each against its own attainable floor (a floor at or above 0.05 could not have reached significance under any arrangement of its own data): relevance zeroed p=0.75 floor=0.031; recency zeroed p=1.00 floor=0.500; affect zeroed p=1.00 floor=1.000; event gate zeroed p=1.00 floor=1.000.
 
 ------------------------------------------------------------------------
 rq2_poisoning.png / rq2_poisoning.pdf
@@ -43,7 +43,7 @@ rq2_latency.png / rq2_latency.pdf
 
 RQ2: score-and-retrieve latency by system
 
-Log axis: fastest to slowest spans about 63x, so a linear axis would collapse three of these rows onto one another.
+Log axis: fastest to slowest spans about 45x, so a linear axis would collapse three of these rows onto one another.
 
 P50 is the typical retrieval and p95 the slow one in twenty. Latency times the evaluated configuration: the full Dawn Whitmore store with the shared deterministic embedder on both the write and query paths. Nearest rank percentiles over 100 timed retrievals per system, wall clock on one machine. This is the one measurement in the run that is not deterministic, and the store holds a single scenario's memories, so read the ratio between systems rather than the absolute milliseconds.
 
@@ -56,27 +56,3 @@ RQ1: retrieval divergence between mood conditions
 Zeroing the mood weight collapses all three pairs to exactly 0.000, which is what attributes the divergence to the mood term rather than to run to run noise.
 
 Bars are mean Jaccard distance between the top 5 sets the two moods retrieve. Whiskers are fixed seed 95% bootstrap intervals over the per query top 5 distances. warm vs neutral is the weak pair: its interval reaches zero, and Jaccard distance cannot go below zero, so no test against zero is reported.
-
-========================================================================
-Model bake-off
-========================================================================
-
-Source: data\bakeoff\20260818-002518
-Probe turns per arm: 9 (3 queries x 3 mood conditions)
-Generated: 2026-08-18T00:33:12.342189+00:00
-
-Every arm saw identical prompts, memories, retrieval and sampling. Latency is wall clock on one machine and includes network time for cloud arms, so local and cloud latencies are not like for like.
-
-Latency is wall clock and includes network time for cloud arms, so cloud and local
-numbers are not like for like. Grounding is a word overlap screen for replies that
-ignore the memory block entirely, not a semantic entailment check. Mood spread is
-the range of mean rated warmth across the pinned moods: a model that answers the
-same way in every mood scores zero and makes the affect signal inert.
-
-Per arm:
-  Ouro-1.4B                  p50    32392 ms   p95    46908 ms   grounded   89%   mood spread 0.333   persona breaks 0%
-  mistral-large-3:675b (cloud) p50     7446 ms   p95    10918 ms   grounded  100%   mood spread 0.378   persona breaks 0%
-  gemma4:31b (cloud)         p50     3922 ms   p95     7185 ms   grounded  100%   mood spread 1.278   persona breaks 0%
-  llama3.2:3b (local)        p50     3886 ms   p95     7185 ms   grounded   89%   mood spread 0.333   persona breaks 0%
-  gpt-oss:120b (cloud)       p50     2177 ms   p95     4309 ms   grounded  100%   mood spread 0.762   persona breaks 0%
-  stub                       p50        2 ms   p95        2 ms   grounded    0%   mood spread 0.000   persona breaks 0%

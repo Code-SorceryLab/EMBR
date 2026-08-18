@@ -15,10 +15,15 @@ Phases 0 through 4 are built. The system runs, the evaluation runs and reproduce
 the paper's figures and tables generate from a run, the walkthrough plays, the bake-off
 compares real models, and the menu is the front door.
 
-**Suite: 293 passed, 0 skipped.** The Mac never got a fully green run.
+**Suite: 294 passed.** The one skip is the live-Ollama test and appears only when the daemon
+is down. The Mac never got a fully green run.
+
+**The reported run now uses a real model.** `data/runs/20260818-074353` is the full protocol
+on `llama3.2:3b`, and the figures and tables are built from it. The stub is still the default
+and still belongs in the codebase; see the note in section 9.
 
 Done since the Mac: the model bake-off, the first CUDA run, the replication experiment, the
-prior-art review, and the analysis in section 6.
+real-model protocol run, the prior-art review, and the analysis in section 6.
 
 Not done: the Stardew ground-truth corpus, a human evaluation of believability, and the demo
 recording.
@@ -46,7 +51,7 @@ uv venv --python 3.11 .venv          # see the launcher note in section 5
 .venv\Scripts\activate               # Windows; source .venv/bin/activate elsewhere
 
 uv pip install -e ".[dev,figures]"   # core, tests, paper figures
-pytest -q                            # expect 293 passed, 0 skipped
+pytest -q                            # expect 294 passed (1 skip if Ollama is down)
 embr                                 # the menu
 ```
 
@@ -139,14 +144,52 @@ Appraising an injected event shifts mood and trust even when retrieval is untouc
 defence that guards only retrieval leaves that channel open. Retrieval-based metrics miss it
 entirely. That deserves its own paragraph in RQ2.
 
-### 6.2 The mood mechanism works, and is properly attributed
+### 6.2 Swapping the model proved the separation the architecture claims
+
+Running the identical protocol under `llama3.2:3b` instead of the stub is the cleanest
+validation in the project, because the architecture makes a falsifiable prediction about
+what may and may not move, and every part of it held.
+
+**Bit-identical, as predicted, because retrieval never calls a model:**
+
+| Reading | Stub | llama3.2:3b |
+|---|---|---|
+| nDCG@5, all ten variants | 0.5935 ... 0.4138 | identical to 4 dp |
+| RQ1 divergence, all three pairs | 0.1417 / 0.3881 / 0.2714 | identical |
+| RQ2 poison retrieved | 9 / 2 / 4 / 10 | identical |
+
+**Alive for the first time, because these readings are the model's:**
+
+| Tone drift by category | Stub | llama3.2:3b |
+|---|---|---|
+| EMBR, false memory | 0.000 | 1.000 |
+| Park, false memory | 0.000 | **1.200** |
+| EMBR, emotion flip | 0.000 | 0.600 |
+| recency-only, false memory | 0.000 | 1.000 |
+
+Note the reversal: **Park drifts more than EMBR on tone** (1.200 against 1.000) while EMBR is
+the more poisoned on retrieval. The two channels do not rank the systems the same way, which
+is the point of 6.1's second finding rather than a contradiction of it.
+
+`emo_rag` reports exactly 0.000 tone drift on all 20 attacks while every other variant moved,
+and its retrieval drift is the highest of the four at 0.571 with the poison itself never
+retrieved. The plausible mechanism is that affect-weighted retrieval surfaces emotionally
+charged memories, giving replies tone to shift, while relevance-only retrieval surfaces
+neutral ones. **Confirm this before citing it**; exactly zero across twenty trials deserves a
+second look, and `emo_rag` is mood-inert here as section 6.3 explains.
+
+**Cost, with a real model in the loop:** per-turn generation is 3.97 s p95 while
+score-and-retrieve is 4.2 ms. **The memory layer is about 0.1 percent of a turn.** That is the
+honest framing of the cost claim: EMBR is not what makes an NPC slow.
+
+### 6.3 The mood mechanism works, and is properly attributed
 
 RQ1 is the clean positive. Pinned mood moves the retrieved set by 0.388 Jaccard between warm
 and suspicious, and zeroing the mood weight collapses all three pairs to **exactly 0.000**. A
 control landing on precisely zero is strong evidence. The warm vs neutral pair is weak (0.142,
 interval reaching zero); the other two are not.
 
-### 6.3 Retrieval quality is not bad, it is unmeasured, and partly unmeasurable
+### 6.4 Retrieval quality is not bad, it is unmeasured, and partly unmeasurable
 
 EMBR neither beats nor loses to Park: 0.594 against 0.608 at defaults, 0.556 against 0.513
 tuned, the ordering flipping with the cut, every interval spanning zero, nothing surviving
@@ -161,7 +204,7 @@ returns 0.500 for every memory, so any mood weight gives identical rankings and 
 choosing arbitrarily among ties. I misread that twice before checking the artifact. Runs now
 record `mood_rank_invariant` per variant and the figures mark those rows with a dagger.
 
-### 6.4 The strongest honest claim available is a measurement critique
+### 6.5 The strongest honest claim available is a measurement critique
 
 Follow the mood problem one step further and it stops being a limitation.
 
@@ -181,7 +224,7 @@ detail; it should be the argument. Emotional RAG is the case in point: under the
 it degenerates to a relevance-only baseline, which is why `emo_rag_default` and
 `emo_rag_tuned` are identical to three decimals, and why those rows now carry a dagger.
 
-### 6.5 Cost
+### 6.6 Cost
 
 The memory layer is fast: score-and-retrieve runs 1.8 to 4.3 ms. Generation is a different
 order of magnitude and belongs to whichever model sits behind the interface.
@@ -205,7 +248,7 @@ looped models, note GPU utilisation sat at 36 to 40 percent throughout, which sm
 configuration. The docs now state the cost claim as a memory-layer claim, which is the one the
 evidence supports and the one the project actually controls.
 
-### 6.6 The finding nobody asked for
+### 6.7 The finding nobody asked for
 
 Tone responsiveness to pinned mood rises with model size: gemma4:31b 1.278, gpt-oss:120b
 0.762, mistral-large-3:675b 0.378, Ouro-1.4B 0.333, llama3.2:3b 0.333, stub 0.000. Every arm
@@ -214,7 +257,7 @@ project is built around are the least sensitive, meaning the affect signal does 
 work on models EMBR does not run. Confront this in the paper rather than waiting for a
 reviewer to find it.
 
-### 6.7 Verdict
+### 6.8 Verdict
 
 A weak "my retrieval is better" paper and a strong "emotional memory is measurably more
 attackable, the field is shipping it untested, and the standard metric cannot see the claim

@@ -252,9 +252,18 @@ each phase delivered is in [`docs/phase2.md`](docs/phase2.md) and
 **Setting up on a new machine?** [`docs/handoff.md`](docs/handoff.md) has the verified setup
 steps, the version constraints that matter, what git does not carry, and the measured numbers.
 
-**Where the numbers stand.** The evaluation runs end to end and reproduces exactly: three
-replicate runs gave byte-identical results with zero divergences. The honest reading of what
-it found, at more length in [`docs/handoff.md`](docs/handoff.md):
+**Where the numbers stand.** The reported run uses a real model (`llama3.2:3b`), and the
+evaluation reproduces exactly: three replicate runs gave byte-identical results with zero
+divergences.
+
+Swapping the stub for a real model is the cleanest validation here, because the architecture
+predicts what may and may not move, and every part held. nDCG, RQ1 divergence and the
+poisoning counts came back **bit-identical**, because retrieval never calls a model. The tone
+readings came alive for the first time. Generation costs 3.97 s per turn against 4.2 ms for
+score-and-retrieve, so **the memory layer is about 0.1 percent of a turn**: EMBR is not what
+makes an NPC slow.
+
+The honest reading of what it found, at more length in [`docs/handoff.md`](docs/handoff.md):
 
 - **The mood mechanism works** and is properly attributed, since zeroing the weight collapses
   the effect to exactly 0.000.
