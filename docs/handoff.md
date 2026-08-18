@@ -242,17 +242,42 @@ nothing surviving Holm. At ten queries this design cannot resolve a gap that siz
 direction. Reading "EMBR is worse" off these bars is as unsupported as reading "EMBR is
 better".
 
-**The ablations say something sharper, and it is easy to miss.** Zeroing affect produced a
-*zero-width* interval: it never reordered a held-out top 5, on any query. Event gate is
-nearly the same. That is not the finding "affect does not help". It is the finding that **on
-these ten queries, affect never had an opportunity to matter.** The label set does not
-contain the discriminations the signal was built for, so the study cannot detect its own
-hypothesis. Only relevance moves the score (0.594 to 0.414 when zeroed).
+**The tuned weight maps are the most damning artifact in the run, and they are easy to miss.**
+Read `variant_meta.embr_tuned.weights_by_fold` before writing anything about the signals.
+Across the ten leave-one-out folds:
 
-That is a study design problem, not a system problem, and it is the single strongest argument
-for the Stardew corpus in section 7.2. More queries will not help if they are the same kind of
-query; the corpus matters because authored dialogue is gated on relationship state, which is
-precisely the discrimination the current labels lack.
+| Signal | Values chosen | Zeroed in |
+|---|---|---|
+| relevance | 0.5 to 1.0 | **0 of 10** |
+| recency | 0.0 to 1.0 | 1 of 10 |
+| affect | 0.0 to 1.0 | 3 of 10 |
+| event gate | 0.0 to 0.5 | 4 of 10 |
+| **mood** | **0.0 only** | **10 of 10** |
+
+**The grid search zeroed mood congruence in every fold.** Ten independent fits, ten times
+declined. That is not sampling noise: given the chance to use the signal, the tuner always
+concluded it does not improve retrieval quality on this label set.
+
+Affect carried a nonzero weight in 7 of 10 folds, and zeroing it *still* never reordered a
+held-out top 5. So the zero-width interval does not mean "the labels never gave affect a
+chance". Affect was live and made no difference to the ranking, which means either its scores
+barely vary across Dawn's 24 memories, or relevance dominates so heavily that nothing else
+can reorder anything. Neither is flattering, and both are worth knowing.
+
+**A better corpus sharpens this rather than rescuing it.** It can still separate "inert
+because this corpus is uniform" from "inert in general", and that separation is worth having.
+But nothing in this data predicts the answer will favour EMBR, and it must not be written as
+though it will. Relevance is doing the work: 0.594 falls to 0.414 when it is zeroed, and no
+other ablation moves.
+
+**The tension a reviewer will find first.** RQ1's headline behavioural result runs on the
+*published default* weights, where mood is 1.0. The tuned configuration sets mood to 0.0 in
+every fold. So "mood changes what the character recalls" rests on a weight setting the
+project's own tuning procedure rejects whenever retrieval quality is the objective. The two
+facts are compatible, and the compatible reading is the interesting one: **mood congruence
+moves retrieval away from the relevance-optimal set.** For a believability argument that may
+be exactly what is wanted. For a retrieval-quality argument it is a cost. The paper has to
+choose which claim it is making instead of implying both.
 
 ### The latency claim, as written, is dead
 

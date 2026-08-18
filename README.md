@@ -90,11 +90,15 @@ so a defence that only guards retrieval leaves that channel open.
 Relevance carries the score. Every other ablation is inconclusive, all four intervals include
 zero, and **no ordering should be read off these bars**.
 
-One detail there is easy to miss and matters more than the rest: zeroing affect produced a
-*zero-width* interval, meaning it never reordered a held-out top 5 on any query. That is not
-"affect does not help", it is "these ten queries never gave affect anything to do". The
-evaluation currently cannot detect its own hypothesis, which is the strongest argument for
-the ground-truth corpus described in [`docs/handoff.md`](docs/handoff.md).
+The tuned weight maps say more than the bars do. Across the ten leave-one-out folds the grid
+search **zeroed mood congruence in all ten**, and affect carried a nonzero weight in seven
+folds yet removing it never reordered a held-out top 5. Relevance was never zeroed in any
+fold. On this label set the composite is carried by relevance, and the two signals the thesis
+treats as novel are either declined by tuning or inert under it.
+
+That is worth confronting rather than softening: it does not mean the signals cannot work, but
+nothing here predicts that a bigger corpus will favour them. See
+[`docs/handoff.md`](docs/handoff.md) section 6a.
 
 ### The model, measured
 
