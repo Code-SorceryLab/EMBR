@@ -90,15 +90,19 @@ so a defence that only guards retrieval leaves that channel open.
 Relevance carries the score. Every other ablation is inconclusive, all four intervals include
 zero, and **no ordering should be read off these bars**.
 
-The tuned weight maps say more than the bars do. Across the ten leave-one-out folds the grid
-search **zeroed mood congruence in all ten**, and affect carried a nonzero weight in seven
-folds yet removing it never reordered a held-out top 5. Relevance was never zeroed in any
-fold. On this label set the composite is carried by relevance, and the two signals the thesis
-treats as novel are either declined by tuning or inert under it.
+The tuned weight maps say more than the bars do. Affect carried a nonzero weight in seven of
+the ten folds and removing it still never reordered a held-out top 5; relevance was never
+zeroed in any fold. On this label set the composite is carried by relevance.
 
-That is worth confronting rather than softening: it does not mean the signals cannot work, but
-nothing here predicts that a bigger corpus will favour them. See
-[`docs/handoff.md`](docs/handoff.md) section 6a.
+**Mood is a separate case, and the important one.** RQ3 scores under a neutral zero-mood
+state where mood congruence returns 0.5 for every memory, so it is a rank-invariant constant
+and RQ3 compares four signals, not five. That is not an oversight to fix by re-running under
+a live mood, because the gold labels are mood-independent: a signal that moves retrieval away
+from a fixed relevant set can only lower nDCG. **nDCG against mood-independent labels cannot
+reward mood-congruent recall in principle**, which is why RQ1 measures divergence instead of
+accuracy, and why the "Emotional RAG" column here degenerates to a relevance-only baseline.
+
+See [`docs/handoff.md`](docs/handoff.md) section 6a.
 
 ### The model, measured
 

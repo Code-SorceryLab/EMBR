@@ -254,9 +254,12 @@ Across the ten leave-one-out folds:
 | event gate | 0.0 to 0.5 | 4 of 10 |
 | **mood** | **0.0 only** | **10 of 10** |
 
-**The grid search zeroed mood congruence in every fold.** Ten independent fits, ten times
-declined. That is not sampling noise: given the chance to use the signal, the tuner always
-concluded it does not improve retrieval quality on this label set.
+**The mood row means nothing, and reading it as a verdict is a mistake I made twice.** Under
+RQ3's neutral zero-mood state, `MoodCongruence` returns exactly 0.500 for all 24 memories: a
+rank-invariant additive constant. Every mood weight therefore produces identical rankings, so
+the grid search is choosing arbitrarily among ties and 0.0 carries no information at all. The
+run records this itself in `rq3.metadata.neutral_mood_note`, and `_per_query_metrics` says it
+in a comment. Do not cite the 10-of-10 as evidence about the signal.
 
 Affect carried a nonzero weight in 7 of 10 folds, and zeroing it *still* never reordered a
 held-out top 5. So the zero-width interval does not mean "the labels never gave affect a
@@ -270,14 +273,35 @@ But nothing in this data predicts the answer will favour EMBR, and it must not b
 though it will. Relevance is doing the work: 0.594 falls to 0.414 when it is zeroed, and no
 other ablation moves.
 
-**The tension a reviewer will find first.** RQ1's headline behavioural result runs on the
-*published default* weights, where mood is 1.0. The tuned configuration sets mood to 0.0 in
-every fold. So "mood changes what the character recalls" rests on a weight setting the
-project's own tuning procedure rejects whenever retrieval quality is the objective. The two
-facts are compatible, and the compatible reading is the interesting one: **mood congruence
-moves retrieval away from the relevance-optimal set.** For a believability argument that may
-be exactly what is wanted. For a retrieval-quality argument it is a cost. The paper has to
-choose which claim it is making instead of implying both.
+### The strongest honest claim in the project is a measurement critique
+
+Follow the mood problem one step further than the code does and it stops being a limitation
+and becomes the contribution.
+
+The gold labels are mood-independent. Every query carries one `relevant` list and it does not
+change with the character's state. So even if RQ3 were re-run under warm or suspicious, where
+the mood vector is live and spreads congruence over 0.35 to 1.00, mood congruence could only
+move retrieval *away* from a fixed gold set. It could only lower nDCG. **Running RQ3 under
+live mood would make EMBR look worse, and that result would be an artifact of the instrument,
+not a property of the system.**
+
+That generalises, and it is worth stating plainly in the paper:
+
+> nDCG against mood-independent relevance labels cannot reward mood-congruent recall, because
+> mood-congruent recall is not an attempt to retrieve the objectively correct memory. It is an
+> attempt to retrieve a state-appropriate one. Scoring it with fixed relevance labels is a
+> category error, and it is the standard instrument in this literature.
+
+This is why RQ1 exists and why it uses divergence rather than accuracy. That is currently
+presented as a design detail. It should be the argument: the field measures emotional memory
+with retrieval metrics that are structurally incapable of crediting the emotional component,
+which is a large part of why nobody has shown these systems doing anything. Emotional RAG is
+the case in point, and this run makes it concrete: under the neutral state it degenerates to a
+relevance-only baseline, so the RQ3 "Emotional RAG" column is not testing Emotional RAG.
+
+Pair this with [`related-work.md`](related-work.md) and the paper has a clean line: a cluster
+of shipped systems claims emotional memory, none reports a metric, and the metric the
+literature would reach for cannot measure the claim anyway.
 
 ### The latency claim, as written, is dead
 
