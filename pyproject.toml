@@ -41,7 +41,12 @@ dev = [
 ]
 
 [project.scripts]
-embr = "embr.menu:run_menu"
+embr = "menu:run_menu"
+
+[tool.setuptools]
+# The menu is the front door, so it sits at the repo root rather than inside the library.
+# It is a top level module, not part of the `embr` package, and setuptools needs telling.
+py-modules = ["menu"]
 
 [tool.setuptools.packages.find]
 include = ["embr*"]

@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import pytest
 
-from embr import menu
+import menu
 
 
 def test_every_menu_row_has_a_handler_and_the_reverse() -> None:

@@ -19,6 +19,10 @@ env/
 # Runtime data: memory databases, embeddings, run outputs (keep the folder, not the files)
 data/*
 !data/.gitkeep
+# Generated paper assets are the exception: they are deliverables, they are embedded in the
+# README, and a reviewer cloning the repo has to see them without running anything first.
+!data/figures/
+!data/tables/
 
 # OS
 .DS_Store

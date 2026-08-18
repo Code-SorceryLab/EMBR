@@ -43,27 +43,81 @@ that into five signals you can weight (or switch off) independently:
 Setting any weight to zero removes that signal cleanly, which is exactly the **RQ3
 ablation**, and lets the **baselines** be expressed as weight maps instead of duplicated code.
 
+## Results
+
+Every figure below is generated from a run directory by `assets/build_figures.py`. The
+figures carry data only; the caveats, statistics and provenance for each one live in
+[`data/figures/results.txt`](data/figures/results.txt) beside them.
+
+### Mood changes what the character recalls
+
+<div align="center">
+<img src="data/figures/rq1_divergence.png" alt="RQ1: the same question asked in three moods" width="720">
+</div>
+
+Zeroing the mood weight collapses all three pairs to exactly 0.000, which is what attributes
+the divergence to the mood term rather than to run-to-run noise.
+
+### Emotional memory is easier to poison than the standard baseline
+
+<div align="center">
+<img src="data/figures/rq2_poisoning.png" alt="RQ2: planted memories that the NPC recalled" width="720">
+</div>
+
+This is the headline safety result, and it does not flatter EMBR: an injected memory reaches
+the probe's top 5 in **9 of 10** attacks under EMBR against **2 of 10** under Park. Weighting
+memories by emotional charge gives an attacker a lever that a recency-and-relevance score
+does not.
+
+There is a second finding the retrieval metrics miss entirely. The probe *prompt* changes on
+**10 of 10** injections for every system including Park, while Park's retrieved set moves on
+only 2. Appraising an injected event shifts mood and trust even when retrieval is untouched,
+so a defence that only guards retrieval leaves that channel open.
+
+### Which signals actually carry retrieval
+
+<div align="center">
+<img src="data/figures/rq3_retrieval.png" alt="RQ3: search quality per variant" width="720">
+</div>
+
+<div align="center">
+<img src="data/figures/rq3_ablation.png" alt="RQ3: cost of switching off each signal" width="720">
+</div>
+
+Relevance carries the score; every other ablation is inconclusive on this label set. Note
+that all four intervals include zero, so **no ordering should be read off these bars yet**.
+
 ## Quickstart
 
 ```bash
-python3.11 -m venv .venv && source .venv/bin/activate
-pip install -e ".[dev]"     # core + tests: enough for the menu and the full evaluation
-pip install -e ".[dev,figures,ml]"   # add paper figures and the real models
+python3.11 -m venv .venv
+.venv\Scripts\activate          # Windows;  source .venv/bin/activate elsewhere
+pip install -e ".[dev]"                # core + tests: the menu and the full evaluation
+pip install -e ".[dev,figures,ml]"     # add paper figures and the real models
+```
 
-embr                        # open the menu  (or: python -m embr)
-pytest -q                   # run the tests
+```bash
+embr                        # open the menu, the front door
+pytest -q                   # the test suite
 python -m eval.run          # the full RQ1 + RQ2 + RQ3 protocol
+python -m eval.bakeoff      # compare Ouro against local and cloud models
 ```
 
 The core deliberately needs almost nothing. `figures` adds matplotlib for the paper assets,
 and `ml` adds real sentence embeddings plus the local model. Note that Ouro needs
 transformers 4.x, which the extra pins: on 5.x its remote code does not load.
 
+Cloud models are optional and need a key in a gitignored `.env`, written as UTF-8:
+
+```
+OLLAMA_API_KEY=your-key-from-ollama.com/settings/keys
+```
+
 <details>
 <summary><b>What you'll see in the menu</b> (click to expand)</summary>
 
 A Rich menu, shaped like [RIDGE's](https://github.com/Code-SorceryLab/RIDGE) so the two
-projects feel like one toolkit. Nine options, all wired to real work:
+projects feel like one toolkit. Ten options, all wired to real work:
 
 - **Conversation Turn** runs a real turn through the pipeline on the thesis's own example
   (Dawn Whitmore and the player's lie about running an errand for the king), and you watch
@@ -73,10 +127,11 @@ projects feel like one toolkit. Nine options, all wired to real work:
   playthrough, a local Ollama model, or Ouro 1.4B for the real thing.
 - **Quick Scoreboard** scores the three retrieval variants at published defaults instantly;
   **Full Evaluation** runs the whole protocol and writes a run directory.
-- **Generate Paper Assets** rebuilds every figure and table from the latest run.
-- **Model Bake-Off** compares the looped model against conventional ones. Not built yet, and
-  the option says so.
-- **Latest Results**, **Settings**, and a run-data wipe that demands the word `DELETE`.
+- **Generate Paper Assets** rebuilds every figure and table from a run.
+- **Model Bake-Off** runs the same probe set through every model and measures what changes.
+- **Seeded Runs** replicates the evaluation on one model to prove it reproduces, or compares
+  across models to show what the architecture says cannot move.
+- **Latest Results**, **Settings**, and a wipe of all generated data that demands `DELETE`.
 
 </details>
 
@@ -92,59 +147,70 @@ projects feel like one toolkit. Nine options, all wired to real work:
 Baselines: Park et al.'s blended score and Emotional RAG, tuned under the same protocol.
 Test characters: Dawn Whitmore (invented tavern keeper) and Kenny (Telltale).
 
+Prior art matters here and is not flattering: a cluster of Stardew Valley mods already ships
+LLM NPCs with persistent memory and offline local inference. What none of them report is a
+retrieval metric, an ablation, a baseline comparison, or a poisoning test. See
+[`docs/related-work.md`](docs/related-work.md).
+
 </details>
 
 ## Project structure
 
 ```
 EMBR/
+├── menu.py               # the Rich menu, the front door, at the root on purpose
 ├── embr/                 # the core runtime: the middleware itself
 │   ├── memory.py         #   Memory record + MemoryStore (in-memory and SQLite)
 │   ├── affect.py         #   Mood (valence/arousal), trust, appraisal rules
 │   ├── scoring.py        #   the five signals + composite scorer
 │   ├── prompt.py         #   prompt construction
-│   ├── model.py          #   model runners: stub, Ollama, Ouro 1.4B
+│   ├── model.py          #   model runners: stub, Ollama (local and cloud), Ouro 1.4B
 │   ├── pipeline.py       #   the five-step per-turn loop
-│   ├── walkthrough.py    #   Dawn's five-beat playable arc
-│   └── menu.py           #   the Rich menu, the front door
-├── eval/                 # RQ1 / RQ2 / RQ3 harness            (phase 2)
-├── assets/               # branding, plus figures & tables built from results
+│   └── walkthrough.py    #   Dawn's five-beat playable arc
+├── eval/                 # RQ1 / RQ2 / RQ3 harness, bake-off, experiments
+│   ├── run.py            #   the full protocol
+│   ├── bakeoff.py        #   same probes, different models
+│   └── experiments.py    #   replication and cross-model comparison
+├── assets/               # hand-authored only: branding, architecture diagram, builders
 │   ├── build_tables.py   #   five paper tables: LaTeX + CSV
-│   └── build_figures.py  #   five paper figures: PDF + PNG
-├── docs/                 # design spec, roadmap, per-phase reports
+│   ├── build_figures.py  #   five paper figures: PDF + PNG
+│   └── build_bakeoff_figures.py
+├── docs/                 # design spec, roadmap, related work, per-phase reports
 ├── tests/                # unit tests
-└── data/                 # memory DBs, embeddings, run outputs (git-ignored)
+└── data/                 # generated: runs, figures, tables, bake-offs, experiments
 ```
+
+Anything under `assets/` is written by a person. Anything under `data/` is written by the
+pipeline and can be deleted and rebuilt, which is what the menu's wipe option does.
 
 ## Status
 
 | Phase | Scope | State |
 |---|---|---|
-| 0 | Skeleton, data contracts, menu shell, live demo turn | ✅ done |
-| 1 | Real retrieval (BM25 + embeddings), affect appraisal rules, SQLite store | ✅ done |
-| 2 | Eval harness, baselines, metrics, adversarial probes | ✅ done |
-| 3 | Paper assets: figures & tables straight from results | ✅ done |
-| 4 | Real model runners, playable walkthrough, the menu | ✅ done |
+| 0 | Skeleton, data contracts, menu shell, live demo turn | done |
+| 1 | Real retrieval (BM25 + embeddings), affect appraisal rules, SQLite store | done |
+| 2 | Eval harness, baselines, metrics, adversarial probes | done |
+| 3 | Paper assets: figures & tables straight from results | done |
+| 4 | Real model runners, playable walkthrough, the menu | done |
+| 5 | Bake-off, replication experiments, a run on real GPU hardware | in progress |
 
-**Building EMBR?** The phase-by-phase plan (tasks, deliverables, and the results expected
-from each phase) is in [`docs/roadmap.md`](docs/roadmap.md). What each phase actually
-delivered is in [`docs/phase2.md`](docs/phase2.md) and
+**Building EMBR?** The phase-by-phase plan is in [`docs/roadmap.md`](docs/roadmap.md). What
+each phase delivered is in [`docs/phase2.md`](docs/phase2.md) and
 [`docs/phase3-4.md`](docs/phase3-4.md).
 
 **Setting up on a new machine?** [`docs/handoff.md`](docs/handoff.md) has the verified setup
-steps, the version constraints that matter, what git does not carry, the measured numbers, and
-what to do next.
+steps, the version constraints that matter, what git does not carry, and the measured numbers.
 
-**Where the numbers stand.** The evaluation runs end to end and the figures regenerate from
-it, but every result so far is preliminary: the reported runs use a stub model and a lexical
-embedder, the labels are a v1 single-author set, and at ten queries every confidence interval
-spans zero with no significant comparison after correction. The figures say so on their face,
-and no ordering should be read off them yet.
+**Where the numbers stand.** The evaluation runs end to end, reproduces exactly across
+repeated runs, and the figures regenerate from it. Every result is still preliminary: the
+reported runs use a stub model and a lexical embedder, the labels are a v1 single-author set,
+and at ten queries every confidence interval spans zero with no significant comparison after
+correction. No ordering should be read off them yet.
 
 Two things close that gap. The first is a larger ground-truth set drawn from a shipped game's
 authored dialogue, where the writers already encoded which line fires at which relationship
 state, so the labels exist without recruiting annotators. The second is a run on real GPU
-hardware inside the 8 GB budget. Both are planned; see [`docs/handoff.md`](docs/handoff.md).
+hardware inside the 8 GB budget. See [`docs/handoff.md`](docs/handoff.md).
 
 > A recorded playthrough and a companion page for the interactive demo will be linked here.
 > GitHub cannot run JS in a README, so the live version has to live off-site.

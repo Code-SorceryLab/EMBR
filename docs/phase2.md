@@ -89,7 +89,7 @@ wiring described here survived the move; only the renderer changed.
   the signal was dead in every variant and the comparison was silently four-signal.
 - **`embr/app/main.py`**: the "not built yet" experiment placeholder was replaced with
   the live screen described above. (Phase 4 removed this file with the rest of the Textual
-  applet; the wiring moved to `embr/menu.py`.)
+  applet; the wiring moved to `menu.py` at the repo root.)
 - **`tests/test_scoring.py`**: two new tests pin the injected clock (exact decay from an
   anchor, and `embr_scorer` threading the clock to the recency signal) and that the
   default stays the live clock.

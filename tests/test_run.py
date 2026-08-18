@@ -15,6 +15,8 @@ import time
 
 import pytest
 
+from embr.model import StubRunner
+
 from eval.run import REFERENCE_TIME, load_eval_scenario, run_all, run_rq3
 
 # The full pre-registered variant list. Any drift here is a protocol change, so the names
@@ -231,6 +233,30 @@ def test_rq1_divergence_carries_intervals_and_a_mood_attribution_control() -> No
     assert set(ablated) == set(divergence)
     assert all(value == 0.0 for value in ablated.values())
     assert all(value > 0.0 for value in divergence.values())
+
+
+def test_run_all_takes_a_model_and_records_which_one_scored_the_run(tmp_path) -> None:
+    # Swapping the model is the whole basis of the bake-off and the cross-model experiment,
+    # and a run that does not name its own model cannot be compared against another one.
+    # The label has to come from the runner rather than a hardcoded string, or a run can
+    # claim a model it never used.
+    out_dir, _ = run_all(
+        out_root=tmp_path, model_factory=lambda: StubRunner(label="pretend-model")
+    )
+    results = json.loads((out_dir / "results.json").read_text())
+    assert results["metadata"]["model"] == "pretend-model"
+    # RQ1 and RQ2 put a model in the pipeline. RQ3 scores retrieval, which never calls one,
+    # so it carries no model key: that absence is the claim that nDCG cannot move with it.
+    for section in ("rq1", "rq2"):
+        assert results[section]["metadata"]["model"] == "pretend-model"
+    assert "model" not in results["rq3"].get("metadata", {})
+
+
+def test_run_all_defaults_to_the_stub_model(tmp_path) -> None:
+    # The default has to stay the stub: every published number was scored on it, and a
+    # silent upgrade to a real model would change results without changing the code.
+    out_dir, _ = run_all(out_root=tmp_path)
+    assert json.loads((out_dir / "results.json").read_text())["metadata"]["model"] == "stub"
 
 
 def test_run_all_writes_results_json_and_both_csvs(full_run) -> None:

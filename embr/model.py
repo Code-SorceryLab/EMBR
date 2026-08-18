@@ -177,6 +177,17 @@ class OllamaRunner:
         self.settings = settings
         self.timeout_seconds = timeout_seconds
 
+    @property
+    def label(self) -> str:
+        """Which model actually served the run, for a run directory to record.
+
+        Cloud and local are the same class differing only by a bearer token, so the host
+        is part of the name: two runs whose only difference is where the model ran must
+        not be recorded under one label.
+        """
+        where = "cloud" if self.api_key else "local"
+        return f"{self.model} ({where})"
+
     def __repr__(self) -> str:
         # Explicitly reports only *whether* a key is set, so a traceback or log line that
         # prints a runner can never expose the secret itself.
@@ -314,6 +325,11 @@ class OuroRunner:
         self.settings = settings
         self._tokenizer: Any = None
         self._model: Any = None
+
+    @property
+    def label(self) -> str:
+        """Which model served the run. Carries the device, since latency depends on it."""
+        return f"{self.model_name} ({self.device or 'auto'})"
 
     @property
     def is_loaded(self) -> bool:

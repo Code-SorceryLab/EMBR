@@ -10,6 +10,7 @@ keypress should never be able to delete a run.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any, Callable
 
@@ -43,8 +44,9 @@ _MENU_ITEMS = [
     ("5", "Generate Paper Assets", "Rebuild every figure and table from a run"),
     ("6", "Model Bake-Off", "Looped (Ouro) vs conventional, measured"),
     ("7", "Latest Results", "Summarise the newest run directory"),
+    ("8", "Seeded Runs", "Replicate on one model, or compare across models"),
     ("S", "Settings", "Weights, top-k, backends, model runner"),
-    ("D", "Delete Run Data", "Wipe data/runs, requires DELETE"),
+    ("D", "Delete All Data", "Wipe runs, figures and tables, requires DELETE"),
     ("0", "Exit", "Quit EMBR"),
 ]
 
@@ -323,30 +325,74 @@ def _do_settings() -> None:
     console.print(f"  [dim]Edit {DEFAULT_CONFIG_PATH} and reopen. Zero a weight to ablate it.[/dim]")
 
 
-def _do_delete_run_data() -> None:
-    """Wipe generated run directories after a typed confirmation."""
+#: Everything the pipeline generates. Nothing hand written lives under any of these, which
+#: is what makes wiping them safe: the branding, the architecture diagram and the builders
+#: all live under assets/ and are never touched.
+GENERATED_DATA_DIRS = (Path("data/runs"), Path("data/figures"), Path("data/tables"))
+
+
+def delete_generated_data(directories: Sequence[Path] = GENERATED_DATA_DIRS) -> list[Path]:
+    """Delete every generated data directory and return the ones that were removed.
+
+    Separated from the prompting so it can be tested without a terminal, and so the
+    confirmation cannot drift away from what actually gets deleted.
+    """
     import shutil
 
-    runs = Path("data/runs")
-    if not runs.exists():
-        console.print("\n  [dim]Nothing to delete: data/runs does not exist.[/dim]")
+    removed: list[Path] = []
+    for directory in directories:
+        if directory.exists():
+            shutil.rmtree(directory)
+            removed.append(directory)
+    return removed
+
+
+def _do_delete_run_data() -> None:
+    """Wipe every generated data directory after a typed confirmation."""
+    present = [directory for directory in GENERATED_DATA_DIRS if directory.exists()]
+    if not present:
+        console.print("\n  [dim]Nothing to delete: no generated data on disk.[/dim]")
         return
 
-    directories = sorted(path for path in runs.iterdir() if path.is_dir())
     console.print("\n  [bold red]WARNING, this permanently deletes:[/]")
-    for path in directories:
-        console.print(f"    [yellow]{path}[/yellow]")
+    for directory in present:
+        count = sum(1 for _ in directory.rglob("*") if _.is_file())
+        console.print(f"    [yellow]{directory}[/yellow] [dim]({count} files)[/dim]")
     console.print(
-        "\n  [dim]Committed figures and tables under assets/ are untouched,"
-        " but they can no longer be regenerated from a deleted run.[/dim]"
+        "\n  [dim]Runs, figures and tables all regenerate from option 4 then option 5."
+        " Nothing under assets/ is touched.[/dim]"
     )
     if input("\n  Type DELETE to confirm, anything else cancels: ").strip() != "DELETE":
         console.print("  [dim]Cancelled.[/dim]")
         return
 
-    for path in directories:
-        shutil.rmtree(path)
-    console.print(f"  [bold green]Deleted {len(directories)} run directories.[/]")
+    removed = delete_generated_data(present)
+    console.print(f"  [bold green]Deleted {len(removed)} directories.[/]")
+
+
+def _do_seeded_runs() -> None:
+    """Replicate the evaluation, either on one model or across several."""
+    from eval.experiments import (
+        AVAILABLE_MODELS,
+        cross_model_experiment,
+        replicate_experiment,
+    )
+
+    console.print("\n  [bold]1[/bold]  Same model, repeated: does the harness reproduce?")
+    console.print("  [bold]2[/bold]  Across models: what moves when the model changes?")
+    choice = input("\n  Select (1/2): ").strip()
+    if choice == "1":
+        report = replicate_experiment(replicates=3)
+        verdict = "identical" if report["identical"] else "DIVERGED"
+        console.print(f"\n  {report['replicates']} runs on {report['model']}: [bold]{verdict}[/]")
+    elif choice == "2":
+        console.print(f"\n  [dim]Models: {', '.join(AVAILABLE_MODELS)}[/dim]")
+        report = cross_model_experiment()
+        console.print(f"\n  {len(report['models'])} models compared.")
+    else:
+        console.print("  [dim]Cancelled.[/dim]")
+        return
+    console.print(f"  [dim]Written to {report['out_dir']}[/dim]")
 
 
 # Key to handler. One table, so adding an option cannot drift from its dispatch.
@@ -358,6 +404,7 @@ _ACTIONS: dict[str, Callable[[], None]] = {
     "5": _do_generate_assets,
     "6": _do_bakeoff,
     "7": _do_latest_results,
+    "8": _do_seeded_runs,
     "S": _do_settings,
     "D": _do_delete_run_data,
 }

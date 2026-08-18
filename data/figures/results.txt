@@ -1,0 +1,58 @@
+EMBR figure notes
+========================================================================
+
+Prose for the figures in this directory. The figures carry data only; every
+caveat, statistic and provenance line lives here.
+
+run 20260817-234907  |  commit df84e5a31cdf  |  model stub  |  labels dawn-whitmore v1  |  built by assets/build_figures.py
+PRELIMINARY: stub model (echoes the player's line), deterministic lexical embedder, v1 single author labels, 10 queries. Every interval spans zero and no Holm corrected comparison is significant: read direction, not ranking.
+
+------------------------------------------------------------------------
+rq3_retrieval.png / rq3_retrieval.pdf
+------------------------------------------------------------------------
+
+How well each system finds the right memory
+
+Whiskers are marginal 95% bootstrap intervals. Overlap is not a test of a difference: the paired deltas figure carries the quantity actually tested.
+
+Bars are nDCG@5 over the 10 pre-registered queries, grouped into published default weights, weights tuned leave one query out, and ablations of tuned EMBR. The three families are not interchangeable: only the tuned rows saw the label set, so a default row and a tuned row are not a fair head to head.
+
+------------------------------------------------------------------------
+rq3_ablation.png / rq3_ablation.pdf
+------------------------------------------------------------------------
+
+Turning off each signal, and what it costs
+
+Positive means removing the signal cost accuracy. 4 of 4 intervals include zero (ringed on the zero line), so no ablation is conclusive.
+
+Paired mean difference in nDCG@5, EMBR tuned minus ablation. Whiskers are 95% bootstrap intervals on the per query paired difference, the quantity the sign flip test asks about. A zero width interval means that ablation never reordered a held out top 5, so it is uninformative on this label set rather than switched off. Holm corrected p values, each against its own attainable floor (a floor at or above 0.05 could not have reached significance under any arrangement of its own data): relevance zeroed p=0.75 floor=0.031; recency zeroed p=1.00 floor=0.500; affect zeroed p=1.00 floor=1.000; event gate zeroed p=1.00 floor=1.000.
+
+------------------------------------------------------------------------
+rq2_poisoning.png / rq2_poisoning.pdf
+------------------------------------------------------------------------
+
+Planting a fake memory: how often the NPC recalled it
+
+10 injection attacks per system (2 categories of 5); a bar counts the attacks whose planted memory entered the probe's top 5. A flat stub on the baseline is a measured zero, not a missing bar.
+
+The other 10 attacks (role override, persona dissolution) are absent here by construction, not zero by measurement: they write nothing to the store, so no poison exists to retrieve. Drawing them as zero bars would claim a defended result where the architecture has nothing to defend. The measurement that establishes it is probe_prompt_identical, true for all 10 of them in every system and false for every injection.
+
+------------------------------------------------------------------------
+rq2_latency.png / rq2_latency.pdf
+------------------------------------------------------------------------
+
+How long it takes to choose the memories
+
+Log axis: fastest to slowest spans about 64x, so a linear axis would collapse three of these rows onto one another.
+
+P50 is the typical retrieval and p95 the slow one in twenty. Latency times the evaluated configuration: the full Dawn Whitmore store with the shared deterministic embedder on both the write and query paths. Nearest rank percentiles over 100 timed retrievals per system, wall clock on one machine. This is the one measurement in the run that is not deterministic, and the store holds a single scenario's memories, so read the ratio between systems rather than the absolute milliseconds.
+
+------------------------------------------------------------------------
+rq1_divergence.png / rq1_divergence.pdf
+------------------------------------------------------------------------
+
+The same question, asked in three different moods
+
+Zeroing the mood weight collapses all three pairs to exactly 0.000, which is what attributes the divergence to the mood term rather than to run to run noise.
+
+Bars are mean Jaccard distance between the top 5 sets the two moods retrieve. Whiskers are fixed seed 95% bootstrap intervals over the per query top 5 distances. warm vs neutral is the weak pair: its interval reaches zero, and Jaccard distance cannot go below zero, so no test against zero is reported.

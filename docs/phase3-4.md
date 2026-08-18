@@ -95,7 +95,7 @@ promoting to a package only when a module outgrows itself.
 
 ## 4. Phase 4: the menu
 
-`embr/menu.py` replaces the Textual applet from phase 0 with a Rich menu shaped like
+`menu.py`, at the repo root, replaces the Textual applet from phase 0 with a Rich menu shaped like
 [RIDGE's](https://github.com/Code-SorceryLab/RIDGE), so the two thesis projects feel like one
 toolkit: an ASCII banner in a bordered panel, a rounded three-column keyed table, and a
 dim-red Exit row below a section break. The palette is EMBR's ember rather than RIDGE's cyan.

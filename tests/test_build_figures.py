@@ -440,7 +440,9 @@ def test_every_png_opens_at_the_declared_dpi_and_pixel_size(built_dir: Path) -> 
 def test_rebuilding_the_same_run_is_byte_identical(
     run_dir: Path, built_dir: Path, tmp_path: Path
 ) -> None:
-    first = sorted(built_dir.glob("*.p*"))
+    # Globs every output, not just the images: results.txt carries the numbers that used to
+    # be printed on the figures, so it has to be as reproducible as they are.
+    first = sorted(path for path in built_dir.iterdir() if path.is_file())
     second = sorted(build_all_figures(run_dir, tmp_path / "rebuild"))
     assert [path.name for path in first] == [path.name for path in second]
     for left, right in zip(first, second):
@@ -492,6 +494,6 @@ def test_builds_from_the_newest_real_run_directory(tmp_path: Path) -> None:
     # the fixture above still passes. Run stamps sort chronologically, so max() is newest.
     newest = max((path for path in _REAL_RUNS.iterdir() if path.is_dir()), key=lambda p: p.name)
     paths = build_all_figures(newest, tmp_path / "real")
-    assert len(paths) == 2 * len(FIGURE_SPECS)
+    assert len(paths) == 2 * len(FIGURE_SPECS) + 1  # two images each, plus results.txt
     for spec in FIGURE_SPECS:
         _assert_pair_is_non_trivial(paths, spec.stem)

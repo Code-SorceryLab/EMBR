@@ -31,6 +31,7 @@ from dataclasses import replace
 from datetime import datetime, timezone
 from itertools import combinations
 from pathlib import Path
+from typing import Any
 
 from embr import (
     CompositeScorer,
@@ -68,6 +69,20 @@ def _eval_clock() -> datetime:
 # One content-hashed embedder for memories and queries alike: stateless, so a single
 # shared instance is safe, and hash-based, so every process computes the same vectors.
 _EMBEDDER = DeterministicEmbedder()
+
+#: Builds the model under test. A factory rather than an instance because RQ1 and RQ2 each
+#: need their own runner, and a shared one would carry conversation state between them.
+ModelFactory = Callable[[], Any]
+
+
+def _model_label(model_factory: ModelFactory) -> str:
+    """Name the model from the runner itself, never from a caller supplied string.
+
+    A run that names its own model is the only way two runs can be compared, and taking
+    the name from the object means a run cannot claim a model it did not actually use.
+    """
+    runner = model_factory()
+    return str(getattr(runner, "label", type(runner).__name__))
 
 # The retrieval depths RQ3 reports at.
 _KS = (3, 5, 10)
@@ -471,9 +486,10 @@ def _pairwise_divergence(
     }
 
 
-def run_rq1(scenario: Scenario) -> dict:
+def run_rq1(scenario: Scenario, model_factory: ModelFactory = StubRunner) -> dict:
     """RQ1: does pinned mood shift what is retrieved and how the reply sounds?"""
     rater = LexiconToneRater()
+    model_label = _model_label(model_factory)
     conditions = list(scenario.mood_conditions)  # JSON order: warm, neutral, suspicious
     # The full composite is the system under study, on the same pinned clock as RQ3.
     build = _variant_builders(scenario)["embr"]
@@ -493,7 +509,7 @@ def run_rq1(scenario: Scenario) -> dict:
             for memory in visible_memories(scenario, query):
                 store.add(replace(memory))
             conversation = Conversation(
-                state=state, store=store, scorer=scorer, model=StubRunner(), top_k=5
+                state=state, store=store, scorer=scorer, model=model_factory(), top_k=5
             )
             valence, arousal = rater.rate(conversation.take_turn(query.query).reply)
             valences.append(valence)
@@ -532,7 +548,7 @@ def run_rq1(scenario: Scenario) -> dict:
             pair: _mean(values) for pair, values in mood_ablated.items()
         },
         "metadata": {
-            "model": "stub",
+            "model": model_label,
             "note": _STUB_TONE_NOTE,
             "divergence_note": (
                 "retrieval_divergence_jaccard is the mean of the per-query top-5 jaccard "
@@ -563,7 +579,9 @@ def _rq2_variant_builders(scenario: Scenario) -> dict[str, Callable[[], Composit
 
 
 def _conversation_factory(
-    scenario: Scenario, build_scorer: Callable[[], CompositeScorer]
+    scenario: Scenario,
+    build_scorer: Callable[[], CompositeScorer],
+    model_factory: ModelFactory = StubRunner,
 ) -> Callable[[], Conversation]:
     """Fresh Dawn Whitmore conversations for the attack and latency studies.
 
@@ -582,14 +600,14 @@ def _conversation_factory(
             state=dawn_state(scenario),
             store=store,
             scorer=build_scorer(),
-            model=StubRunner(),
+            model=model_factory(),
             top_k=5,
         )
 
     return build
 
 
-def run_rq2(scenario: Scenario) -> dict:
+def run_rq2(scenario: Scenario, model_factory: ModelFactory = StubRunner) -> dict:
     """RQ2: attack damage and per-stage latency, comparatively for every system.
 
     Four readings per attack. Two are model-independent and carry the study: retrieval
@@ -603,7 +621,7 @@ def run_rq2(scenario: Scenario) -> dict:
     rater = LexiconToneRater()
     variants: dict[str, dict] = {}
     for name, build_scorer in _rq2_variant_builders(scenario).items():
-        factory = _conversation_factory(scenario, build_scorer)
+        factory = _conversation_factory(scenario, build_scorer, model_factory)
         attack_rows: list[dict] = []
         drifts_by_category: dict[str, list[float]] = {category: [] for category in CATEGORIES}
         for attack in ATTACKS:
@@ -645,7 +663,7 @@ def run_rq2(scenario: Scenario) -> dict:
     return {
         "variants": variants,
         "metadata": {
-            "model": "stub",
+            "model": _model_label(model_factory),
             "note": _STUB_TONE_NOTE,
             "pure_input_note": (
                 "role_override and persona_dissolution attacks write nothing to the store "
@@ -719,16 +737,23 @@ def _write_rq2_csv(path: Path, rq2: dict) -> None:
                 )
 
 
-def run_all(out_root: str | Path = "data/runs") -> tuple[Path, dict]:
+def run_all(
+    out_root: str | Path = "data/runs", model_factory: ModelFactory = StubRunner
+) -> tuple[Path, dict]:
     """Run all three studies and write a timestamped, auditable run directory.
 
     Returns (run directory, compact summary dict). The directory holds results.json plus
     the two CSVs the paper's tables are generated from.
+
+    `model_factory` swaps the model under test. It defaults to the stub because every
+    published number was scored on it. Note what a swap can and cannot move: retrieval runs
+    on the embedder and the scorer, so nDCG and retrieval drift are model-independent by
+    construction. Only the two tone readings respond to the model.
     """
     scenario = load_eval_scenario()
     results = {
-        "rq1": run_rq1(scenario),
-        "rq2": run_rq2(scenario),
+        "rq1": run_rq1(scenario, model_factory),
+        "rq2": run_rq2(scenario, model_factory),
         "rq3": run_rq3(scenario),
         "metadata": {
             # Provenance first: which code, and which label bytes, produced these numbers.
@@ -736,7 +761,7 @@ def run_all(out_root: str | Path = "data/runs") -> tuple[Path, dict]:
             "label_set": scenario.name,
             "label_version": scenario.version,
             "label_sha256": label_sha256(),
-            "model": "stub",
+            "model": _model_label(model_factory),
             "reference_time": REFERENCE_TIME.isoformat(),
             "embr_version": __version__,
             "generated_at": datetime.now(timezone.utc).isoformat(),

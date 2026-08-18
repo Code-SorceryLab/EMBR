@@ -161,14 +161,14 @@ pytest -q eval/   # metric/attack unit tests pass
 command. Zero hand-made assets.
 
 ### Tasks
-1. **Tables**: `assets/build_tables.py` → `assets/tables/*.tex` + `*.csv`
+1. **Tables**: `assets/build_tables.py` → `data/tables/*.tex` + `*.csv`
    - The signal table, the RQ metric definitions, and each results table (retrieval shift, retrieval quality, latency p50/p95, drift-under-attack). LaTeX `booktabs` + a CSV twin.
-2. **Figures**: `assets/build_figures.py` → `assets/figures/*.svg` (+ `*.pdf` for the paper)
+2. **Figures**: `assets/build_figures.py` → `data/figures/*.png` (+ `*.pdf` for the paper)
    - Retrieval-shift (Jaccard) plot, tone-shift plot, latency p50/p95 bars, retrieval PR / nDCG curves, the ablation bars, drift-under-attack by category. Use the EMBR ember palette consistently. The architecture figure already exists.
 3. **One command**: the menu's "Generate Paper Assets" option regenerates **everything** from the latest run.
 
 ### Deliverables
-`assets/build_tables.py`, `assets/build_figures.py`, regenerated `assets/figures/*`, `assets/tables/*`.
+`assets/build_tables.py`, `assets/build_figures.py`, regenerated `data/figures/*`, `data/tables/*`.
 
 ### Expected results (acceptance)
 - Running `embr assets` on a given `data/runs/<id>` reproduces **every** paper figure and table (same numbers, same look) with **no manual editing**.
@@ -177,7 +177,7 @@ command. Zero hand-made assets.
 
 ### Verify
 ```bash
-embr assets                  # regenerates assets/figures + assets/tables
+embr assets                  # regenerates data/figures + data/tables
 git status                   # only intended assets change; re-running is idempotent
 ```
 

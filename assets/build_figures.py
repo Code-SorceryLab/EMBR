@@ -22,7 +22,7 @@ choices that would otherwise look fussy.
 Usage:
 
     from assets.build_figures import build_all_figures
-    build_all_figures("data/runs/20260817-160950")     # writes assets/figures/
+    build_all_figures("data/runs/20260817-160950")     # writes data/figures/
     python -m assets.build_figures                     # newest run, same output
 """
 
@@ -96,8 +96,10 @@ FIGURE_DPI = 200
 #: How much of the commit hash the footer carries. Twelve is unambiguous in this repo and
 #: still fits on one line at footer size.
 COMMIT_ABBREV_LENGTH = 12
-DEFAULT_OUT_DIR = Path("assets/figures")
+DEFAULT_OUT_DIR = Path("data/figures")
 RESULTS_FILENAME = "results.json"
+#: The prose sidecar. Figures carry data; every caveat and provenance line goes here.
+RESULTS_TEXT_FILENAME = "results.txt"
 #: Only this pipeline stage is plotted for latency: it is the stage the retrieval design
 #: actually changes, and the one phase 2 reports.
 LATENCY_STAGE = "score_retrieve"
@@ -219,6 +221,20 @@ def figure_footer_text(results: Mapping[str, object], run_stamp: str) -> str:
 # --------------------------------------------------------------------------------------
 # Data shaping: small pure functions, one per figure, so the drawing code stays flat
 # --------------------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class FigureText:
+    """The prose belonging to one figure, kept off the canvas and written to results.txt.
+
+    `title` is the only member that reaches the image. `note` is the reading instruction
+    that used to sit under the title, and `caption` is the methodological caveat that used
+    to sit under the axes; both now live in the sidecar file so the figures stay data.
+    """
+
+    title: str
+    note: str
+    caption: str = ""
 
 
 @dataclass(frozen=True)
@@ -535,21 +551,6 @@ def _as_sentence(text: str) -> str:
     return sentence if sentence.endswith(".") else f"{sentence}."
 
 
-def _axis_room_inches(ax: Axes) -> float:
-    """Inches to keep free under the axes for its tick labels and its axis label.
-
-    Measured from what the axes actually has: a figure with two line tick labels and no x
-    label needs a different reservation than one with a single line and a label, and
-    guessing one number for both leaves a visible hole under half the figures.
-    """
-    lines = max(
-        (str(label.get_text()).count("\n") + 1 for label in ax.get_xticklabels()),
-        default=1,
-    )
-    room = TICK_LABEL_BASE_INCHES + TICK_LABEL_LINE_INCHES * lines
-    return room + (AXIS_LABEL_INCHES if ax.get_xlabel() else 0.0)
-
-
 def _style_axes(ax: Axes) -> None:
     """The flat ember look: cream ground, two spines, no chartjunk."""
     ax.set_facecolor(CREAM)
@@ -567,85 +568,43 @@ def _value_grid(ax: Axes, axis: str) -> None:
     ax.grid(axis=axis, color=NEAR_BLACK, alpha=0.12, linewidth=0.6)
 
 
-def _titles(ax: Axes, title: str, note: str) -> None:
-    """Left aligned title with a wrapped caveat note underneath, both above the axes.
+def _titles(ax: Axes, title: str, note: str, caption: str = "") -> "FigureText":
+    """Draw the plain language title only, and hand every other line back to the caller.
 
-    The note is placed in figure coordinates and the title pad is then computed from how
-    many lines it took, so a longer note pushes the title up instead of colliding with it.
+    The figures carry data and the labels needed to read it, nothing else. Caveats,
+    statistics and provenance go to `results.txt` beside the images instead, because a
+    reader who needs a paragraph under the chart is looking at a chart that has not done
+    its job. The prose is returned rather than drawn, so no caller can quietly put it back
+    on the canvas.
     """
-    figure = ax.figure
-    box = ax.get_position()
-    available = (box.x1 - box.x0) * figure.get_figwidth()
-    lines = _wrap_to_width(note, NOTE_FONT_SIZE, available)
-    step = _line_step_inches(NOTE_FONT_SIZE) / figure.get_figheight()
-    # Drawn bottom up from just above the axes, so the block grows towards the title.
-    for index, line in enumerate(reversed(lines)):
-        figure.text(
-            box.x0,
-            box.y1 + 0.012 + index * step,
-            line,
-            fontsize=NOTE_FONT_SIZE,
-            color=DEEP_BROWN,
-            va="bottom",
-            ha="left",
-        )
-    pad_points = (len(lines) * _line_step_inches(NOTE_FONT_SIZE) + 0.10) * 72.0
-    ax.set_title(title, loc="left", pad=pad_points, color=NEAR_BLACK, fontweight="bold")
+    # Pad clears the vertical direction hint, which sits just above the plot area.
+    ax.set_title(title, loc="left", pad=15.0, color=NEAR_BLACK, fontweight="bold")
+    return FigureText(title=title, note=note, caption=caption)
 
 
-def _add_bottom_block(
-    figure: Figure,
-    results: Mapping[str, object],
-    run_stamp: str,
-    caption: str | None,
-    axis_room_inches: float,
-) -> float:
-    """Stack the caption above the provenance footer at the foot of the figure.
+def _arrow_hint(ax: Axes, axis: str, text: str) -> None:
+    """A short arrow under the axis saying which way is worse or better.
 
-    Returns the height to reserve below the axes, in inches. All of this figure's bottom
-    geometry lives here, which is what makes it impossible for an axis to grow down into
-    its own caption: the caller reserves exactly what was drawn.
+    Without this a reader has to already know whether a tall bar is a good result or a bad
+    one, which is exactly the knowledge a general reader does not have. It is a direction
+    cue on the scale rather than commentary, so it stays on the canvas while prose does not.
     """
-    height = figure.get_figheight()
-    available = figure.get_figwidth() * (1.0 - 2 * TEXT_MARGIN)
-    provenance, warning = figure_footer_text(results, run_stamp).split("\n")
-    footer_lines = [
-        (line, NEAR_BLACK, 0.82)
-        for line in _wrap_to_width(provenance, FOOTER_FONT_SIZE, available)
-    ] + [
-        (line, DEEP_BROWN, 1.0)
-        for line in _wrap_to_width(warning, FOOTER_FONT_SIZE, available)
-    ]
-
-    cursor = BOTTOM_PAD_INCHES
-    for line, colour, alpha in reversed(footer_lines):
-        figure.text(
-            TEXT_MARGIN,
-            cursor / height,
-            line,
-            fontsize=FOOTER_FONT_SIZE,
-            color=colour,
-            alpha=alpha,
-            va="bottom",
-            ha="left",
-        )
-        cursor += _line_step_inches(FOOTER_FONT_SIZE)
-
-    if caption:
-        cursor += CAPTION_GAP_INCHES
-        for line in reversed(_wrap_to_width(caption, CAPTION_FONT_SIZE, available)):
-            figure.text(
-                TEXT_MARGIN,
-                cursor / height,
-                line,
-                fontsize=CAPTION_FONT_SIZE,
-                color=NEAR_BLACK,
-                va="bottom",
-                ha="left",
-            )
-            cursor += _line_step_inches(CAPTION_FONT_SIZE)
-
-    return cursor + axis_room_inches
+    # The vertical case sits horizontally just above the plot rather than rotated down the
+    # left margin, where it competes with the axis label and reads as an afterthought.
+    if axis == "x":
+        x, y, ha, glyph = 0.5, -0.185, "center", "→"
+    else:
+        x, y, ha, glyph = 0.0, 1.035, "left", "↑"
+    ax.annotate(
+        f"{glyph}  {text}",
+        xy=(x, y),
+        xycoords="axes fraction",
+        fontsize=NOTE_FONT_SIZE + 0.6,
+        color=DEEP_BROWN,
+        ha=ha,
+        va="center",
+        annotation_clip=False,
+    )
 
 
 def _legend(ax: Axes, handles: Sequence, loc: str) -> None:
@@ -749,16 +708,22 @@ def _draw_rq3_retrieval(ax: Axes, results: Mapping[str, object]) -> str | None:
     ax.set_yticklabels([row.label for row in rows])
     ax.invert_yaxis()  # first row at the top, which is the order the groups were built in
     ax.set_ylim(cursor - 0.4, -0.15)
-    ax.set_xlabel(f"{metric} over the 10 pre-registered queries")
+    ax.set_xlabel("search quality: 0 = never finds the right memory, 1 = perfect")
     ax.set_xlim(0.0, max(row.value + row.error_high for row in rows) + 0.11)
     _value_grid(ax, axis="x")
-    _titles(
+    _arrow_hint(ax, axis="x", text="further right = better memory search")
+    return _titles(
         ax,
-        f"RQ3 retrieval quality: {metric} per variant",
+        "How well each system finds the right memory",
         "Whiskers are marginal 95% bootstrap intervals. Overlap is not a test of a "
         "difference: the paired deltas figure carries the quantity actually tested.",
+        caption=(
+            f"Bars are {metric} over the 10 pre-registered queries, grouped into published "
+            "default weights, weights tuned leave one query out, and ablations of tuned "
+            "EMBR. The three families are not interchangeable: only the tuned rows saw the "
+            "label set, so a default row and a tuned row are not a fair head to head."
+        ),
     )
-    return None
 
 
 # --------------------------------------------------------------------------------------
@@ -808,45 +773,66 @@ def _draw_rq3_ablation(ax: Axes, results: Mapping[str, object]) -> str | None:
                 markeredgewidth=1.1,
                 zorder=5,
             )
-        # The p values get their own right hand column: x in axes fraction, y in data.
-        ax.text(
-            0.995,
-            position,
-            f"Holm p {row.p_holm:.2f}   (attainable floor {row.attainable_p_floor:.3f})",
-            transform=ax.get_yaxis_transform(),
-            va="center",
-            ha="right",
-            fontsize=6.8,
-            color=NEAR_BLACK,
-        )
-
     ax.set_yticks(positions)
     ax.set_yticklabels(
-        [f"{row.label}\n(no reordering)" if row.is_degenerate else row.label for row in rows]
+        [f"{row.label}\n(never reordered)" if row.is_degenerate else row.label for row in rows]
     )
     ax.invert_yaxis()
     ax.set_ylim(len(rows) - 0.4, -0.6)
     lowest = min(row.ci_low for row in rows)
     highest = max(row.ci_high for row in rows)
     span = max(highest - lowest, 1e-6)
-    # The extra room on the right is for the p column, not for data.
-    ax.set_xlim(lowest - 0.08 * span, highest + 0.62 * span)
-    ax.set_xlabel(f"paired mean difference in {metric}: {reference} minus ablation")
+    ax.set_xlim(lowest - 0.10 * span, highest + 0.10 * span)
+    # Plain language beats the metric name: the reader needs the direction, not the acronym.
+    ax.set_xlabel("search quality lost when the signal is switched off")
     _value_grid(ax, axis="x")
+    _arrow_hint(ax, axis="x", text="further right = the signal mattered more")
+
     crossing = sum(1 for row in rows if row.includes_zero)
-    _titles(
+    handles = [
+        Line2D(
+            [],
+            [],
+            color=DEEP_BROWN,
+            linewidth=1.7,
+            marker="o",
+            markersize=6.0,
+            markerfacecolor=EMBER_ORANGE,
+            markeredgecolor=NEAR_BLACK,
+            label="measured loss, with uncertainty",
+        ),
+        Line2D(
+            [],
+            [],
+            color="none",
+            marker="o",
+            markersize=10.0,
+            markerfacecolor="none",
+            markeredgecolor=DEEP_BROWN,
+            markeredgewidth=1.1,
+            label="touches zero: too close to call",
+        ),
+    ]
+    _legend(ax, handles, loc="lower right")
+    return _titles(
         ax,
-        f"RQ3 ablations against {reference}, paired",
+        "Turning off each signal, and what it costs",
         f"Positive means removing the signal cost accuracy. {crossing} of {len(rows)} "
         "intervals include zero (ringed on the zero line), so no ablation is conclusive.",
-    )
-    return (
-        "Whiskers are 95% bootstrap intervals on the per query paired difference, the "
-        "quantity the sign flip test asks about. A zero width interval means that ablation "
-        "never reordered a held out top 5, so it is uninformative on this label set rather "
-        "than switched off. Read each Holm p against its own attainable floor: a floor at "
-        "or above 0.05 could not have reached significance under any arrangement of its "
-        "own data."
+        caption=(
+            f"Paired mean difference in {metric}, {reference} minus ablation. Whiskers are "
+            "95% bootstrap intervals on the per query paired difference, the quantity the "
+            "sign flip test asks about. A zero width interval means that ablation never "
+            "reordered a held out top 5, so it is uninformative on this label set rather "
+            "than switched off. Holm corrected p values, each against its own attainable "
+            "floor (a floor at or above 0.05 could not have reached significance under any "
+            "arrangement of its own data): "
+            + "; ".join(
+                f"{row.label} p={row.p_holm:.2f} floor={row.attainable_p_floor:.3f}"
+                for row in rows
+            )
+            + "."
+        ),
     )
 
 
@@ -877,6 +863,17 @@ def _draw_rq2_poisoning(ax: Axes, results: Mapping[str, object]) -> str | None:
             zorder=2,
         )
         for centre, value in zip(centres, values):
+            if value == 0:
+                # A zero bar draws nothing, which reads as missing data rather than as the
+                # strongest result on the chart. The stub says "measured, and it was none".
+                ax.plot(
+                    [centre + offset - width * 0.47, centre + offset + width * 0.47],
+                    [0.0, 0.0],
+                    color=NEAR_BLACK,
+                    linewidth=2.2,
+                    solid_capstyle="butt",
+                    zorder=4,
+                )
             ax.text(
                 centre + offset,
                 value + total * 0.03,
@@ -894,8 +891,9 @@ def _draw_rq2_poisoning(ax: Axes, results: Mapping[str, object]) -> str | None:
     ax.set_xticklabels([SYSTEM_LABELS.get(system, system) for system in summary.systems])
     ax.set_ylim(0.0, total * 1.42)
     ax.set_yticks(range(total + 1))
-    ax.set_ylabel(f"injections retrieved (of {total} per category)")
+    ax.set_ylabel(f"planted memories the NPC recalled (of {total})")
     _value_grid(ax, axis="y")
+    _arrow_hint(ax, axis="y", text="higher = easier to poison")
     handles = [
         Patch(
             facecolor=INJECTION_STYLE[index % len(INJECTION_STYLE)][0],
@@ -920,22 +918,23 @@ def _draw_rq2_poisoning(ax: Axes, results: Mapping[str, object]) -> str | None:
         )
     )
     _legend(ax, handles, loc="upper center")
-    _titles(
+    pure_input = ", ".join(name.replace("_", " ") for name in summary.pure_input_categories)
+    return _titles(
         ax,
-        "RQ2 memory poisoning: injections that reached retrieval",
+        "Planting a fake memory: how often the NPC recalled it",
         f"{len(categories) * total} injection attacks per system "
         f"({len(categories)} categories of {total}); a bar counts the attacks whose "
-        "planted memory entered the probe's top 5.",
-    )
-    pure_input = ", ".join(name.replace("_", " ") for name in summary.pure_input_categories)
-    return (
-        f"The other {summary.pure_input_attack_count} attacks ({pure_input}) are absent "
-        "here by construction, not zero by measurement: they write nothing to the store, "
-        "so no poison exists to retrieve. Drawing them as zero bars would claim a defended "
-        "result where the architecture has nothing to defend. The measurement that "
-        "establishes it is probe_prompt_identical, true for all "
-        f"{summary.pure_input_attack_count} of them in every system and false for every "
-        "injection."
+        "planted memory entered the probe's top 5. A flat stub on the baseline is a "
+        "measured zero, not a missing bar.",
+        caption=(
+            f"The other {summary.pure_input_attack_count} attacks ({pure_input}) are absent "
+            "here by construction, not zero by measurement: they write nothing to the "
+            "store, so no poison exists to retrieve. Drawing them as zero bars would claim "
+            "a defended result where the architecture has nothing to defend. The "
+            "measurement that establishes it is probe_prompt_identical, true for all "
+            f"{summary.pure_input_attack_count} of them in every system and false for "
+            "every injection."
+        ),
     )
 
 
@@ -1003,9 +1002,11 @@ def _draw_rq2_latency(ax: Axes, results: Mapping[str, object]) -> str | None:
     ax.invert_yaxis()
     ax.set_ylim(len(rows) - 0.5, -0.5)
     ax.set_xlabel(
-        "score and retrieve latency, milliseconds" + (" (log scale)" if use_log else "")
+        "time to choose which memories to use, milliseconds"
+        + (" (log scale)" if use_log else "")
     )
     _value_grid(ax, axis="x")
+    _arrow_hint(ax, axis="x", text="further left = faster")
     handles = [
         Line2D(
             [],
@@ -1030,21 +1031,21 @@ def _draw_rq2_latency(ax: Axes, results: Mapping[str, object]) -> str | None:
     ]
     _legend(ax, handles, loc="lower right")
     ratio = max(measurements) / min(measurements)
-    _titles(
+    note = str(results["rq2"].get("metadata", {}).get("latency_note", ""))  # type: ignore[union-attr]
+    return _titles(
         ax,
-        f"RQ2 cost: {LATENCY_STAGE.replace('_', ' and ')} stage per system",
+        "How long it takes to choose the memories",
         f"Log axis: fastest to slowest spans about {ratio:.0f}x, so a linear axis would "
         "collapse three of these rows onto one another."
         if use_log
         else "Linear axis: every measurement is within one order of magnitude.",
-    )
-    note = str(results["rq2"].get("metadata", {}).get("latency_note", ""))  # type: ignore[union-attr]
-    return (
-        f"{_as_sentence(note)} Nearest rank percentiles over "
-        f"{rows[0].sample_count} timed retrievals per system, wall clock on one machine. "
-        "This is the one measurement in the run that is not deterministic, and the store "
-        "holds a single scenario's memories, so read the ratio between systems rather than "
-        "the absolute milliseconds."
+        caption=(
+            f"p50 is the typical retrieval and p95 the slow one in twenty. {_as_sentence(note)} "
+            f"Nearest rank percentiles over {rows[0].sample_count} timed retrievals per "
+            "system, wall clock on one machine. This is the one measurement in the run that "
+            "is not deterministic, and the store holds a single scenario's memories, so read "
+            "the ratio between systems rather than the absolute milliseconds."
+        ),
     )
 
 
@@ -1115,8 +1116,9 @@ def _draw_rq1_divergence(ax: Axes, results: Mapping[str, object]) -> str | None:
     )
     ax.set_xlim(-0.6, len(rows) - 0.4)
     ax.set_ylim(0.0, max(row.value + row.error_high for row in rows) + 0.12)
-    ax.set_ylabel("mean Jaccard distance, top 5 sets")
+    ax.set_ylabel("how much the recalled memories change\n0 = same five, 1 = nothing in common")
     _value_grid(ax, axis="y")
+    _arrow_hint(ax, axis="y", text="higher = mood changed more")
     handles = [
         Patch(
             facecolor=EMBER_ORANGE,
@@ -1137,21 +1139,22 @@ def _draw_rq1_divergence(ax: Axes, results: Mapping[str, object]) -> str | None:
         ),
     ]
     _legend(ax, handles, loc="upper left")
-    _titles(
-        ax,
-        "RQ1 attribution: mood alone moves what is retrieved",
-        "Zeroing the mood weight collapses all three pairs to exactly 0.000, which is what "
-        "attributes the divergence to the mood term rather than to run to run noise.",
-    )
     weak_note = (
         f" {', '.join(weak)} is the weak pair: its interval reaches zero, and Jaccard "
         "distance cannot go below zero, so no test against zero is reported."
         if weak
         else ""
     )
-    return (
-        "Whiskers are fixed seed 95% bootstrap intervals over the per query top 5 "
-        "distances." + weak_note
+    return _titles(
+        ax,
+        "The same question, asked in three different moods",
+        "Zeroing the mood weight collapses all three pairs to exactly 0.000, which is what "
+        "attributes the divergence to the mood term rather than to run to run noise.",
+        caption=(
+            "Bars are mean Jaccard distance between the top 5 sets the two moods retrieve. "
+            "Whiskers are fixed seed 95% bootstrap intervals over the per query top 5 "
+            "distances." + weak_note
+        ),
     )
 
 
@@ -1175,34 +1178,37 @@ class FigureSpec:
     draw: Callable[[Axes, Mapping[str, object]], "str | None"] = field(repr=False)
 
 
+# Bottom margins carry the axis label and the direction arrow, and nothing else: the prose
+# that used to be reserved for down here now lives in results.txt. Left margins on the two
+# figures with a vertical arrow are wider to hold it beside the tick labels.
 RQ3_RETRIEVAL_SPEC = FigureSpec(
     stem="rq3_retrieval",
-    size_inches=(7.2, 5.0),
-    margins={"left": 0.200, "right": 0.985, "top": 0.860, "bottom": 0.150},
+    size_inches=(7.2, 4.4),
+    margins={"left": 0.215, "right": 0.985, "top": 0.915, "bottom": 0.185},
     draw=_draw_rq3_retrieval,
 )
 RQ3_ABLATION_SPEC = FigureSpec(
     stem="rq3_ablation",
-    size_inches=(7.2, 4.6),
-    margins={"left": 0.200, "right": 0.985, "top": 0.840, "bottom": 0.150},
+    size_inches=(7.2, 4.0),
+    margins={"left": 0.215, "right": 0.985, "top": 0.905, "bottom": 0.200},
     draw=_draw_rq3_ablation,
 )
 RQ2_POISONING_SPEC = FigureSpec(
     stem="rq2_poisoning",
-    size_inches=(7.2, 5.0),
-    margins={"left": 0.105, "right": 0.985, "top": 0.840, "bottom": 0.150},
+    size_inches=(7.2, 4.4),
+    margins={"left": 0.165, "right": 0.985, "top": 0.910, "bottom": 0.130},
     draw=_draw_rq2_poisoning,
 )
 RQ2_LATENCY_SPEC = FigureSpec(
     stem="rq2_latency",
-    size_inches=(7.2, 4.4),
-    margins={"left": 0.135, "right": 0.985, "top": 0.850, "bottom": 0.150},
+    size_inches=(7.2, 3.8),
+    margins={"left": 0.165, "right": 0.985, "top": 0.900, "bottom": 0.215},
     draw=_draw_rq2_latency,
 )
 RQ1_DIVERGENCE_SPEC = FigureSpec(
     stem="rq1_divergence",
-    size_inches=(7.2, 4.6),
-    margins={"left": 0.105, "right": 0.985, "top": 0.850, "bottom": 0.150},
+    size_inches=(7.2, 4.4),
+    margins={"left": 0.185, "right": 0.985, "top": 0.910, "bottom": 0.145},
     draw=_draw_rq1_divergence,
 )
 
@@ -1237,76 +1243,114 @@ def _write_both_formats(figure: Figure, out_dir: Path, stem: str) -> list[Path]:
     return [pdf_path, png_path]
 
 
-def _render(spec: FigureSpec, run_dir: Path | str, out_dir: Path | str) -> list[Path]:
-    """The one render path every figure goes through: style, draw, stamp, save, close."""
+def _render(
+    spec: FigureSpec, run_dir: Path | str, out_dir: Path | str
+) -> tuple[list[Path], FigureText]:
+    """The one render path every figure goes through: style, draw, save, close.
+
+    Returns the written paths and the figure's prose. Nothing but the title, the axis
+    labels and the data itself reaches the canvas; the prose is the caller's to file.
+    """
     run_path = Path(run_dir)
     results = load_run_results(run_path)
     with plt.rc_context(HOUSE_RC):
         figure, ax = plt.subplots(figsize=spec.size_inches, dpi=FIGURE_DPI)
         try:
-            # Explicit margins rather than tight_layout: the caption and footer sit in
-            # reserved space, and fixed margins keep the output identical run to run.
+            # Explicit margins rather than tight_layout: fixed margins keep the output
+            # identical run to run, which is what makes the PNG bytes assertable.
             figure.subplots_adjust(**spec.margins)
             _style_axes(ax)
-            caption = spec.draw(ax, results)
-            reserved = _add_bottom_block(
-                figure, results, run_path.name, caption, _axis_room_inches(ax)
-            )
-            # Give back exactly what the bottom block took, so nothing can overlap it.
-            figure.subplots_adjust(
-                **{
-                    **spec.margins,
-                    "bottom": max(spec.margins["bottom"], reserved / spec.size_inches[1]),
-                }
-            )
-            return _write_both_formats(figure, Path(out_dir), spec.stem)
+            text = spec.draw(ax, results)
+            return _write_both_formats(figure, Path(out_dir), spec.stem), text
         finally:
             plt.close(figure)
+
+
+def write_results_text(
+    run_dir: Path | str, texts: Sequence[tuple[str, FigureText]], out_dir: Path | str
+) -> Path:
+    """Write the prose that used to be printed onto the figures, as a sidecar file.
+
+    Every caveat still ships, it just ships next to the images instead of on top of the
+    data. The provenance footer leads, because the first question anyone asks of a number
+    is which run and which commit produced it.
+    """
+    run_path = Path(run_dir)
+    results = load_run_results(run_path)
+    out_path = Path(out_dir) / RESULTS_TEXT_FILENAME
+    lines = [
+        "EMBR figure notes",
+        "=" * 72,
+        "",
+        "Prose for the figures in this directory. The figures carry data only; every",
+        "caveat, statistic and provenance line lives here.",
+        "",
+        figure_footer_text(results, run_path.name),
+        "",
+    ]
+    for stem, text in texts:
+        lines += ["-" * 72, f"{stem}.png / {stem}.pdf", "-" * 72, "", text.title, ""]
+        if text.note:
+            lines += [_as_sentence(text.note), ""]
+        if text.caption:
+            lines += [_as_sentence(text.caption), ""]
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text("\n".join(lines), encoding="utf-8", newline="\n")
+    return out_path
 
 
 def build_rq3_retrieval_figure(
     run_dir: Path | str, out_dir: Path | str = DEFAULT_OUT_DIR
 ) -> list[Path]:
     """nDCG@5 per variant with marginal intervals, grouped by family, tuned EMBR marked."""
-    return _render(RQ3_RETRIEVAL_SPEC, run_dir, out_dir)
+    return _render(RQ3_RETRIEVAL_SPEC, run_dir, out_dir)[0]
 
 
 def build_rq3_ablation_figure(
     run_dir: Path | str, out_dir: Path | str = DEFAULT_OUT_DIR
 ) -> list[Path]:
     """Paired ablation deltas against tuned EMBR, every zero crossing interval ringed."""
-    return _render(RQ3_ABLATION_SPEC, run_dir, out_dir)
+    return _render(RQ3_ABLATION_SPEC, run_dir, out_dir)[0]
 
 
 def build_rq2_poisoning_figure(
     run_dir: Path | str, out_dir: Path | str = DEFAULT_OUT_DIR
 ) -> list[Path]:
     """Injections that reached retrieval per system, pure input immunity annotated."""
-    return _render(RQ2_POISONING_SPEC, run_dir, out_dir)
+    return _render(RQ2_POISONING_SPEC, run_dir, out_dir)[0]
 
 
 def build_rq2_latency_figure(
     run_dir: Path | str, out_dir: Path | str = DEFAULT_OUT_DIR
 ) -> list[Path]:
     """Score and retrieve p50 to p95 per system, log axis when the floor compresses them."""
-    return _render(RQ2_LATENCY_SPEC, run_dir, out_dir)
+    return _render(RQ2_LATENCY_SPEC, run_dir, out_dir)[0]
 
 
 def build_rq1_divergence_figure(
     run_dir: Path | str, out_dir: Path | str = DEFAULT_OUT_DIR
 ) -> list[Path]:
     """Mood pair retrieval divergence with intervals, plus the ablated control at zero."""
-    return _render(RQ1_DIVERGENCE_SPEC, run_dir, out_dir)
+    return _render(RQ1_DIVERGENCE_SPEC, run_dir, out_dir)[0]
 
 
 def build_all_figures(
     run_dir: Path | str, out_dir: Path | str = DEFAULT_OUT_DIR
 ) -> list[Path]:
-    """Build every paper figure from one run directory.
+    """Build every paper figure from one run directory, plus the prose sidecar.
 
-    Returns the written paths in build order, two per figure (`.pdf` then `.png`).
+    Returns the written paths in build order, two per figure (`.pdf` then `.png`), with
+    `results.txt` last. The sidecar is written from the same render pass that made the
+    images, so the notes can never describe a figure that is no longer there.
     """
-    return [path for spec in FIGURE_SPECS for path in _render(spec, run_dir, out_dir)]
+    paths: list[Path] = []
+    texts: list[tuple[str, FigureText]] = []
+    for spec in FIGURE_SPECS:
+        rendered, text = _render(spec, run_dir, out_dir)
+        paths.extend(rendered)
+        texts.append((spec.stem, text))
+    paths.append(write_results_text(run_dir, texts, out_dir))
+    return paths
 
 
 def main(argv: Sequence[str] | None = None) -> None:

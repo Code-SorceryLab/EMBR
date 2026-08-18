@@ -1,6 +1,6 @@
 """Paper tables: every EMBR results table as LaTeX (booktabs) plus a flat CSV twin.
 
-One run directory in, ten files out under `assets/tables/`:
+One run directory in, ten files out under `data/tables/`:
 
   * `signals`         the five-signal reference (authored content, see SIGNAL_REFERENCE)
   * `rq3_retrieval`   one row per scoring variant, grouped by condition
@@ -40,7 +40,7 @@ from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
-DEFAULT_OUT_DIR = Path("assets/tables")
+DEFAULT_OUT_DIR = Path("data/tables")
 
 # Three decimals everywhere. The run directory already ships full-precision CSVs, so the
 # paper rounds exactly once and the LaTeX and its CSV twin agree digit for digit; a reader
