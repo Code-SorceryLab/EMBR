@@ -26,7 +26,7 @@ import csv
 import json
 import subprocess
 import sys
-from collections.abc import Callable, Hashable, Sequence
+from collections.abc import Callable, Hashable, Mapping, Sequence
 from dataclasses import replace
 from datetime import datetime, timezone
 from itertools import combinations
@@ -38,6 +38,7 @@ from embr import (
     Conversation,
     DeterministicEmbedder,
     MemoryStore,
+    MoodCongruence,
     Recency,
     StubRunner,
     __version__,
@@ -296,6 +297,28 @@ def _rq3_stats(ndcg_by_query: dict[str, dict[str, float]]) -> dict:
     return {"reference": reference, "metric": "ndcg@5", "comparisons": comparisons}
 
 
+def _mood_is_rank_invariant(scenario: Scenario) -> bool:
+    """Whether the mood term can reorder anything at all under RQ3's scoring state.
+
+    Measured, never assumed. RQ3 scores in the neutral condition, whose mood is the zero
+    vector, so cosine hands every memory the same congruence and the term collapses to an
+    additive constant that cannot change a ranking. Recording it per variant is what stops
+    a figure implying a comparison that did not happen: a mood-and-relevance baseline
+    scored here is a relevance baseline, and the label has to say so.
+    """
+    state = dawn_state(scenario)
+    signal = MoodCongruence()
+    scores = {round(signal.score(memory, "", state), 12) for memory in scenario.memories}
+    return len(scores) <= 1
+
+
+def _mood_using_variants(builders: Mapping[str, Callable[[], CompositeScorer]]) -> set[str]:
+    """Which variant families carry a mood signal, read off the scorers themselves."""
+    return {
+        name for name, build in builders.items() if any(s.name == "mood" for s in build().signals)
+    }
+
+
 def _weights_by_fold(
     folds: list[Fold], zeroed: str | None = None
 ) -> dict[str, dict[str, float]]:
@@ -332,12 +355,23 @@ def run_rq3(scenario: Scenario) -> dict:
     variant_meta: dict[str, dict] = {}
     ndcg_by_query: dict[str, dict[str, float]] = {}  # variant -> query id -> ndcg@5
 
+    mood_inert = _mood_is_rank_invariant(scenario)
+    mood_families = _mood_using_variants(builders)
+
     def record(variant: str, per_query: dict[str, dict[str, float]], meta: dict) -> None:
         variants[variant] = _summarize(per_query)
         per_query_rows[variant] = per_query
         ndcg_by_query[variant] = {qid: rows["ndcg@5"] for qid, rows in per_query.items()}
+        # A variant whose mood term cannot reorder anything is not the system its paper
+        # describes, and the row has to carry that or a reader will take the comparison at
+        # face value. Derived from the scorer and the state, so it cannot drift from them.
+        carries_mood = any(variant.startswith(family) for family in mood_families)
         # embr_tuned is the reference every comparison is made against, so it has no family.
-        variant_meta[variant] = {"family": _RQ3_FAMILIES.get(variant, "reference"), **meta}
+        variant_meta[variant] = {
+            "family": _RQ3_FAMILIES.get(variant, "reference"),
+            "mood_rank_invariant": bool(mood_inert and carries_mood),
+            **meta,
+        }
 
     embr_folds: list[Fold] = []
     for name, build in builders.items():

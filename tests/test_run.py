@@ -259,6 +259,28 @@ def test_run_all_defaults_to_the_stub_model(tmp_path) -> None:
     assert json.loads((out_dir / "results.json").read_text())["metadata"]["model"] == "stub"
 
 
+def test_rq3_records_which_variants_had_an_inert_mood_term(full_run) -> None:
+    # RQ3 scores in the neutral zero-mood condition, where mood congruence is the same value
+    # for every memory and so cannot reorder a result. A reader taking the Emotional RAG rows
+    # as a comparison against mood-biased retrieval would be wrong, and the artifact has to
+    # say so rather than leaving it to a caveat nobody reads. Park carries no mood term at
+    # all, so it is the control: if it ever flags, the detection is measuring the wrong thing.
+    _root, out_dir, _summary = full_run
+    meta = json.loads((out_dir / "results.json").read_text())["rq3"]["variant_meta"]
+    assert meta["emo_rag_default"]["mood_rank_invariant"] is True
+    assert meta["embr_tuned"]["mood_rank_invariant"] is True
+    assert meta["park_default"]["mood_rank_invariant"] is False
+    assert meta["park_tuned"]["mood_rank_invariant"] is False
+
+
+def test_emotional_rag_degenerates_to_relevance_under_the_neutral_state(full_run) -> None:
+    # The consequence of the above, stated as a number: with mood rank invariant, tuning has
+    # only one live signal left to move, so the default and tuned rows must be identical.
+    # If these ever diverge, the mood term became live and the RQ3 caveat needs revisiting.
+    _root, _out_dir, summary = full_run
+    assert summary["ndcg@5"]["emo_rag_default"] == summary["ndcg@5"]["emo_rag_tuned"]
+
+
 def test_run_all_writes_results_json_and_both_csvs(full_run) -> None:
     root, out_dir, summary = full_run
     assert out_dir.parent == root

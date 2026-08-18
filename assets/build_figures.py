@@ -330,7 +330,12 @@ def _display_label(variant: str, meta: Mapping[str, object]) -> str:
     if ablated:
         return f"{str(ablated).replace('_', ' ')} zeroed"
     system_key = variant.removesuffix(f"_{condition}")
-    return f"{SYSTEM_LABELS.get(system_key, system_key)} {condition}"
+    # A dagger on any row whose mood term could not reorder anything under this protocol.
+    # Without it the Emotional RAG rows read as a comparison against mood-biased retrieval
+    # when they are a comparison against relevance alone, which is the kind of thing a
+    # reviewer catches and the authors cannot then unsay.
+    marker = " †" if meta.get("mood_rank_invariant") else ""
+    return f"{SYSTEM_LABELS.get(system_key, system_key)} {condition}{marker}"
 
 
 def _group_of(meta: Mapping[str, object]) -> str:
@@ -740,6 +745,20 @@ def _draw_rq3_retrieval(ax: Axes, results: Mapping[str, object]) -> str | None:
             "default weights, weights tuned leave one query out, and ablations of tuned "
             "EMBR. The three families are not interchangeable: only the tuned rows saw the "
             "label set, so a default row and a tuned row are not a fair head to head."
+            + (
+                " Rows marked with a dagger carry a mood term that is rank invariant under "
+                "this protocol: RQ3 scores in the neutral zero-mood condition, where mood "
+                "congruence returns the same value for every memory and therefore cannot "
+                "reorder a result. This matters most for Emotional RAG, whose published "
+                "score is relevance plus mood: scored here it reduces to relevance alone, "
+                "so those rows are not a comparison against the system its paper describes. "
+                "It is also why no mood ablation is reported, and why the mood term is "
+                "measured by RQ1 instead. The gold labels do not vary with mood, so "
+                "re-scoring under a live mood would not fix this: a mood term could then "
+                "only move retrieval away from a fixed relevant set and lower the metric."
+                if any("†" in row.label for row in rows)
+                else ""
+            )
         ),
     )
 

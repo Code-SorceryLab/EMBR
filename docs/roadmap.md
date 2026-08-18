@@ -124,7 +124,7 @@ produce the numbers the paper reports. **This phase carries the contribution.**
    - `emotional_rag_scorer()`: relevance + mood bias (closest prior work).
    - Both are `CompositeScorer` variants / weight maps, with **no copied scoring code.**
 2. **Scenarios & labels**: `eval/scenarios.py`, `eval/labels/`
-   - Dawn Whitmore five-session arc (full ground-truth control); a Kenny (Telltale) / Stardew fallback fixture.
+   - Dawn Whitmore five-session arc (full ground-truth control); a Stardew Valley corpus for scale and external validity.
    - **Pre-registered** relevance labels per step, authored *before* results are seen, by annotators blind to which variant is tested; record inter-annotator agreement.
 3. **Metrics**: `eval/metrics.py`
    - Retrieval-shift: Jaccard distance between top-k sets across warm / neutral / suspicious states.

@@ -61,7 +61,13 @@ as weight maps rather than duplicated code, and keeps every signal independently
 ## 5. Baselines & protocol
 
 - **Park et al.**: recency + importance + relevance (field-standard).
-- **Emotional RAG**: mood-biased retrieval (closest prior work).
+- **Emotional RAG**: mood-biased retrieval (closest prior work in the literature). Note that
+  under RQ3's neutral scoring state its mood term is rank invariant, so it reduces to a
+  relevance-only baseline there; those rows are marked with a dagger in the figures.
+
+Closest prior work in practice is not in the literature at all: a cluster of shipped Stardew
+Valley mods already does LLM NPCs with persistent memory and offline local inference. None
+reports a metric. See [`related-work.md`](related-work.md), which the paper must cite.
 
 Both are scorer variants on the same interface, run on the same model and hardware. Every
 system (ours included) is tuned by the same grid search on the same validation set;
@@ -73,7 +79,9 @@ evaluation scenarios and relevance labels are fixed in advance. *(Built in phase
 - **RQ1 Behaviour**: vary only the state; measure retrieval shift (Jaccard), tone shift
   (classifier + blinded judge), and human preference.
 - **RQ2 Robustness & cost**: 20 memory-injection attacks (4 categories), drift via
-  valence-arousal cosine distance; per-turn latency p50/p95 (~600 ms target).
+  valence-arousal cosine distance; score-and-retrieve latency p50/p95. The budget is on the
+  memory layer, which measures 1.8 to 4.3 ms. Generation cost belongs to the model behind the
+  interface and is reported separately by the bake-off, where no local arm reaches a second.
 - **RQ3 Retrieval**: precision/recall/nDCG@k vs. pre-registered labels; ablate signals.
 
 ## 7. Build order

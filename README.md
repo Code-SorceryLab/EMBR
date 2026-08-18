@@ -178,11 +178,25 @@ projects feel like one toolkit. Ten options, all wired to real work:
 <summary>RQ1 to RQ3 (click to expand)</summary>
 
 - **RQ1 (Behaviour):** does an authored emotional state change what the character *says*, or only what it remembers?
-- **RQ2 (Robustness & cost):** is emotion-tagged memory an exploitable target, and is it fast enough for play (~600 ms target on an 8 GB card)?
+- **RQ2 (Robustness & cost):** is emotion-tagged memory an exploitable target, and what does the memory layer cost per turn?
 - **RQ3 (Retrieval):** which of the five signals actually drive retrieval quality?
 
+On cost, the claim is about **the memory layer, not generation**. Retrieval runs in 1.8 to
+4.3 ms, comfortably inside an interactive budget. Generation is a separate, much larger cost
+that belongs to whichever model you put behind the interface, and on measured evidence no
+local model tested here answers a turn in under a second. Stating the budget as a whole-turn
+target would be a claim this project does not meet and does not control.
+
 Baselines: Park et al.'s blended score and Emotional RAG, tuned under the same protocol.
-Test characters: Dawn Whitmore (invented tavern keeper) and Kenny (Telltale).
+Note the caveat above on Emotional RAG under the neutral condition. Test character: Dawn
+Whitmore, an invented tavern keeper with a pre-registered five-session arc.
+
+**On measuring believability: there is no human evaluation here, and the tone rater is a
+proxy.** `LexiconToneRater` scores valence and arousal from a fixed word list. It is
+deterministic and reproducible, which is why it is used, but it does not measure whether a
+line reads as in character to a player, and it should not be reported as if it does. Every
+claim about how a reply *sounds* rests on it. A believability claim needs people, and that
+study has not been run.
 
 Prior art matters here and is not flattering: a cluster of Stardew Valley mods already ships
 LLM NPCs with persistent memory and offline local inference. What none of them report is a
