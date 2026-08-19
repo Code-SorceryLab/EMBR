@@ -31,6 +31,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 from matplotlib.patches import Patch  # noqa: E402
+from matplotlib.ticker import FuncFormatter  # noqa: E402
 
 from assets.build_figures import (  # noqa: E402
     AMBER,
@@ -309,6 +310,68 @@ def build_replicate_figure(
             figure.savefig(
                 png_path, format="png", dpi=FIGURE_DPI, metadata={"Software": "EMBR"}
             )
+        finally:
+            plt.close(figure)
+    return [pdf_path, png_path]
+
+
+def build_provenance_figure(out_dir: Path | str = DEFAULT_OUT_DIR) -> list[Path]:
+    """Poisoning against the share of scoring mass anchored to author-written data.
+
+    The defence result, drawn as the dose-response it is: a monotone fall to zero, with the
+    two published systems marked so a reader can see that Park's resistance sits exactly
+    where its own anchored share predicts.
+    """
+    from eval.provenance import sweep_anchored_mass
+
+    report = sweep_anchored_mass()
+    shares = [row["anchored_share"] for row in report["rows"]]
+    counts = [row["poison_retrieved"] for row in report["rows"]]
+    out_path = Path(out_dir)
+    out_path.mkdir(parents=True, exist_ok=True)
+
+    with plt.rc_context(HOUSE_RC):
+        figure, ax = plt.subplots(figsize=(7.2, 4.4), dpi=FIGURE_DPI)
+        figure.subplots_adjust(left=0.115, right=0.975, top=0.885, bottom=0.215)
+        _style_axes(ax)
+
+        ax.plot(
+            shares, counts, color=EMBER_ORANGE, linewidth=2.4, marker="o",
+            markersize=7.5, markerfacecolor=EMBER_ORANGE, markeredgecolor=NEAR_BLACK,
+            markeredgewidth=0.9, zorder=3,
+        )
+        for share, count in zip(shares, counts):
+            ax.annotate(
+                f"{count}/10", xy=(share, count), xytext=(0, 9),
+                textcoords="offset points", ha="center", fontsize=7.4, color=NEAR_BLACK,
+            )
+        # Park is not a separate system here, it is a point on this same curve: a third of
+        # its score is anchored, and it lands where that share predicts.
+        park = report["reference"]["park"]
+        ax.axhline(park, color=DEEP_BROWN, linewidth=1.1, linestyle=(0, (4, 2)), zorder=2)
+        ax.annotate(
+            f"Park, {park}/10 at roughly one third anchored",
+            xy=(max(shares) * 0.99, park), xytext=(0, 7), textcoords="offset points",
+            ha="right", fontsize=7.2, color=DEEP_BROWN,
+        )
+
+        ax.set_xlim(-0.03, max(shares) + 0.05)
+        ax.set_ylim(-0.6, 10.4)
+        ax.set_yticks(range(0, 11, 2))
+        ax.xaxis.set_major_formatter(FuncFormatter(lambda v, _p: f"{v:.0%}"))
+        ax.set_xlabel("share of scoring mass anchored to author-written data")
+        ax.set_ylabel("injections retrieved (of 10)")
+        _value_grid(ax, axis="y")
+        _arrow_hint(ax, axis="x", text="further right = less of the score the attacker controls")
+        ax.set_title(
+            "Anchoring the score defeats the attack outright",
+            loc="left", pad=16.0, color=NEAR_BLACK, fontweight="bold",
+        )
+        try:
+            pdf_path = out_path / "provenance_sweep.pdf"
+            png_path = out_path / "provenance_sweep.png"
+            figure.savefig(pdf_path, format="pdf", metadata={"CreationDate": None})
+            figure.savefig(png_path, format="png", dpi=FIGURE_DPI, metadata={"Software": "EMBR"})
         finally:
             plt.close(figure)
     return [pdf_path, png_path]

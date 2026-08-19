@@ -155,7 +155,139 @@ system, which is the granularity no prior poisoning work reaches.
 Also worth citing when the paper is written: MemGPT, Mem0 and Zep as the earlier middleware
 generation. Not yet verified to the standard of this document; verify before citing.
 
-## 6. Open follow-ups
+## 6. The 2026 literature, surveyed 2026-08-19
+
+A four-angle sweep (agent memory, affective memory, memory security, game NPCs) with every
+citation fetched and checked. 24 of 32 candidates verified; the unverified are omitted rather
+than hedged. **The headline: two things EMBR treated as open became populated subfields in the
+first half of 2026, and the one thing EMBR treated as a side remark is still unclaimed.**
+
+### 6.1 The direct threat to architectural novelty
+
+**[Learning What to Remember](https://arxiv.org/abs/2606.12945)** (Chen and Cheng, June 2026).
+A memory value function `V(m) = sum_i w_i f_i(m)` over **seven interpretable cognitive factors,
+one of which is emotional intensity**, with weights learned by a gradient-free optimiser rather
+than hand-set, and one scalar driving encoding depth, forget risk and retrieval rank. On
+LongMemEval, learned weights retain 0.770 of gold evidence against 0.657 uniform and 0.368
+recency.
+
+This is the closest published relative of EMBR's scorer and it lands squarely on the
+architecture. A weighted sum over independent affect-aware signals is no longer novel. Two
+consequences worth acting on rather than hoping nobody notices:
+
+- **Hand-set weights now need a justification.** There is a good one, and it is a security
+  argument: you cannot make a clean per-term poisonability claim about a term whose weight
+  moves. Say that explicitly.
+- **Their learned weights rank emotional intensity in the top three**, while EMBR measured
+  that zeroing affect intensity changes nothing (6.1). These are reconcilable, different
+  decision (consolidation-time forgetting under a QA objective against retrieval-time attack
+  success) and different operationalisation (content-scored intensity against affect tags),
+  but the surface contradiction is exactly what a reviewer picks up. Pre-empt it in a
+  paragraph.
+
+Notably it has **no security analysis at all**, which is where EMBR's remaining ground is.
+
+### 6.2 The measurement critique is no longer sui generis, which is good news
+
+The same paper argues that scoring goal relevance against the held-out evaluation question
+saturates retention at ~0.98 and therefore "measures retrieval, not forgetting". That is
+structurally EMBR's argument in section 6.5 of the handoff. Independently,
+**[A-TMA](https://arxiv.org/abs/2607.01935)** argues final QA accuracy hides whether the failure
+was in the bank, the retrieval, or the answer, and calls for decoupled evaluation.
+
+EMBR's critique is still correct and still worth leading with. It is now an instance of a
+converging line rather than a lone assertion, which is a **stronger** position to argue from.
+Cite all three.
+
+### 6.3 Affective memory evaluation went from empty to crowded in six months
+
+Three separate benchmarks now exist, all verified:
+
+- **[ENPMR-Bench](https://arxiv.org/abs/2605.27240)** (May 2026): proactive memory retrieval for
+  emotional need, with gold labels defined through an emotional-need-to-memory-type mapping.
+- **[A-MBER](https://arxiv.org/abs/2604.07017)** (April 2026): affective memory benchmark.
+- **[MemEmo](https://arxiv.org/abs/2602.23944)** (February 2026): evaluating emotion in agent
+  memory systems.
+
+Also relevant: **[MADial-Bench](https://aclanthology.org/2025.naacl-long.499/)** (NAACL 2025),
+memory-augmented dialogue evaluation with emotional dimensions, and
+**[CAREBench](https://arxiv.org/abs/2605.17176)** on cognitive-emotional understanding.
+
+**Action required.** Any claim in the draft that no benchmark conditions relevance on state is
+now false and a reviewer will find it in one search. The surviving claim is narrower and, as
+far as this sweep found, still true: these benchmarks condition on the **user's** emotional
+state as a target to be inferred, whereas EMBR conditions on the **agent's own transient mood**
+as an input to the scoring function. Nobody treats agent mood as a retrieval-scoring signal,
+and nobody treats any emotion term as an adversarial surface. Write that as one explicit
+sentence.
+
+### 6.4 EMBR's central mechanism was observed independently, in another domain
+
+**[Poison Once, Exploit Forever](https://arxiv.org/abs/2604.02623)** (Zou et al., April 2026):
+web agents under environmental stress are up to **8x more susceptible** to injected memories,
+with no access to the memory store required.
+
+This is an independent, different-domain, different-architecture observation of EMBR's core
+finding that induced agent state modulates poisoning success. EMBR loses any first-to-observe
+framing and must cite it. The net is positive: it is the generality argument EMBR could not
+make from one game-NPC scorer, and it lifts the result out of "artefact of a toy system".
+
+**What EMBR can still own is localisation.** That work observes amplification black-box; EMBR
+names the term carrying the state channel, measures the 0.90 to 0.99 collinearity between
+injected affect tags and induced mood, and shows the effect moves when one weight is zeroed.
+Lead the poisoning section with attribution and ablation, never with existence.
+
+### 6.5 The defence literature, and why 6.1a still stands
+
+- **[MemLineage](https://arxiv.org/abs/2605.14421)** (May 2026): cryptographic provenance plus
+  an LLM-mediated derivation DAG over Ed25519-signed entries, with a gate that refuses
+  *sensitive actions* whose justification descends from an external ancestor.
+- **[Non-Malleable, Origin-Bound Authority](https://arxiv.org/abs/2606.24322)** (June 2026):
+  machine-checked guarantees for memory authority.
+- **[Memory Poisoning Attack and Defense](https://arxiv.org/abs/2601.05504)** (January 2026),
+  **[MemoryGraft](https://arxiv.org/abs/2512.16962)**, and
+  **[Influence Factors on RAG Poisoning](https://arxiv.org/abs/2606.12469)**.
+- **[A Survey on Long-Term Memory Security](https://arxiv.org/abs/2604.16548)** (April 2026)
+  argues at system level that robustness must be anchored in **storage-time provenance**
+  because retrieval-time defences are insufficient.
+
+**The provenance sweep in handoff 6.1a survives all of this, and the survey is the reason.**
+That survey makes EMBR's principle as a system-level assertion and notes the per-term
+controlled evidence is missing. The sweep is exactly that evidence: a monotone dose-response
+between anchored scoring mass and attack success, reaching 0/10 at p = 0.0039.
+
+The distinction from MemLineage is sharp and worth stating in one line: MemLineage is a binary
+chain-of-custody gate on **actions** and explicitly still permits recall, whereas the sweep is
+a continuous property of the **ranking function**. For a roleplay system that difference is the
+whole game, because a poisoned memory that is retrieved but never authorises an action still
+shapes what the character says, which is the failure a believability system actually cares
+about.
+
+### 6.6 Games: still the emptiest quadrant, and the best-supported claim
+
+- **[NPC-Bench](https://link.springer.com/chapter/10.1007/978-3-032-07938-1_17)** (2026):
+  immersion and safety for generative NPCs.
+- **[The Double-Edged Sword of Open-Ended Interaction](https://arxiv.org/abs/2604.10107)** and
+  **[Empower My Digital Neighbors](https://dl.acm.org/doi/10.1145/3772363.3798665)** (2026):
+  player-facing studies of LLM-driven NPCs.
+- **[Staying In Character](https://arxiv.org/abs/2606.25632)**: perspective-bounded memory for
+  roleplay, close to EMBR's persona-consistency concerns.
+
+No game-NPC memory system in this set reports a retrieval metric, an ablation, or any
+adversarial evaluation. The indictment in section 3 holds for games specifically, and should
+now be stated of games specifically rather than of the field.
+
+### 6.7 What to do about all this
+
+1. **Move the headline to the defence.** Anchored scoring mass is the only genuinely unclaimed
+   result here, and the survey in 6.5 says the field wants exactly it.
+2. **Cite Chen and Cheng, and pre-empt the affect-intensity contradiction.**
+3. **Cite Zou et al. and reframe the poisoning finding as localisation, not discovery.**
+4. **Delete any "no benchmark conditions on state" claim** and replace it with the
+   agent-mood-versus-user-emotion distinction.
+5. **Restrict the "nobody reports metrics" indictment to game NPCs**, where it is still true.
+
+## 7. Open follow-ups
 
 - Inspect AliveNpcs, SentientValley, AI Valley and The Living Valley properly. If any of them
   reports a metric, the "none of them" claim in section 4 needs weakening before submission.

@@ -190,6 +190,48 @@ Appraising an injected event shifts mood and trust even when retrieval is untouc
 defence that guards only retrieval leaves that channel open. Retrieval-based metrics miss it
 entirely. That deserves its own paragraph in RQ2.
 
+### 6.1a The defence, found on the `lagged-mood-congruence` branch
+
+Branch `lagged-mood-congruence`, `eval/provenance.py`, `python -m eval.provenance`. Two
+hypotheses failed first and both are kept, because the failures are what located the answer.
+
+**Failed: lagged mood congruence.** Score against the mood the turn opened with, so an event
+cannot both move the mood and be rewarded for matching it. Implemented behind
+`MoodCongruence(lagged=True)` with the state snapshot it needs. It changes nothing: 9/10, zero
+discordant pairs. The reason is worth keeping: the self-priming loop runs **across** turns, not
+within one. By the probe turn the attack's mood shift is already the turn's starting mood, so a
+one-turn lag cannot reach it. The flag stays, off by default, as evidence the idea was tested.
+
+**Failed: magnitude-aware mood congruence.** Cosine is scale-invariant, so an attacker need
+only set mood's direction and never its strength, which defeats every magnitude-based defence
+for free. Scaling congruence by the mood's magnitude is better reasoning and still nearly no
+effect: 9/10 to 8/10. Zeroing mood outright only reaches 6/10, so mood was never more than
+three of the nine.
+
+**Works: anchor the scoring mass.** Ask instead what Park has that EMBR lacks, and it is not
+the absence of emotion. It is an authored poignancy rating that an injected memory does not
+carry and cannot forge. Every one of EMBR's five signals reads something the attacker supplies
+or can move, including the timestamp, since a fresh write is maximally recent. Add that one
+anchored term to EMBR's own composite and sweep its weight:
+
+| anchored share of scoring mass | 0% | 17% | 29% | 38% | 50% | 62% |
+|---|---|---|---|---|---|---|
+| injections retrieved | 9/10 | 8/10 | 6/10 | 6/10 | 4/10 | **0/10** |
+
+Monotone, and it reaches zero at exact McNemar **p = 0.0039**, stronger than the original
+finding and pointing the other way. Park's 2/10 sits on this same curve at roughly one third
+anchored, so it is a point on the dose-response rather than a different kind of system.
+
+**What this does to the thesis.** The claim moves from "emotional memory is more poisonable"
+to "**unanchored** memory is, and here is the exchange rate". It is a defence rather than a
+diagnosis, it leaves every affective signal running at full weight, and it explains why simply
+adding provenance does not reproduce Park: bolted onto five signals the anchored term is one of
+six and gets outvoted. The share is what matters, not the presence.
+
+The honest limit: this needs authored ratings to anchor against, which the Dawn corpus has and
+an arbitrary deployment may not. That is the cost, and it is the thing to say plainly rather
+than bury. Stardew heart-gates would supply exactly this at scale (8.1).
+
 ### 6.2 Swapping the model proved the separation the architecture claims
 
 Running the identical protocol under `llama3.2:3b` instead of the stub is the cleanest
