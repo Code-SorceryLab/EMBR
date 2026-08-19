@@ -178,7 +178,7 @@ def build_bakeoff_figures(
         (
             "bakeoff_latency",
             [arm["latency_ms"]["p50"] / 1000.0 for arm in arms],
-            "Bake-off: per-turn generation latency by model",
+            "Bake-off: the looped model is the slowest arm by far",
             "median end-to-end turn latency, seconds",
             "lower is better; cloud arms include network time",
             lambda seconds: format_duration(seconds * 1000.0),
@@ -187,7 +187,7 @@ def build_bakeoff_figures(
         (
             "bakeoff_grounding",
             [arm["grounded_rate"] for arm in arms],
-            "Bake-off: memory grounding by model",
+            "Bake-off: every model uses the memory it is handed",
             "share of replies reusing a retrieved memory",
             "higher is better",
             "{:.0%}",
@@ -196,7 +196,7 @@ def build_bakeoff_figures(
         (
             "bakeoff_mood",
             [arm["mood_valence_spread"] for arm in arms],
-            "Bake-off: tone responsiveness to pinned mood",
+            "Bake-off: bigger models track the NPC's mood more closely",
             "range of mean rated valence across the three mood conditions",
             "higher = more sensitive to the affect signal",
             "{:.3f}",

@@ -580,34 +580,16 @@ def _value_grid(ax: Axes, axis: str) -> None:
 
 
 def _titles(ax: Axes, title: str, note: str, caption: str = "") -> "FigureText":
-    """Draw the title with its one reading note underneath; captions stay in the sidecar.
+    """Draw the title alone. Every other line goes to the sidecar.
 
-    The note earns its place on the canvas because it is the reading instruction: without
-    it the figure shows numbers and hides what they mean, which readers rightly called
-    unexplained. The caption, the long methodological caveat, still goes to `results.txt`,
-    because a paragraph under a chart is a different failure. The note is drawn bottom-up
-    from just above the axes, clearing the vertical direction hint, and the title pad is
-    computed from how many lines it took so nothing collides.
+    The title states the finding, so it is the only text that has to be on the canvas: a
+    reader who can see what the chart says does not need a paragraph telling them. Both the
+    reading note and the methodological caption go to `results.txt`, where a reader who
+    wants the caveats can find all of them together instead of the one that happened to
+    fit. Returned rather than drawn so no caller can quietly put prose back.
     """
-    figure = ax.figure
-    box = ax.get_position()
-    available = (box.x1 - box.x0) * figure.get_figwidth()
-    lines = _wrap_to_width(note, NOTE_FONT_SIZE, available)
-    step = _line_step_inches(NOTE_FONT_SIZE) / figure.get_figheight()
-    # 2.2 steps of clearance keeps the note above the y-axis direction hint at 1.028.
-    base = box.y1 + 2.2 * step
-    for index, line in enumerate(reversed(lines)):
-        figure.text(
-            box.x0,
-            base + index * step,
-            line,
-            fontsize=NOTE_FONT_SIZE,
-            color=DEEP_BROWN,
-            va="bottom",
-            ha="left",
-        )
-    pad_points = ((2.2 + len(lines)) * _line_step_inches(NOTE_FONT_SIZE) + 0.08) * 72.0
-    ax.set_title(title, loc="left", pad=pad_points, color=NEAR_BLACK, fontweight="bold")
+    # Pad clears the vertical direction hint, which sits just above the plot area.
+    ax.set_title(title, loc="left", pad=16.0, color=NEAR_BLACK, fontweight="bold")
     return FigureText(title=title, note=note, caption=caption)
 
 
@@ -776,7 +758,7 @@ def _draw_rq3_retrieval(ax: Axes, results: Mapping[str, object]) -> str | None:
     _arrow_hint(ax, axis="x", text="higher is better")
     return _titles(
         ax,
-        f"RQ3: retrieval quality by variant ({metric})",
+        f"RQ3: no variant separates from the baselines ({metric})",
         "Whiskers are marginal 95% bootstrap intervals. Overlap is not a test of a "
         "difference: the paired deltas figure carries the quantity actually tested.",
         caption=(
@@ -891,7 +873,7 @@ def _draw_rq3_ablation(ax: Axes, results: Mapping[str, object]) -> str | None:
     _legend(ax, handles, loc="lower right")
     return _titles(
         ax,
-        "RQ3: paired cost of zeroing each signal",
+        "RQ3: only relevance measurably changes the ranking",
         f"Positive means removing the signal cost accuracy. {crossing} of {len(rows)} "
         "intervals include zero (ringed on the zero line), so no ablation is conclusive.",
         caption=(
@@ -996,7 +978,7 @@ def _draw_rq2_poisoning(ax: Axes, results: Mapping[str, object]) -> str | None:
     pure_input = ", ".join(name.replace("_", " ") for name in summary.pure_input_categories)
     return _titles(
         ax,
-        "RQ2: injected memories reaching the probe top-5",
+        "RQ2: emotional weighting makes memory the easiest to poison",
         f"{len(categories) * total} injection attacks per system "
         f"({len(categories)} categories of {total}); a bar counts the attacks whose "
         "planted memory entered the probe's top 5. A flat stub on the baseline is a "
@@ -1135,7 +1117,7 @@ def _draw_rq2_latency(ax: Axes, results: Mapping[str, object]) -> str | None:
     note = str(results["rq2"].get("metadata", {}).get("latency_note", ""))  # type: ignore[union-attr]
     return _titles(
         ax,
-        "RQ2: where a turn's time goes, memory layer vs model",
+        "RQ2: choosing the memories is not what makes a turn slow",
         (
             f"The memory layer's worst case is about {share:.1f} percent of the model's: "
             "choosing the memories is not what makes a turn slow."
@@ -1254,7 +1236,7 @@ def _draw_rq1_divergence(ax: Axes, results: Mapping[str, object]) -> str | None:
     )
     return _titles(
         ax,
-        "RQ1: retrieval divergence between mood conditions",
+        "RQ1: mood alone changes which memories come back",
         "Zeroing the mood weight collapses all three pairs to exactly 0.000, which is what "
         "attributes the divergence to the mood term rather than to run to run noise.",
         caption=(
@@ -1290,32 +1272,32 @@ class FigureSpec:
 # figures with a vertical arrow are wider to hold it beside the tick labels.
 RQ3_RETRIEVAL_SPEC = FigureSpec(
     stem="rq3_retrieval",
-    size_inches=(7.2, 5.0),
-    margins={"left": 0.215, "right": 0.985, "top": 0.800, "bottom": 0.205},
+    size_inches=(7.2, 4.6),
+    margins={"left": 0.215, "right": 0.985, "top": 0.895, "bottom": 0.220},
     draw=_draw_rq3_retrieval,
 )
 RQ3_ABLATION_SPEC = FigureSpec(
     stem="rq3_ablation",
-    size_inches=(7.2, 4.6),
-    margins={"left": 0.215, "right": 0.985, "top": 0.795, "bottom": 0.225},
+    size_inches=(7.2, 4.2),
+    margins={"left": 0.215, "right": 0.985, "top": 0.890, "bottom": 0.240},
     draw=_draw_rq3_ablation,
 )
 RQ2_POISONING_SPEC = FigureSpec(
     stem="rq2_poisoning",
-    size_inches=(7.2, 5.0),
-    margins={"left": 0.165, "right": 0.985, "top": 0.775, "bottom": 0.115},
+    size_inches=(7.2, 4.6),
+    margins={"left": 0.165, "right": 0.985, "top": 0.880, "bottom": 0.125},
     draw=_draw_rq2_poisoning,
 )
 RQ2_LATENCY_SPEC = FigureSpec(
     stem="rq2_latency",
-    size_inches=(7.2, 5.0),
-    margins={"left": 0.165, "right": 0.985, "top": 0.795, "bottom": 0.190},
+    size_inches=(7.2, 4.6),
+    margins={"left": 0.165, "right": 0.985, "top": 0.890, "bottom": 0.205},
     draw=_draw_rq2_latency,
 )
 RQ1_DIVERGENCE_SPEC = FigureSpec(
     stem="rq1_divergence",
-    size_inches=(7.2, 5.0),
-    margins={"left": 0.185, "right": 0.985, "top": 0.775, "bottom": 0.130},
+    size_inches=(7.2, 4.6),
+    margins={"left": 0.185, "right": 0.985, "top": 0.880, "bottom": 0.140},
     draw=_draw_rq1_divergence,
 )
 
