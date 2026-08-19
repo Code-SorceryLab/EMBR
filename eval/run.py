@@ -161,6 +161,11 @@ def _variant_builders(scenario: Scenario) -> dict[str, Callable[[], CompositeSco
     }
 
 
+#: One base scorer per variant builder, so every weight map over a variant shares that
+#: variant's signal objects. Keyed by the builder itself, which lives for the whole run.
+_BASE_SCORERS: dict[Callable[[], CompositeScorer], CompositeScorer] = {}
+
+
 def _reweighted(
     build: Callable[[], CompositeScorer], weights: dict[str, float]
 ) -> CompositeScorer:
@@ -168,10 +173,19 @@ def _reweighted(
 
     This is the no-duplication rule made executable: tuned and ablated variants are weight
     maps over the variant's published signals, never re-implemented scoring math.
+
+    The signals are shared rather than rebuilt, which is what "the variant's published
+    signals" already claimed. It also matters for cost: `Relevance` caches its BM25 index
+    per corpus and query, and the tuning grid rescores one corpus and query under 243
+    weight maps. Rebuilding the signals each time gave every weight map an empty cache and
+    threw that reuse away. Nothing mutates a signal during scoring, so sharing is safe, and
+    a fresh `CompositeScorer` per call keeps the weights themselves unshared.
     """
-    scorer = build()
-    scorer.weights = dict(weights)
-    return scorer
+    base = _BASE_SCORERS.get(build)
+    if base is None:
+        base = build()
+        _BASE_SCORERS[build] = base
+    return CompositeScorer(weights=dict(weights), signals=base.signals)
 
 
 def _per_query_metrics(

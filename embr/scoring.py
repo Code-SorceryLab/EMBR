@@ -148,13 +148,36 @@ class Relevance:
 
     gamma: float = 0.5  # weight on the lexical (BM25) half of the blend
     embedder: Embedder | None = None
+    #: How many (corpus, query) indexes to keep. Comfortably above the query count of any
+    #: one tuning fold, which is the loop this exists to serve.
+    cache_entries: int = 64
     name: str = field(default="relevance", init=False)
 
     def __post_init__(self) -> None:
         self._bm25: dict[int, float] = {}  # id(memory) -> normalised BM25 for the last query
         self._query_embedding: list[float] | None = None
+        # Several entries, not one: the tuning grid loops weight maps on the outside and
+        # queries on the inside, so consecutive prepares alternate queries and a single
+        # slot would be thrashed on every call. One entry per query in flight is enough.
+        self._cache: dict[tuple, tuple[dict[int, float], list[float] | None]] = {}
+        # References to the corpora the cache was built from. Held so those objects cannot
+        # be collected, which is what makes reusing their id() safe: a freed id can be
+        # handed out again to a different memory and produce a hit on the wrong corpus.
+        self._cached_corpora: list[list[Memory]] = []
+        #: Rebuild counter, for tests and profiling. Not used for scoring.
+        self._index_builds = 0
 
     def prepare(self, memories: list[Memory], query: str, state: CharacterState) -> None:
+        # BM25 statistics depend on the corpus and the query, never on the weights, and
+        # relevance is 96 percent of retrieval cost once a corpus is large. The tuning grid
+        # rescores one corpus and one query under 243 weight maps, so without this the
+        # identical index is rebuilt 243 times over.
+        key = (query, len(memories), tuple(id(memory) for memory in memories))
+        cached = self._cache.get(key)
+        if cached is not None:
+            self._bm25, self._query_embedding = cached
+            return
+
         corpus = [tokenize(memory.text) for memory in memories]
         raw = _bm25_scores(corpus, tokenize(query))
         top = max(raw, default=0.0)
@@ -163,6 +186,14 @@ class Relevance:
             id(memory): (value / top if top > 0 else 0.0) for memory, value in zip(memories, raw)
         }
         self._query_embedding = self.embedder.encode(query) if self.embedder is not None else None
+        # Bounded so a long session cannot grow this without limit. Clearing wholesale
+        # rather than evicting one entry keeps it simple and costs one rebuild per query.
+        if len(self._cache) >= self.cache_entries:
+            self._cache.clear()
+            self._cached_corpora.clear()
+        self._cache[key] = (self._bm25, self._query_embedding)
+        self._cached_corpora.append(list(memories))
+        self._index_builds += 1
 
     def score(self, memory: Memory, query: str, state: CharacterState) -> float:
         # A prepared corpus keys every memory (a non-match is stored as 0.0), so a missing
