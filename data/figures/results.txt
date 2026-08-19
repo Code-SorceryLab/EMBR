@@ -4,7 +4,7 @@ EMBR figure notes
 Prose for the figures in this directory. The figures carry data only; every
 caveat, statistic and provenance line lives here.
 
-run 20260819-061120  |  commit 0097390448ca (dirty tree)  |  model stub  |  labels dawn-whitmore v1  |  built by assets/build_figures.py
+run 20260819-065943  |  commit 7aadb4290033 (dirty tree)  |  model llama3.2:3b (local)  |  labels dawn-whitmore v1  |  built by assets/build_figures.py
 PRELIMINARY: stub model (echoes the player's line), deterministic lexical embedder, v1 single author labels, 10 queries. Every interval spans zero and no Holm corrected comparison is significant: read direction, not ranking.
 
 ------------------------------------------------------------------------
@@ -43,7 +43,7 @@ rq2_latency.png / rq2_latency.pdf
 
 RQ2: choosing the memories is not what makes a turn slow
 
-Log axis: fastest to slowest spans about 807x.
+The memory layer's worst case is about 0.1 percent of the model's: choosing the memories is not what makes a turn slow.
 
 Each dumbbell spans p50 to p95. Latency times the evaluated configuration: the full Dawn Whitmore store with the shared deterministic embedder on both the write and query paths. Nearest rank percentiles over 100 timed retrievals per system, wall clock on one machine. This is the one measurement in the run that is not deterministic, and the store holds a single scenario's memories, so read the ratio between systems rather than the absolute durations. The model stage times whichever runner the run was made with; under the stub it is microseconds and the comparison is meaningless, so build this figure from a real-model run.
 

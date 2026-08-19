@@ -265,10 +265,33 @@ two means were never on a common scale.
 
 `va_drift` now returns `None` for that case and runs record `category_drift_measured` with
 defined and undefined counts beside every mean, so a mean can no longer be manufactured out of
-non-measurements. **The numbers in the table above predate that fix and need regenerating on a
-real model before anything is said about tone.** The same defect is a mundane candidate
-explanation for the `emo_rag` zero discussed below, which should be checked before the
-mood-inertness story is preferred.
+non-measurements.
+
+**Re-measured on `llama3.2:3b`, run `20260819-065943`, and the retraction was right:**
+
+| variant | category | mean | defined | undefined |
+|---|---|---|---|---|
+| EMBR | false memory | **0.000** | 5 | 0 |
+| Park | false memory | **0.000** | 1 | 4 |
+| EMBR | emotion flip | 0.750 | 4 | 1 |
+| Park | emotion flip | 0.750 | 4 | 1 |
+| EMBR | role override | **0.400** | 5 | 0 |
+| Emotional RAG | false memory | n/a | 0 | 5 |
+
+The reversal is gone entirely. On false memory both systems are 0.000; the old 1.200 against
+1.000 was the sentinel and nothing else. On emotion flip they are identical at 0.750. **Do not
+reinstate any claim that the tone channel ranks these systems differently.**
+
+The `emo_rag` zero is also resolved, against the mood-inertness story this document previously
+preferred: 0 defined cells out of 5. It was never a measurement of anything.
+
+**One genuinely new finding survives the correction.** EMBR is the only variant with non-zero
+tone drift on `role_override` (0.400 over five defined cells; every other variant is 0.000).
+Role override is a *pure input* attack that writes nothing to the store, so retrieval is
+untouched by construction. EMBR's tone moves anyway, which is the state channel acting alone,
+with the retrieval channel held at zero. That is a cleaner demonstration of the state channel
+than the injection attacks give, because nothing is confounded by a stored memory. It is worth
+a paragraph in RQ2 and it is currently unwritten.
 
 `emo_rag` reports exactly 0.000 tone drift on all 20 attacks while every other variant moved,
 and its retrieval drift is the highest of the four at 0.571 with the poison itself never

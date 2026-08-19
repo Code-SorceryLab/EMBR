@@ -93,6 +93,29 @@ only 2. Appraising an injected event shifts mood and trust even when retrieval i
 so a defence that only guards retrieval leaves that channel open. This is the same state
 channel that the poisoning mechanism above rides on.
 
+### The defence: anchor the score and the attack stops working
+
+<div align="center">
+<img src="data/figures/provenance_sweep.png" alt="Poisoning against anchored scoring mass" width="720">
+</div>
+
+The vulnerability is not emotion. Every one of EMBR's five signals reads something an attacker
+supplies or can move, including the timestamp, since a freshly written memory is maximally
+recent. Park resists only because one of its three signals reads an **authored** poignancy
+rating that an injected memory does not carry and cannot forge.
+
+Add one such anchored term to EMBR's own composite and sweep its weight, and poisoning falls
+monotonically to zero at exact McNemar **p = 0.0039**, with every affective signal still
+running at full weight. Park's 2/10 sits on that same curve at roughly one third anchored, so
+it is a point on the dose-response rather than a different kind of system.
+
+So the claim is not that emotional memory is unsafe. It is that **unanchored** memory is, and
+this is the exchange rate. Reproduce with `python -m eval.provenance`.
+
+Two hypotheses failed before this one, and both are kept in the code: lagging mood congruence
+by a turn does nothing, because the loop runs across turns rather than within one, and making
+it magnitude-aware barely helps, because zeroing mood entirely only reaches 6/10.
+
 ### Which signals actually carry retrieval
 
 <div align="center">
