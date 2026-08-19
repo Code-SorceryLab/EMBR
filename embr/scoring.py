@@ -215,13 +215,29 @@ class Relevance:
 @dataclass
 class MoodCongruence:
     """Memories whose affect matches the character's current mood surface first
-    (Bower 1981's mood-congruent recall; Emotional RAG): cos((v_m, a_m), (v_s, a_s))."""
+    (Bower 1981's mood-congruent recall; Emotional RAG): cos((v_m, a_m), (v_s, a_s)).
 
+    `lagged` scores against the mood the turn opened with rather than the live one, which
+    closes a measured feedback loop. `take_turn` appraises the incoming event before it
+    retrieves, so an attacker who writes an emotionally charged memory moves the mood on the
+    same turn and this term then rewards the memory for matching the mood it just caused:
+    measured cosine between post-attack mood and injected affect is 0.90 to 0.99 across every
+    injection, and zeroing this weight is the single largest defence found (9/10 poisoned
+    down to 6/10). Attenuating the stored affect does not help, because cosine is
+    scale-invariant and the attack aligns the angle, not the magnitude. Reading the mood from
+    before the event is what actually breaks the alignment.
+
+    Off by default: the published numbers were produced without it, and it changes retrieval
+    for every legitimate turn as well, which is the cost this arm exists to measure.
+    """
+
+    lagged: bool = False
     name: str = field(default="mood", init=False)
 
     def score(self, memory: Memory, query: str, state: CharacterState) -> float:
+        mood = state.mood_at_turn_start if self.lagged else state.mood
         # Remap cosine's [-1, 1] to [0, 1]; a zero mood vector lands neutrally at 0.5.
-        raw = cosine((memory.valence, memory.arousal), (state.mood.valence, state.mood.arousal))
+        raw = cosine((memory.valence, memory.arousal), (mood.valence, mood.arousal))
         return (raw + 1) / 2
 
 
