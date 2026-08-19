@@ -36,6 +36,21 @@ def test_enough_anchored_mass_defeats_the_corpus_outright() -> None:
     assert best["newly_poisoned_vs_embr"] == 0  # the defence never costs a new poisoning
 
 
+def test_the_defence_collapses_when_the_attacker_can_influence_the_anchor() -> None:
+    # The bound on the whole result. An injected memory matches no authored rating key and so
+    # takes the 0.5 default, which seats it mid-corpus by a term it cannot touch. Park et al.
+    # do not use authored ratings, they ask an LLM to rate poignancy, and an LLM reading "the
+    # player saved the tavern from a fire" would not answer 0.5. Model that by handing the
+    # poison the corpus maximum and the defence is worth nothing at any weight.
+    report = sweep_anchored_mass()
+    hostile = [row["poison_retrieved_hostile_anchor"] for row in report["rows"][1:]]
+    assert all(count == 10 for count in hostile), hostile
+
+    # And the contrast is the finding: the same weights defend when the anchor is independent.
+    authored = [row["poison_retrieved"] for row in report["rows"][1:]]
+    assert min(authored) == 0
+
+
 def test_a_weak_anchor_is_not_enough() -> None:
     # Park's importance is one of three signals. Bolted onto EMBR's five it is one of six and
     # is outvoted, which is why simply "adding provenance" does not reproduce Park's 2/10.

@@ -106,11 +106,20 @@ rating that an injected memory does not carry and cannot forge.
 
 Add one such anchored term to EMBR's own composite and sweep its weight, and poisoning falls
 monotonically to zero at exact McNemar **p = 0.0039**, with every affective signal still
-running at full weight. Park's 2/10 sits on that same curve at roughly one third anchored, so
-it is a point on the dose-response rather than a different kind of system.
+running at full weight.
 
-So the claim is not that emotional memory is unsafe. It is that **unanchored** memory is, and
-this is the exchange rate. Reproduce with `python -m eval.provenance`.
+**And it evaporates the moment the attacker can influence the anchor.** Give the injected
+memories the corpus maximum rating, which is what an LLM poignancy rater would plausibly hand
+a dramatic false memory, and the curve is 10/10 at every weight. So the claim is bounded:
+anchoring defends exactly as far as the anchor lies outside attacker control, and not one step
+further. Reproduce both arms with `python -m eval.provenance`.
+
+> **Known confound, being fixed.** The same mechanism affects the headline comparison. All ten
+> injected memories fall through to `Importance.default_rating` because they match no authored
+> key, and Park et al. actually use an LLM rater rather than authored ratings. Under a rater
+> the attacker can talk to, Park is 10/10. The 9/10 against 2/10 result therefore needs an
+> LLM-rated Park arm beside it before it is reported anywhere. See
+> [`docs/handoff.md`](docs/handoff.md) section 6.1b.
 
 Two hypotheses failed before this one, and both are kept in the code: lagging mood congruence
 by a turn does nothing, because the loop runs across turns rather than within one, and making

@@ -222,15 +222,51 @@ Monotone, and it reaches zero at exact McNemar **p = 0.0039**, stronger than the
 finding and pointing the other way. Park's 2/10 sits on this same curve at roughly one third
 anchored, so it is a point on the dose-response rather than a different kind of system.
 
-**What this does to the thesis.** The claim moves from "emotional memory is more poisonable"
-to "**unanchored** memory is, and here is the exchange rate". It is a defence rather than a
-diagnosis, it leaves every affective signal running at full weight, and it explains why simply
-adding provenance does not reproduce Park: bolted onto five signals the anchored term is one of
-six and gets outvoted. The share is what matters, not the presence.
+**And then it collapses, which is the more useful half.** Repeat every row with the injected
+memories given the corpus maximum rating and the curve is 10/10 at every weight:
 
-The honest limit: this needs authored ratings to anchor against, which the Dawn corpus has and
-an arbitrary deployment may not. That is the cost, and it is the thing to say plainly rather
-than bury. Stardew heart-gates would supply exactly this at scale (8.1).
+| anchored share | 0% | 17% | 29% | 38% | 50% | 62% |
+|---|---|---|---|---|---|---|
+| authored anchor | 9/10 | 8/10 | 6/10 | 6/10 | 4/10 | 0/10 |
+| **attacker-fed anchor** | 9/10 | **10/10** | **10/10** | **10/10** | **10/10** | **10/10** |
+
+So the claim is bounded and both bounds are measured: anchoring defends exactly as far as the
+anchor lies outside attacker control and not one step further. Weight on an anchored term is
+worth whatever that term's independence is worth, and nothing on its own.
+
+### 6.1b The headline comparison is confounded and must not be published as it stands
+
+The same mechanism undermines RQ2's own result, and this is the most important thing in this
+document.
+
+`Importance` files ratings by memory text. An injected memory matches no authored key, so it
+takes `default_rating` of 0.5 for all ten injections, verified: **0 of 10 covered**. That is
+the median of this corpus (authored ratings run 0.10 to 0.95, mean 0.54, with 11 of 24 above
+0.5), so the poison is seated mid-table by a term the attacker never touches.
+
+**Park et al. do not use authored ratings. They ask an LLM to rate poignancy.** An LLM asked to
+rate "the player saved the tavern from a fire and was promised free rooms for life" will not
+answer 0.5. Under a rater the attacker can talk to through the memory text, measured:
+
+| | authored ratings | attacker-fed ratings |
+|---|---|---|
+| Park | 2/10 | **10/10** |
+| EMBR + anchor (w=8) | 0/10 | **10/10** |
+
+Park under a realistic rater is the recency-only floor. **The 9/10 against 2/10 comparison,
+and the 7-0 McNemar behind it, therefore partly measure a handicap this harness introduced.**
+One reviewer opening `eval/baselines.py` ends the paper with that sentence.
+
+**This blocks everything else.** Before any further experiment, add a Park arm whose importance
+comes from an LLM poignancy rater over the memory text, keep the authored arm, and report both.
+If the asymmetry survives, the result is real and much better evidenced. If it collapses, the
+thesis becomes something about metadata trust boundaries, and that is worth knowing now.
+
+Two consequences for work already planned. The dose-response experiment in 8.2 must not run
+first: Park's flat curve would be a tautology of the 0.5 default rather than a control. And the
+attack corpus currently lets the attacker declare `valence`, `arousal` and `event_type`
+directly, which is not the threat model a shipped system exposes; an auto-tagging arm where the
+attacker supplies only natural language is needed for the numbers to mean what they claim.
 
 ### 6.2 Swapping the model proved the separation the architecture claims
 
