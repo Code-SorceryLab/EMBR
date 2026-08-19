@@ -69,13 +69,27 @@ probe's top 5 in **9 of 10** attacks under EMBR against **2 of 10** under Park. 
 the same attacks, **7 poisoned EMBR while sparing Park, and none went the other way**
 (McNemar exact, p = 0.0156). It is the only comparison in the study that reaches significance.
 
-The mechanism is not a bug. EMBR upweights emotionally charged memories; an attacker writes an
-emotionally charged memory; the architecture does exactly what it was designed to do on it.
+The mechanism is not the obvious one, and that is what makes it a finding. It is **not** that
+EMBR rewards emotional intensity: zeroing the affect-intensity weight leaves the count at
+9/10. The lever is **mood congruence composing with the state channel**. The attack shifts the
+character's mood through appraisal, then mood congruence rewards the injected memory, whose
+affect tags are near-collinear with the mood the attack just induced (cosine 0.90 to 0.99 on
+all ten attacks). The attack primes its own retrieval. Zeroing mood congruence is the single
+largest defense, 9/10 down to 6/10. Meanwhile Park's robustness turns out to be its importance
+term acting as accidental provenance: remove it and Park is 10/10, as poisonable as the floor.
+
+The general principle, and the paper's mechanism claim: **a scoring term's poisonability is set
+by who controls its inputs.** Author-anchored terms defend, attacker-supplied terms are
+neutral, and state-coupled terms are worst, because the attack can prime the state they read.
+The state-coupled term is also the one that produces the believable mood-dependent recall RQ1
+measures, so one weight governs both the believability and the vulnerability. Reproduce it with
+`python -m eval.attribution`.
 
 There is a second finding the retrieval metrics miss entirely. The probe *prompt* changes on
 **10 of 10** injections for every system including Park, while Park's retrieved set moves on
 only 2. Appraising an injected event shifts mood and trust even when retrieval is untouched,
-so a defence that only guards retrieval leaves that channel open.
+so a defence that only guards retrieval leaves that channel open. This is the same state
+channel that the poisoning mechanism above rides on.
 
 ### Which signals actually carry retrieval
 

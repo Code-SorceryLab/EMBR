@@ -131,9 +131,41 @@ faces identical attacks (McNemar exact):
 | EMBR vs Emotional RAG | 5 | 0 | 0.0625 |
 | EMBR vs recency-only floor | 0 | 1 | 1.0 |
 
-Not one attack poisoned a baseline while sparing EMBR. Every disagreement runs one way. The
-mechanism is not a bug: EMBR upweights emotionally charged memories, an attacker writes an
-emotionally charged memory, and the architecture does exactly what it was built to do on it.
+Not one attack poisoned a baseline while sparing EMBR. Every disagreement runs one way.
+
+**The mechanism is not what it looks like, and `eval/attribution.py` proves it.** The obvious
+story, that the affect intensity term rewards emotionally charged poison, is refuted by
+direct measurement: zeroing affect intensity leaves the count at 9/10. Zeroing each scoring
+term one at a time against the same ten injections (deterministic, five tests pin the counts):
+
+| Configuration | Poison retrieved |
+|---|---|
+| EMBR, all five signals | 9/10 |
+| EMBR minus affect intensity | **9/10, unchanged** |
+| EMBR minus event gate | 10/10, the gate was defending one |
+| EMBR minus mood congruence | **6/10, the largest single defense** |
+| Park as published | 2/10 |
+| Park minus importance | **10/10** |
+
+Two mechanisms, neither the obvious one:
+
+1. **Mood congruence composes with the state channel.** The attack turn shifts the
+   character's mood through appraisal, and mood congruence then rewards the injected memory,
+   whose affect tags are nearly collinear with the very mood the attack induced: cosine
+   between post-attack mood and poison tags is +0.90 to +0.99 on all ten injections. **The
+   attack primes its own retrieval.** The state channel is not a parallel nuisance, it is
+   the amplifier.
+2. **Park's defense is accidental provenance.** Injected memories carry no authored
+   poignancy rating, score zero on importance, and are suppressed by it. Remove that one
+   author-anchored term and Park is as poisonable as the recency floor.
+
+The general principle, which is the paper's mechanism claim: **a scoring term's contribution
+to poisonability is determined by who controls its inputs.** Author-anchored terms defend.
+Attacker-supplied terms are roughly neutral here. State-coupled terms are the worst, because
+the attack can prime the state they read. And the state-coupled term is exactly the one that
+produces RQ1's believable mood-dependent recall: one weight controls both the believability
+effect and the compound vulnerability. That trade-off, measured from both sides in one
+framework, is the thesis.
 
 **This is the paper.** It is a clean adversarial finding about a class of system that, per
 [`related-work.md`](related-work.md), many people already run and nobody has tested *for the
@@ -141,8 +173,9 @@ affect axis*. Scope it carefully: memory poisoning in general now has a literatu
 NeurIPS 2024; Dash et al., June 2026, whose MPBench benchmark generalises that aggressive
 memory writing and retrieval increases exploitability). EMBR's precise claim is the
 architecture-controlled version: systems differing only in scoring decomposition, identical
-attacks, paired statistics, isolating the affect term as the lever. Section 5 of
-related-work.md has the details and the wording that survives review.
+attacks, paired statistics, with per-term attribution identifying the state-coupled mood
+term, not affect intensity, as the amplifier. Section 5 of related-work.md has the details
+and the wording that survives review.
 
 There is a second, unwritten finding beside it. The probe *prompt* changed on 10 of 10
 injections for **every** system including Park, while Park's retrieved set moved on only 2.
@@ -317,17 +350,36 @@ extractor that reads the user's own installed game. Note that Stardew is not ins
 machine, so the extractor can only be fixture-tested until it is, and dialogue ships as `.xnb`
 needing unpacking (many installs have an unpacked `Content (unpacked)` folder).
 
-### 8.2 Strengthen the poisoning result with a dose-response experiment
+### 8.2 The mechanism experiment, now done, replacing the dose-response plan
 
-Every current injection is high intensity (valence 0.9, arousal 0.8). If the vulnerability is
-genuinely caused by the affect term, poison success should scale with injected intensity under
-EMBR and stay flat under Park, which weights recency and relevance. Running a grid of injected
-valence and arousal, holding the text template fixed, would upgrade the finding from a count
-to a mechanism with a control. A reviewer can argue with 9 versus 2; a dose-response curve
-with a flat control is much harder to dismiss.
+The dose-response grid as previously described rested on a false premise: this section used
+to claim every injection sits at valence 0.9, arousal 0.8, but `eval/attacks.py` spans |v|
+0.6 to 0.9 and arousal 0.2 to 0.8, and EMBR retrieved the poison on 9 of 10 across that whole
+range. The curve is already at ceiling, and affect magnitude is not the lever anyway (6.1), so
+sweeping it would measure the wrong variable. That experiment is retired. `eval/attribution.py`
+did the job it was meant to do: it located the mechanism.
 
-Pre-register the prediction before running it, and report a flat EMBR curve as the refutation
-it would be.
+**The experiment worth building next is the defense arm, and one obvious version is already
+dead.** The review panel implemented the naive defense (attenuate stored affect tags by
+trust) against the live harness: 9/10 moves only to 8/10, McNemar p=1.0, and even zeroing the
+tags entirely reaches 6/10. The reason is structural and worth internalising: mood congruence
+is a cosine, so scaling a memory's affect vector does not change its angle, and the angle is
+what the self-priming attack aligns. A defense has to break the collinearity, not the
+magnitude. Two candidates survive that objection, both measurable in the existing harness:
+
+1. **Lagged mood congruence.** Score congruence against the character's mood *before* this
+   turn's appraisal, so one event cannot both set the mood and be rewarded for matching it.
+   This severs the self-priming loop rather than attenuating an input. A one-flag scorer
+   variant, `embr_lagged_mood`, measured by extending `eval/attribution.py`. No new store, no
+   schema change, fits the one-source-of-truth rule.
+2. **Provenance-weighted affect.** Make Park's accidental defense deliberate: tag whether a
+   memory's affect is player-asserted or simulation-observed and down-weight the former. This
+   needs a provenance field on `Memory`, a real schema change, so budget it honestly, and note
+   it is a crowded defense category (the panel found SMSR, A-MemGuard, OWASP ASI06, MemPoison);
+   the novelty is only the affect-specific, per-term, architecture-controlled measurement.
+
+Pre-register whichever you pick and report a null as a finding: a defense that fails to move
+9/10 is itself evidence the vulnerability is intrinsic to state-coupled scoring.
 
 ### 8.3 Smaller
 
