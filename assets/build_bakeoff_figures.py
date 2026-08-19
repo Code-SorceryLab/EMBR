@@ -315,6 +315,67 @@ def build_replicate_figure(
     return [pdf_path, png_path]
 
 
+def build_affective_indexing_figure(out_dir: Path | str = DEFAULT_OUT_DIR) -> list[Path]:
+    """Emotion is the index, not the content: accessibility before vs after an emotion flip.
+
+    Each memory is a point at (its warm-minus-suspicious accessibility before the flip, the
+    same after). The points sit on the anti-diagonal, so flipping a memory's emotion sends
+    its accessibility to the opposite pole. The factual channel, relevance, does not move at
+    all, which is stated on the figure because it is half the finding.
+    """
+    from eval.emotion_flip import affective_polarity, flip_emotion
+    from eval.scenarios import load_scenario
+
+    scenario = load_scenario()
+    before = [affective_polarity(m, scenario) for m in scenario.memories]
+    after = [affective_polarity(flip_emotion(m), scenario) for m in scenario.memories]
+    out_path = Path(out_dir)
+    out_path.mkdir(parents=True, exist_ok=True)
+
+    with plt.rc_context(HOUSE_RC):
+        figure, ax = plt.subplots(figsize=(6.6, 5.4), dpi=FIGURE_DPI)
+        figure.subplots_adjust(left=0.145, right=0.965, top=0.845, bottom=0.135)
+        _style_axes(ax)
+        lim = 1.05
+
+        # The line every point would land on under perfect inversion. Points near it are the
+        # finding; the reader can see the fit without a statistic.
+        ax.plot([-lim, lim], [lim, -lim], color=DEEP_BROWN, linewidth=1.0,
+                linestyle=(0, (4, 2)), zorder=1)
+        ax.axhline(0, color=NEAR_BLACK, linewidth=0.7, alpha=0.4, zorder=1)
+        ax.axvline(0, color=NEAR_BLACK, linewidth=0.7, alpha=0.4, zorder=1)
+        ax.scatter(before, after, s=52, color=EMBER_ORANGE, edgecolor=NEAR_BLACK,
+                   linewidth=0.8, zorder=3)
+
+        ax.text(0.62, 0.60, "perfect\ninversion", color=DEEP_BROWN, fontsize=7.0,
+                ha="center", va="center", rotation=-45, transform=ax.transData)
+        # The other half of the finding lives in the empty lower-left quadrant, where the
+        # title's "what it means does not move" is made concrete: relevance did not budge.
+        ax.text(
+            -0.97, -0.62,
+            "factual meaning (relevance)\nunder the same flip:\nmax change 0.00, exactly",
+            color=NEAR_BLACK, fontsize=7.4, ha="left", va="center",
+            bbox=dict(boxstyle="round,pad=0.4", facecolor=CREAM, edgecolor=DEEP_BROWN, linewidth=0.7),
+        )
+        ax.set_xlim(-lim, lim)
+        ax.set_ylim(-lim, lim)
+        ax.set_xlabel("emotional home before the flip\n(+ warm-accessible,  - suspicious-accessible)")
+        ax.set_ylabel("emotional home after the flip")
+        _value_grid(ax, axis="y")
+        ax.set_title(
+            "Flip a memory's emotion and its recall inverts;\nwhat it means does not move",
+            loc="left", pad=12.0, color=NEAR_BLACK, fontweight="bold",
+        )
+        try:
+            pdf_path = out_path / "affective_indexing.pdf"
+            png_path = out_path / "affective_indexing.png"
+            figure.savefig(pdf_path, format="pdf", metadata={"CreationDate": None})
+            figure.savefig(png_path, format="png", dpi=FIGURE_DPI, metadata={"Software": "EMBR"})
+        finally:
+            plt.close(figure)
+    return [pdf_path, png_path]
+
+
 def build_provenance_figure(out_dir: Path | str = DEFAULT_OUT_DIR) -> list[Path]:
     """Poisoning against the share of scoring mass anchored to author-written data.
 

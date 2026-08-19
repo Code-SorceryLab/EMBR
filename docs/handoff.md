@@ -120,7 +120,50 @@ in the suite and it moves by up to 19 percent between identical runs on a quiet 
 
 ## 6. How to read the results honestly
 
-### 6.1 The one thing that reaches significance is the one where EMBR loses
+**The spine of this project is emotion and memory, and section 6.0 is the positive core.**
+Everything in 6.1 onward, including the entire security thread, is a consequence of 6.0, not a
+rival to it. The order below reflects that: read 6.0 first, and read the poisoning result as
+"and here is what that costs" rather than as the headline.
+
+### 6.0 Emotion is the index, not the content
+
+`eval/emotion_flip.py`, `python -m eval.emotion_flip`, figure `data/figures/affective_indexing.png`.
+
+The thesis question, turned into a measurement: **does a memory keep its meaning if you flip
+its emotion?** A memory has two kinds of meaning. Its factual meaning is what it is about, and
+that lives in its text. Its affective meaning is which emotional state it belongs to, and that
+lives in its valence. Flip the valence of every memory and measure both channels separately.
+
+| channel | measure | result |
+|---|---|---|
+| **factual** (what it is about) | relevance to every query, before vs after | **max change 0.00, exactly** |
+| **affective** (when it is recalled) | warm-minus-suspicious accessibility, before vs after | **correlation -0.998; 19 of 19 charged memories move to the opposite pole** |
+
+So a memory keeps its meaning and loses its mood. The concrete picture, on the pre-registered
+query "why did you give me a discount?": warm Dawn recalls the honest memories (paying the
+difference, the innocent claim), suspicious Dawn recalls the lie, the interrogation, the
+confession. Same facts available, opposite emotional colouring surfaced. This is Bower's (1981)
+mood-congruent recall, which is EMBR's own grounding, shown working in a running system.
+
+The one memory that does not cleanly invert has valence +0.1, barely charged, and its
+accessibility is set by its arousal instead. That is the mechanism localised, not an exception:
+mood congruence is a cosine over the whole (valence, arousal) vector, so emotion indexes memory
+through both axes and the sign flip inverts the index for any memory with a clear valence.
+
+**This is why the security result exists.** An index the attacker can write is an index the
+attacker can hijack. The poisoning finding below is the shadow this result casts, and it should
+be presented as the cost of emotion-as-index, never as a separate headline.
+
+Companion result, the honest null in the retrieval section below: emotional *intensity* (how
+charged a memory is), as opposed to emotional *sign* (which pole it belongs to), does not
+measurably change retrieval quality on these ten queries. Sign indexes; intensity, on this
+corpus, does not. That is a real and clean scope statement, not a weakness to hide.
+
+### 6.1 The security consequence: an index you can write is one you can hijack
+
+The heading below is kept for the record, but read it as 6.0's consequence.
+
+#### 6.1 The one thing that reaches significance is the one where EMBR loses
 
 Paired across the same ten injection attacks, which is the correct test because every system
 faces identical attacks (McNemar exact):

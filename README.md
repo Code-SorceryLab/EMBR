@@ -45,9 +45,34 @@ ablation**, and lets the **baselines** be expressed as weight maps instead of du
 
 ## Results
 
-Every figure below is generated from a run directory by `assets/build_figures.py`. The
-figures carry data only; the caveats, statistics and provenance for each one live in
+The central question is what emotion does to memory. The rest, including the security work,
+follows from the first result below. Figures carry data only; caveats and provenance live in
 [`data/figures/results.txt`](data/figures/results.txt) beside them.
+
+### Emotion is the index, not the content
+
+<div align="center">
+<img src="data/figures/affective_indexing.png" alt="Flip a memory's emotion: recall inverts, meaning does not" width="640">
+</div>
+
+A memory has two kinds of meaning. What it is *about* lives in its text; which emotional state
+it *belongs to* lives in its valence. Flip every memory's valence and the two channels come
+apart cleanly:
+
+- **What it means does not move.** Relevance reads the text, which the flip leaves alone, so
+  each memory's relevance to every query is identical to the last bit. Max change: **0.00**.
+- **When it is recalled inverts.** A memory that was reachable when the character was
+  suspicious becomes reachable when she is warm. Across the corpus, accessibility polarity
+  correlates at **-0.998** before vs after, and every clearly-charged memory moves to the
+  opposite pole.
+
+So a memory keeps its meaning and loses its mood. Emotion is not part of what a memory says;
+it is the index that decides when the memory is reachable. This is Bower's (1981)
+mood-congruent recall, EMBR's own grounding, running in a system. Reproduce with
+`python -m eval.emotion_flip`.
+
+**Everything below follows from this.** The security results are the cost of an index the
+attacker can write; the retrieval ablations are about which signals do the indexing.
 
 ### Mood changes what the character recalls
 
@@ -58,7 +83,7 @@ figures carry data only; the caveats, statistics and provenance for each one liv
 Zeroing the mood weight collapses all three pairs to exactly 0.000, which is what attributes
 the divergence to the mood term rather than to run-to-run noise.
 
-### Emotional memory is easier to poison than the standard baseline
+### The consequence: an index you can write is one you can hijack
 
 <div align="center">
 <img src="data/figures/rq2_poisoning.png" alt="RQ2: planted memories that the NPC recalled" width="720">
