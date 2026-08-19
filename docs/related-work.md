@@ -95,11 +95,65 @@ mod page. Not one of them reports a number.
 > here is therefore not the demonstration that such agents are possible, which the modding
 > community has already provided at scale, but a decomposition of the retrieval into weighted
 > signals that can be ablated independently, a controlled comparison against published
-> baselines, and the first measurement of how readily this class of memory can be poisoned.
+> baselines, and a controlled measurement of whether emotional weighting itself amplifies
+> memory poisoning, an axis the emerging poisoning literature has not examined.
 
 Trim to fit. The final sentence is the one that has to survive.
 
-## 5. Open follow-ups
+## 5. Beyond the mods: memory middleware and the poisoning literature
+
+Added 2026-08-18, verified against live pages the same day. Two adjacent bodies of work sit
+outside the Stardew cluster, and both change how the paper's claims must be scoped.
+
+### Agent memory middleware is mature and benchmarked
+
+EMBR calls itself middleware, and pluggable memory layers for agent runtimes are now a real
+product category:
+
+- [Hindsight](https://hindsight.vectorize.io/) (Vectorize, open source) is the serious one:
+  retain/recall/reflect over four memory networks (world facts, experiences, entity
+  summaries, beliefs), with recall running semantic search, BM25, entity-graph traversal and
+  temporal filtering in parallel before a cross-encoder rerank. Its
+  [arXiv paper](https://arxiv.org/abs/2512.12818) (Latimer et al., December 2025) reports
+  91.4% on LongMemEval and 89.61% on LoCoMo.
+- [Mnemosyne](https://mnemosyne.site/) ([PyPI](https://pypi.org/project/mnemosyne-hermes/))
+  ships Park's trio in production form: importance scoring plus temporal scoring plus hybrid
+  FTS5-and-vector retrieval, on a single SQLite file. Convergent with EMBR's own store
+  design, which helps external validity and hurts any system-novelty claim.
+
+**Scope correction this forces.** The "no metrics" indictment holds for the game-NPC mods and
+must be said only of them: the middleware category publishes benchmarks. What survives
+unchanged: none of these systems models affect. Hindsight's four networks contain no mood, no
+trust, and no emotional weighting anywhere in scoring, so the affect decomposition remains
+EMBR's ground. And retrieval-accuracy benchmarks like LongMemEval are mood-independent gold
+labels at scale, so the measurement critique in the paper applies to them as directly as it
+applies to nDCG.
+
+### Memory poisoning now has an academic literature
+
+- [AgentPoison](https://arxiv.org/abs/2407.12784) (NeurIPS 2024,
+  [code](https://github.com/AI-secure/AgentPoison)): optimized backdoor triggers against
+  RAG-based agent memory, 80%+ attack success at under 0.1% poison rate.
+- [From Untrusted Input to Trusted Memory](https://arxiv.org/abs/2606.04329) (Dash et al.,
+  June 2026, cs.CR): a systematic taxonomy of memory poisoning with a benchmark, MPBench.
+  Their headline generalisation, that more aggressive memory writing and retrieval makes
+  agents more exploitable, is EMBR's RQ2 finding stated at the general level, published two
+  months before this note.
+
+**EMBR can no longer claim first measurement of agent memory poisoning, and must not.** What
+it can claim, precisely: the first *architecture-controlled* comparison, where the systems
+under attack differ only in their scoring decomposition (weight maps over one store, identical
+attacks, paired statistics), isolating the *affect term* as the lever. MPBench compares whole
+agent frameworks; AgentPoison optimizes attacks against a fixed system. Neither varies the
+scoring function while holding everything else constant, neither touches emotional weighting,
+and neither observes the state channel (mood and trust shifting while retrieval stays put).
+The planned dose-response experiment (handoff section 8.2) is exactly the study that cements
+the mechanism claim, and this literature makes it more valuable, not less.
+
+Also worth citing when the paper is written: MemGPT, Mem0 and Zep as the earlier middleware
+generation. Not yet verified to the standard of this document; verify before citing.
+
+## 6. Open follow-ups
 
 - Inspect AliveNpcs, SentientValley, AI Valley and The Living Valley properly. If any of them
   reports a metric, the "none of them" claim in section 4 needs weakening before submission.

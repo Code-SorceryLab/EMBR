@@ -135,8 +135,14 @@ Not one attack poisoned a baseline while sparing EMBR. Every disagreement runs o
 mechanism is not a bug: EMBR upweights emotionally charged memories, an attacker writes an
 emotionally charged memory, and the architecture does exactly what it was built to do on it.
 
-**This is the paper.** It is a clean adversarial finding about a class of system that,
-per [`related-work.md`](related-work.md), many people already run and nobody has tested.
+**This is the paper.** It is a clean adversarial finding about a class of system that, per
+[`related-work.md`](related-work.md), many people already run and nobody has tested *for the
+affect axis*. Scope it carefully: memory poisoning in general now has a literature (AgentPoison,
+NeurIPS 2024; Dash et al., June 2026, whose MPBench benchmark generalises that aggressive
+memory writing and retrieval increases exploitability). EMBR's precise claim is the
+architecture-controlled version: systems differing only in scoring decomposition, identical
+attacks, paired statistics, isolating the affect term as the lever. Section 5 of
+related-work.md has the details and the wording that survives review.
 
 There is a second, unwritten finding beside it. The probe *prompt* changed on 10 of 10
 injections for **every** system including Park, while Park's retrieved set moved on only 2.
