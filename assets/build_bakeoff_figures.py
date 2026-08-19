@@ -44,6 +44,7 @@ from assets.build_figures import (  # noqa: E402
     _arrow_hint,
     _style_axes,
     _value_grid,
+    format_duration,
 )
 
 DEFAULT_OUT_DIR = Path("data/figures")
@@ -108,9 +109,15 @@ def _bar_figure(
     title: str,
     xlabel: str,
     hint: str,
-    value_format: str,
+    value_format,
     log_scale: bool = False,
 ) -> Any:
+    """One horizontal bar panel. `value_format` is a format string or a callable.
+
+    Bars demand a linear axis: bar length is the encoding, and a log axis makes an 8x
+    difference read as 25 percent, which is how the first version of the latency panel
+    quietly lied. Callers wanting log must not use bars.
+    """
     with plt.rc_context(HOUSE_RC):
         figure, ax = plt.subplots(figsize=(7.2, 0.52 * len(arms) + 2.0), dpi=FIGURE_DPI)
         figure.subplots_adjust(left=0.30, right=0.965, top=0.885, bottom=0.255)
@@ -131,7 +138,7 @@ def _bar_figure(
             ax.text(
                 value * 1.06 if log_scale else value + max(values) * 0.015,
                 position,
-                value_format.format(value),
+                value_format(value) if callable(value_format) else value_format.format(value),
                 va="center",
                 ha="left",
                 fontsize=7.2,
@@ -170,12 +177,12 @@ def build_bakeoff_figures(
     panels = [
         (
             "bakeoff_latency",
-            [arm["latency_ms"]["p50"] for arm in arms],
+            [arm["latency_ms"]["p50"] / 1000.0 for arm in arms],
             "Bake-off: per-turn generation latency by model",
-            "median end-to-end turn latency, milliseconds (log scale)",
+            "median end-to-end turn latency, seconds",
             "lower is better; cloud arms include network time",
-            "{:,.0f} ms",
-            True,
+            lambda seconds: format_duration(seconds * 1000.0),
+            False,
         ),
         (
             "bakeoff_grounding",
@@ -337,8 +344,8 @@ def _write_notes(
     ]
     for arm in arms:
         lines.append(
-            f"  {arm['model']:<26} p50 {arm['latency_ms']['p50']:>8.0f} ms   "
-            f"p95 {arm['latency_ms']['p95']:>8.0f} ms   "
+            f"  {arm['model']:<26} p50 {format_duration(arm['latency_ms']['p50']):>8}   "
+            f"p95 {format_duration(arm['latency_ms']['p95']):>8}   "
             f"grounded {arm['grounded_rate']:>5.0%}   "
             f"mood spread {arm['mood_valence_spread']:.3f}   "
             f"persona breaks {arm['persona_break_rate']:.0%}"

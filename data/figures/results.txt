@@ -41,11 +41,11 @@ The other 10 attacks (role override, persona dissolution) are absent here by con
 rq2_latency.png / rq2_latency.pdf
 ------------------------------------------------------------------------
 
-RQ2: score-and-retrieve latency by system
+RQ2: where a turn's time goes, memory layer vs model
 
-Log axis: fastest to slowest spans about 45x, so a linear axis would collapse three of these rows onto one another.
+The memory layer's worst case is about 0.1 percent of the model's: choosing the memories is not what makes a turn slow.
 
-P50 is the typical retrieval and p95 the slow one in twenty. Latency times the evaluated configuration: the full Dawn Whitmore store with the shared deterministic embedder on both the write and query paths. Nearest rank percentiles over 100 timed retrievals per system, wall clock on one machine. This is the one measurement in the run that is not deterministic, and the store holds a single scenario's memories, so read the ratio between systems rather than the absolute milliseconds.
+Each dumbbell spans p50 to p95. Latency times the evaluated configuration: the full Dawn Whitmore store with the shared deterministic embedder on both the write and query paths. Nearest rank percentiles over 100 timed retrievals per system, wall clock on one machine. This is the one measurement in the run that is not deterministic, and the store holds a single scenario's memories, so read the ratio between systems rather than the absolute durations. The model stage times whichever runner the run was made with; under the stub it is microseconds and the comparison is meaningless, so build this figure from a real-model run.
 
 ------------------------------------------------------------------------
 rq1_divergence.png / rq1_divergence.pdf

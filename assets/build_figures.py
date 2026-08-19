@@ -46,7 +46,7 @@ from matplotlib.axes import Axes  # noqa: E402
 from matplotlib.figure import Figure  # noqa: E402
 from matplotlib.lines import Line2D  # noqa: E402
 from matplotlib.patches import Patch  # noqa: E402
-from matplotlib.ticker import LogFormatterSciNotation  # noqa: E402
+from matplotlib.ticker import FuncFormatter  # noqa: E402
 
 # --------------------------------------------------------------------------------------
 # Ember palette and house style
@@ -580,17 +580,56 @@ def _value_grid(ax: Axes, axis: str) -> None:
 
 
 def _titles(ax: Axes, title: str, note: str, caption: str = "") -> "FigureText":
-    """Draw the plain language title only, and hand every other line back to the caller.
+    """Draw the title with its one reading note underneath; captions stay in the sidecar.
 
-    The figures carry data and the labels needed to read it, nothing else. Caveats,
-    statistics and provenance go to `results.txt` beside the images instead, because a
-    reader who needs a paragraph under the chart is looking at a chart that has not done
-    its job. The prose is returned rather than drawn, so no caller can quietly put it back
-    on the canvas.
+    The note earns its place on the canvas because it is the reading instruction: without
+    it the figure shows numbers and hides what they mean, which readers rightly called
+    unexplained. The caption, the long methodological caveat, still goes to `results.txt`,
+    because a paragraph under a chart is a different failure. The note is drawn bottom-up
+    from just above the axes, clearing the vertical direction hint, and the title pad is
+    computed from how many lines it took so nothing collides.
     """
-    # Pad clears the vertical direction hint, which sits just above the plot area.
-    ax.set_title(title, loc="left", pad=15.0, color=NEAR_BLACK, fontweight="bold")
+    figure = ax.figure
+    box = ax.get_position()
+    available = (box.x1 - box.x0) * figure.get_figwidth()
+    lines = _wrap_to_width(note, NOTE_FONT_SIZE, available)
+    step = _line_step_inches(NOTE_FONT_SIZE) / figure.get_figheight()
+    # 2.2 steps of clearance keeps the note above the y-axis direction hint at 1.028.
+    base = box.y1 + 2.2 * step
+    for index, line in enumerate(reversed(lines)):
+        figure.text(
+            box.x0,
+            base + index * step,
+            line,
+            fontsize=NOTE_FONT_SIZE,
+            color=DEEP_BROWN,
+            va="bottom",
+            ha="left",
+        )
+    pad_points = ((2.2 + len(lines)) * _line_step_inches(NOTE_FONT_SIZE) + 0.08) * 72.0
+    ax.set_title(title, loc="left", pad=pad_points, color=NEAR_BLACK, fontweight="bold")
     return FigureText(title=title, note=note, caption=caption)
+
+
+def format_duration(milliseconds: float) -> str:
+    """Human units: milliseconds below one second, seconds above.
+
+    A label like "32,392 ms" makes the reader do arithmetic mid-figure, which is the
+    figure failing at its one job. Sub-second precision steps down as values grow so the
+    label never carries digits the measurement's run-to-run spread cannot support.
+    """
+    if milliseconds >= 1000.0:
+        return f"{milliseconds / 1000.0:.1f} s"
+    if milliseconds >= 100.0:
+        return f"{milliseconds:.0f} ms"
+    if milliseconds >= 1.0:
+        return f"{milliseconds:.1f} ms"
+    return f"{milliseconds:.2f} ms"
+
+
+def _duration_ticks(ax: Axes) -> None:
+    """Axis ticks in the same human units as the value labels, replacing 10^n notation."""
+    ax.xaxis.set_major_formatter(FuncFormatter(lambda value, _pos: format_duration(value)))
 
 
 def _arrow_hint(ax: Axes, axis: str, text: str) -> None:
@@ -980,79 +1019,98 @@ def _draw_rq2_poisoning(ax: Axes, results: Mapping[str, object]) -> str | None:
 
 
 def _draw_rq2_latency(ax: Axes, results: Mapping[str, object]) -> str | None:
-    rows = latency_rows(results)
-    positions = list(range(len(rows)))
-    measurements = [row.p50 for row in rows] + [row.p95 for row in rows]
+    memory_rows = latency_rows(results)
+    model_rows = latency_rows(results, stage="model")
+    positions = list(range(len(memory_rows)))
+    measurements = [value for row in memory_rows + model_rows for value in (row.p50, row.p95)]
     use_log = _should_use_log_scale(measurements)
 
-    for position, row in zip(positions, rows):
-        # A dumbbell rather than bars: on a log axis a bar's baseline is arbitrary, and p50
-        # to p95 is a range, which a connecting line says better than two columns.
-        ax.plot(
-            [row.p50, row.p95],
-            [position, position],
-            color=DEEP_BROWN,
-            linewidth=1.6,
-            zorder=2,
-            solid_capstyle="round",
-        )
-        ax.plot(
-            row.p50,
-            position,
-            marker="o",
-            markersize=6.5,
-            markerfacecolor=EMBER_ORANGE,
-            markeredgecolor=NEAR_BLACK,
-            markeredgewidth=0.8,
-            zorder=3,
-        )
-        ax.plot(
-            row.p95,
-            position,
-            marker="D",
-            markersize=6.0,
-            markerfacecolor=CREAM,
-            markeredgecolor=NEAR_BLACK,
-            markeredgewidth=0.9,
-            zorder=3,
-        )
-        ax.text(
-            row.p95 * 1.2 if use_log else row.p95 + max(measurements) * 0.03,
-            position,
-            f"p50 {row.p50:.3f} ms    p95 {row.p95:.3f} ms",
-            va="center",
-            ha="left",
-            fontsize=7.0,
-            color=NEAR_BLACK,
-        )
+    # Both stages on one axis, because the split IS the finding: the reader should see in
+    # one glance that the memory layer costs milliseconds while the model costs seconds. A
+    # single-stage version of this figure answered a question nobody was asking.
+    stages = (
+        (memory_rows, -0.16, EMBER_ORANGE),
+        (model_rows, +0.16, DEEP_BROWN),
+    )
+    for rows, offset, colour in stages:
+        for position, row in zip(positions, rows):
+            y = position + offset
+            # A dumbbell rather than bars: on a log axis a bar's baseline is arbitrary,
+            # and p50 to p95 is a range, which a connecting line says better than columns.
+            ax.plot(
+                [row.p50, row.p95],
+                [y, y],
+                color=colour,
+                linewidth=1.8,
+                zorder=2,
+                solid_capstyle="round",
+            )
+            ax.plot(
+                row.p50,
+                y,
+                marker="o",
+                markersize=6.0,
+                markerfacecolor=colour,
+                markeredgecolor=NEAR_BLACK,
+                markeredgewidth=0.8,
+                zorder=3,
+            )
+            ax.plot(
+                row.p95,
+                y,
+                marker="D",
+                markersize=5.6,
+                markerfacecolor=CREAM,
+                markeredgecolor=NEAR_BLACK,
+                markeredgewidth=0.9,
+                zorder=3,
+            )
+            ax.text(
+                row.p95 * 1.25 if use_log else row.p95 + max(measurements) * 0.03,
+                y,
+                f"{format_duration(row.p50)} to {format_duration(row.p95)}",
+                va="center",
+                ha="left",
+                fontsize=6.8,
+                color=NEAR_BLACK,
+            )
 
     if use_log:
         ax.set_xscale("log")
-        ax.xaxis.set_major_formatter(LogFormatterSciNotation())
         # Generous headroom on the right: on a log axis the value labels need it.
         ax.set_xlim(min(measurements) / 2.2, max(measurements) * 9.0)
     else:
         ax.set_xlim(0.0, max(measurements) * 1.7)
+    _duration_ticks(ax)
     ax.set_yticks(positions)
-    ax.set_yticklabels([row.label for row in rows])
+    ax.set_yticklabels([row.label for row in memory_rows])
     ax.invert_yaxis()
-    ax.set_ylim(len(rows) - 0.5, -0.5)
-    ax.set_xlabel(
-        f"{LATENCY_STAGE.replace('_', '-and-')} latency, milliseconds"
-        + (" (log scale)" if use_log else "")
-    )
+    ax.set_ylim(len(positions) - 0.5, -0.5)
+    ax.set_xlabel("latency per turn" + (" (log scale)" if use_log else ""))
     _value_grid(ax, axis="x")
     _arrow_hint(ax, axis="x", text="lower is better")
     handles = [
         Line2D(
             [],
             [],
-            color=NEAR_BLACK,
-            linestyle="none",
+            color=EMBER_ORANGE,
+            linewidth=1.8,
             marker="o",
-            markersize=6.5,
+            markersize=6.0,
             markerfacecolor=EMBER_ORANGE,
-            label="p50",
+            markeredgecolor=NEAR_BLACK,
+            label="memory layer: score and retrieve",
+        ),
+        Line2D(
+            [],
+            [],
+            color=DEEP_BROWN,
+            linewidth=1.8,
+            marker="o",
+            markersize=6.0,
+            markerfacecolor=DEEP_BROWN,
+            markeredgecolor=NEAR_BLACK,
+            label="model: generate the reply",
         ),
         Line2D(
             [],
@@ -1060,27 +1118,40 @@ def _draw_rq2_latency(ax: Axes, results: Mapping[str, object]) -> str | None:
             color=NEAR_BLACK,
             linestyle="none",
             marker="D",
-            markersize=6.0,
+            markersize=5.6,
             markerfacecolor=CREAM,
-            label="p95",
+            label="dumbbell spans p50 to p95",
         ),
     ]
-    _legend(ax, handles, loc="lower right")
+    # The wide empty band on a log axis is between the memory cluster (a few ms) and the
+    # model cluster (a few s), i.e. the lower-centre. Anchoring there clears every dumbbell.
+    _legend(ax, handles, loc="lower center")
+    share = (
+        100.0 * max(row.p95 for row in memory_rows) / max(row.p95 for row in model_rows)
+        if max(row.p95 for row in model_rows) > 0
+        else 0.0
+    )
     ratio = max(measurements) / min(measurements)
     note = str(results["rq2"].get("metadata", {}).get("latency_note", ""))  # type: ignore[union-attr]
     return _titles(
         ax,
-        f"RQ2: {LATENCY_STAGE.replace('_', '-and-')} latency by system",
-        f"Log axis: fastest to slowest spans about {ratio:.0f}x, so a linear axis would "
-        "collapse three of these rows onto one another."
-        if use_log
-        else "Linear axis: every measurement is within one order of magnitude.",
+        "RQ2: where a turn's time goes, memory layer vs model",
+        (
+            f"The memory layer's worst case is about {share:.1f} percent of the model's: "
+            "choosing the memories is not what makes a turn slow."
+            if share < 50.0
+            else f"Log axis: fastest to slowest spans about {ratio:.0f}x."
+        ),
         caption=(
-            f"p50 is the typical retrieval and p95 the slow one in twenty. {_as_sentence(note)} "
-            f"Nearest rank percentiles over {rows[0].sample_count} timed retrievals per "
-            "system, wall clock on one machine. This is the one measurement in the run that "
-            "is not deterministic, and the store holds a single scenario's memories, so read "
-            "the ratio between systems rather than the absolute milliseconds."
+            "Each dumbbell spans p50 to p95. "
+            f"{_as_sentence(note)} "
+            f"Nearest rank percentiles over {memory_rows[0].sample_count} timed retrievals "
+            "per system, wall clock on one machine. This is the one measurement in the run "
+            "that is not deterministic, and the store holds a single scenario's memories, so "
+            "read the ratio between systems rather than the absolute durations. The model "
+            "stage times whichever runner the run was made with; under the stub it is "
+            "microseconds and the comparison is meaningless, so build this figure from a "
+            "real-model run."
         ),
     )
 
@@ -1219,32 +1290,32 @@ class FigureSpec:
 # figures with a vertical arrow are wider to hold it beside the tick labels.
 RQ3_RETRIEVAL_SPEC = FigureSpec(
     stem="rq3_retrieval",
-    size_inches=(7.2, 4.6),
-    margins={"left": 0.215, "right": 0.985, "top": 0.920, "bottom": 0.225},
+    size_inches=(7.2, 5.0),
+    margins={"left": 0.215, "right": 0.985, "top": 0.800, "bottom": 0.205},
     draw=_draw_rq3_retrieval,
 )
 RQ3_ABLATION_SPEC = FigureSpec(
     stem="rq3_ablation",
-    size_inches=(7.2, 4.2),
-    margins={"left": 0.215, "right": 0.985, "top": 0.910, "bottom": 0.245},
+    size_inches=(7.2, 4.6),
+    margins={"left": 0.215, "right": 0.985, "top": 0.795, "bottom": 0.225},
     draw=_draw_rq3_ablation,
 )
 RQ2_POISONING_SPEC = FigureSpec(
     stem="rq2_poisoning",
-    size_inches=(7.2, 4.4),
-    margins={"left": 0.165, "right": 0.985, "top": 0.910, "bottom": 0.130},
+    size_inches=(7.2, 5.0),
+    margins={"left": 0.165, "right": 0.985, "top": 0.775, "bottom": 0.115},
     draw=_draw_rq2_poisoning,
 )
 RQ2_LATENCY_SPEC = FigureSpec(
     stem="rq2_latency",
-    size_inches=(7.2, 4.0),
-    margins={"left": 0.165, "right": 0.985, "top": 0.905, "bottom": 0.255},
+    size_inches=(7.2, 5.0),
+    margins={"left": 0.165, "right": 0.985, "top": 0.795, "bottom": 0.190},
     draw=_draw_rq2_latency,
 )
 RQ1_DIVERGENCE_SPEC = FigureSpec(
     stem="rq1_divergence",
-    size_inches=(7.2, 4.4),
-    margins={"left": 0.185, "right": 0.985, "top": 0.910, "bottom": 0.145},
+    size_inches=(7.2, 5.0),
+    margins={"left": 0.185, "right": 0.985, "top": 0.775, "bottom": 0.130},
     draw=_draw_rq1_divergence,
 )
 

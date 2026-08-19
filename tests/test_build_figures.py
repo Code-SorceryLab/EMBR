@@ -26,6 +26,7 @@ from assets.build_figures import (
     COMMIT_ABBREV_LENGTH,
     FIGURE_DPI,
     FIGURE_SPECS,
+    format_duration,
     ablation_delta_rows,
     build_all_figures,
     build_rq1_divergence_figure,
@@ -364,6 +365,24 @@ def test_poison_summary_derives_injection_categories_from_the_probe_flag(
     assert summary.retrieved_counts["recency_only"] == {"false_memory": 5, "emotion_flip": 5}
     assert summary.attacks_per_category == 5
     assert summary.floor_system == "recency_only"
+
+
+def test_durations_are_reported_in_human_units() -> None:
+    # "32,392 ms" made a reader do arithmetic mid-figure, which is the figure failing at
+    # its one job. Sub-second values stay in milliseconds, everything else is seconds.
+    assert format_duration(0.094) == "0.09 ms"  # sub-ms keeps two decimals
+    assert format_duration(2.548) == "2.5 ms"  # single-digit ms keeps one
+    assert format_duration(94.0) == "94.0 ms"
+    assert format_duration(999.4) == "999 ms"  # three-digit ms drops decimals
+    assert format_duration(3967.0) == "4.0 s"  # a second or more switches unit
+    assert format_duration(32392.0) == "32.4 s"
+
+
+def test_latency_rows_can_read_the_model_stage_too(run_dir: Path) -> None:
+    # The turn's cost story is memory layer versus model, so both stages must be readable.
+    rows = latency_rows(load_run_results(run_dir), stage="model")
+    assert [row.label for row in rows] == ["EMBR", "Park", "Emotional RAG", "recency only"]
+    assert all(row.p95 > 0 for row in rows)
 
 
 def test_latency_rows_read_only_the_score_retrieve_stage(run_dir: Path) -> None:
