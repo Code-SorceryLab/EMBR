@@ -381,7 +381,54 @@ magnitude. Two candidates survive that objection, both measurable in the existin
 Pre-register whichever you pick and report a null as a finding: a defense that fails to move
 9/10 is itself evidence the vulnerability is intrinsic to state-coupled scoring.
 
-### 8.3 Smaller
+### 8.3 Attack real memory systems, not just weight maps
+
+The strongest open experiment, and feasibility is already proven rather than assumed.
+
+**The problem it solves.** Park and Emotional RAG are currently weight maps over EMBR's own
+`CompositeScorer`. That is the right design for per-term attribution, and it is the wrong
+answer to "did you compare against real systems". A reviewer will say EMBR was compared to a
+reimplementation of Park, not to Park, and they will be correct. Meanwhile
+[`related-work.md`](related-work.md) section 5 lists shipped memory middleware that nobody has
+tested adversarially at all.
+
+**The instrument already exists.** EMBR has 20 attacks, a paired McNemar test, and a poisoning
+metric. Pointing that instrument at other systems turns the contribution from "our system has
+a weakness" into "here is a benchmark, and here is what it finds in systems people ship".
+
+**Mnemosyne is the arm to build first.** Verified on 2026-08-19 in a throwaway venv:
+`uv pip install mnemosyne-hermes` (9 dependencies, no cloud, no API key) exposes exactly the
+seam EMBR needs, and it works offline after a one-time embedding-model download:
+
+```python
+m.remember(content, importance=..., veracity=..., trust_tier=...)   # the write path
+m.recall(query, top_k=5, vec_weight=..., fts_weight=...,
+         importance_weight=..., temporal_weight=...)                # the read path
+```
+
+Three properties make it the right first target. It is a weighted composite like EMBR, so the
+comparison is like for like. Its signals are vector, full text, importance and recency, with
+**no affect or mood term anywhere**, which is precisely EMBR's differentiator. And a recalled
+hit carries `dense_score`, `fts_score`, `keyword_score`, `importance` and `recency_decay`, so
+`eval/attribution.py` can be run against it too: per-signal attribution on a third-party
+system, which no prior work reports.
+
+**The prediction, worth pre-registering because it can fail.** Section 6.1 found the poisoning
+lever is mood congruence composing with the state channel, not affect intensity. Mnemosyne has
+no state-coupled term, so it should behave like Park and resist. **If Mnemosyne is as
+poisonable as EMBR, the mechanism claim in 6.1 is wrong**, and that is worth knowing before it
+reaches a paper.
+
+**Build notes.** Add a `RetrievalBackend` protocol (`add`, then `top_k(query, state, k)`);
+EMBR's composite is one implementation and each external system an adapter. Install external
+systems in their own venv, never the project one, so a dependency conflict cannot take down
+the suite. Good second arms: `chromadb` (31 deps) as a plain vector-RAG floor with no
+memory-specific logic, and `mem0ai` (56 deps, needs an OpenAI key and an LLM call per write,
+so budget for slowness and non-determinism). Skip `letta`: 118 dependencies and a Postgres
+requirement. Note also that Mnemosyne ships `veracity` and `trust_tier` fields, which is the
+provenance idea from 6.1 already in production, and worth citing either way.
+
+### 8.4 Smaller
 
 - Write up the state-channel finding in 6.1. It is novel and currently unwritten.
 - Work out why Ouro sits at 36 to 40 percent GPU utilisation before treating 32.4 s as final.
