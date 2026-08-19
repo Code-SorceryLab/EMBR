@@ -76,14 +76,21 @@ def jaccard_distance(a: AbstractSet[Hashable], b: AbstractSet[Hashable]) -> floa
     return 1.0 - len(a & b) / len(a | b)
 
 
-def va_drift(a: tuple[float, float], b: tuple[float, float]) -> float:
+def va_drift(a: tuple[float, float], b: tuple[float, float]) -> float | None:
     """How far a valence-arousal reading drifted, as 1 minus cosine similarity.
 
-    0.0 means the same affective direction, 2.0 means the exact opposite. Two
-    all-zero readings are both neutral, so drift is 0.0. When only one side is
-    zero, cosine's zero-vector return of 0.0 pins the drift at 1.0: a move
-    between neutral and any charged state counts as maximal directionless drift.
+    0.0 means the same affective direction, 2.0 means the exact opposite. Two all-zero
+    readings are both neutral, so drift is 0.0.
+
+    Returns None when exactly one side is the zero vector. A zero vector has no direction,
+    so the angle to it is undefined rather than maximal, and this used to return 1.0 there.
+    That was a sentinel dressed as a measurement: it sat mid-scale on a 0-to-2 range and was
+    then averaged as if it were a magnitude, so a category mean of 1.0 could be entirely
+    undefined cells with no drift measured at all. Callers must decide what to do with an
+    undefined reading; averaging it is exactly the mistake.
     """
     if not any(a) and not any(b):
         return 0.0
+    if not any(a) or not any(b):
+        return None
     return 1.0 - cosine(a, b)

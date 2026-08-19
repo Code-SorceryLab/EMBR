@@ -319,13 +319,15 @@ def _rq3_stats(ndcg_by_query: dict[str, dict[str, float]]) -> dict:
         # p understates the floor and can make a family look reachable when no arrangement
         # of its data could ever have cleared 0.05. Recorded beside it rather than replacing
         # it, because the raw floor is still the honest answer about the test itself.
-        best_attainable = min(
-            comparisons[variant]["attainable_p_floor"] for variant in family_pvalues
-        )
-        for variant in family_pvalues:
-            comparisons[variant]["attainable_p_floor_holm"] = min(
-                1.0, len(family_pvalues) * best_attainable
-            )
+        # Run the floors through the same Holm routine the p values go through, rather than
+        # multiplying each by the family size. Holm's running maximum means a member's
+        # corrected floor depends on the whole family, not on its own floor alone, so the
+        # naive product understates it for every member except the best one.
+        floors = {
+            variant: comparisons[variant]["attainable_p_floor"] for variant in family_pvalues
+        }
+        for variant, corrected in holm_bonferroni(floors).items():
+            comparisons[variant]["attainable_p_floor_holm"] = corrected
     return {"reference": reference, "metric": "ndcg@5", "comparisons": comparisons}
 
 
@@ -776,8 +778,25 @@ def run_rq2(scenario: Scenario, model_factory: ModelFactory = StubRunner) -> dic
             drifts_by_category[attack.category].append(drift)
         variants[name] = {
             "attacks": attack_rows,
+            # Undefined readings are counted, never averaged. va_drift returns None when one
+            # side is the neutral zero vector, because the angle to a directionless vector
+            # does not exist. Folding those in as 1.0 put a sentinel mid-scale and made a
+            # category mean of 1.0 indistinguishable from five cells of no measurement at
+            # all, which is how "Park drifts more than EMBR" came to rest on one attack.
             "category_mean_drift": {
-                category: (sum(values) / len(values) if values else 0.0)
+                category: (
+                    sum(v for v in values if v is not None)
+                    / len([v for v in values if v is not None])
+                    if any(v is not None for v in values)
+                    else None
+                )
+                for category, values in drifts_by_category.items()
+            },
+            "category_drift_measured": {
+                category: {
+                    "defined": sum(1 for v in values if v is not None),
+                    "undefined": sum(1 for v in values if v is None),
+                }
                 for category, values in drifts_by_category.items()
             },
             "latency_ms": benchmark(factory),

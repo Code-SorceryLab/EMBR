@@ -213,9 +213,20 @@ what may and may not move, and every part of it held.
 | EMBR, emotion flip | 0.000 | 0.600 |
 | recency-only, false memory | 0.000 | 1.000 |
 
-Note the reversal: **Park drifts more than EMBR on tone** (1.200 against 1.000) while EMBR is
-the more poisoned on retrieval. The two channels do not rank the systems the same way, which
-is the point of 6.1's second finding rather than a contradiction of it.
+**Retracted, 2026-08-19.** The reversal this section used to claim, Park drifting more than
+EMBR at 1.200 against 1.000, does not survive audit. `va_drift` returned 1.0 whenever exactly
+one of the two tone readings was the neutral zero vector, which is a sentinel for "the angle
+is undefined" and not a magnitude, yet it sat mid-scale on a 0-to-2 range and was averaged
+into the category mean. EMBR's 1.000 was five consecutive undefined cells. Park's 1.200 was
+four of the same plus a single genuine 2.0. The claimed reversal rested on one attack, and the
+two means were never on a common scale.
+
+`va_drift` now returns `None` for that case and runs record `category_drift_measured` with
+defined and undefined counts beside every mean, so a mean can no longer be manufactured out of
+non-measurements. **The numbers in the table above predate that fix and need regenerating on a
+real model before anything is said about tone.** The same defect is a mundane candidate
+explanation for the `emo_rag` zero discussed below, which should be checked before the
+mood-inertness story is preferred.
 
 `emo_rag` reports exactly 0.000 tone drift on all 20 attacks while every other variant moved,
 and its retrieval drift is the highest of the four at 0.571 with the poison itself never

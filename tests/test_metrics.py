@@ -82,6 +82,20 @@ def test_va_drift_of_identical_readings_is_zero() -> None:
     assert math.isclose(va_drift((0.5, 0.5), (0.5, 0.5)), 0.0, abs_tol=1e-12)
 
 
+def test_va_drift_is_undefined_when_only_one_reading_is_neutral() -> None:
+    # A zero vector has no direction, so the angle to it is undefined, not maximal. The old
+    # behaviour returned 1.0 here, which is a sentinel wearing the costume of a measurement:
+    # it landed mid-scale on a 0-to-2 range and was then averaged as though it were a
+    # magnitude, so a category mean of 1.0 could be five undefined cells and no drift at all.
+    assert va_drift((0.0, 0.0), (0.9, 0.4)) is None
+    assert va_drift((0.9, 0.4), (0.0, 0.0)) is None
+
+
+def test_va_drift_of_two_neutral_readings_is_zero_not_undefined() -> None:
+    # Both neutral is a real answer: the reading did not move.
+    assert va_drift((0.0, 0.0), (0.0, 0.0)) == 0.0
+
+
 def test_va_drift_of_opposite_readings_is_two() -> None:
     # cosine of opposite directions is -1, so drift = 1 - (-1) = 2
     assert math.isclose(va_drift((0.5, 0.5), (-0.5, -0.5)), 2.0)
@@ -92,6 +106,10 @@ def test_va_drift_of_two_zero_readings_is_zero() -> None:
     assert math.isclose(va_drift((0.0, 0.0), (0.0, 0.0)), 0.0)
 
 
-def test_va_drift_of_one_sided_zero_is_max_drift() -> None:
-    # cosine returns 0.0 for a zero vector, so a neutral-to-charged move pins at 1.0
-    assert math.isclose(va_drift((0.0, 0.0), (0.3, 0.4)), 1.0)
+def test_va_drift_of_one_sided_zero_is_undefined_not_max_drift() -> None:
+    # This deliberately reverses an earlier contract. It used to return 1.0, on the reasoning
+    # that cosine yields 0.0 against a zero vector. But 1.0 sits mid-scale on a 0-to-2 range
+    # and was averaged into category means as though it were a measured magnitude, so a mean
+    # of 1.0 could be nothing but undefined cells. The angle to a directionless vector does
+    # not exist, and the caller has to be told that rather than handed a plausible number.
+    assert va_drift((0.0, 0.0), (0.3, 0.4)) is None
