@@ -9,7 +9,33 @@ from __future__ import annotations
 
 import pytest
 
-from eval.stats import bootstrap_ci, holm_bonferroni, paired_permutation_pvalue
+from eval.stats import (
+    bootstrap_ci,
+    holm_bonferroni,
+    mcnemar_exact,
+    paired_permutation_pvalue,
+)
+
+
+def test_mcnemar_exact_matches_hand_computed_binomial() -> None:
+    # Exact two-sided binomial on the discordant pairs. 7 versus 0 is RQ2's own EMBR-vs-Park
+    # comparison, and the value is checkable by hand: 2 * (1/2)**7 = 0.015625.
+    assert mcnemar_exact(7, 0) == pytest.approx(0.015625)
+    assert mcnemar_exact(5, 0) == pytest.approx(0.0625)
+    assert mcnemar_exact(0, 1) == pytest.approx(1.0)
+
+
+def test_mcnemar_is_symmetric_and_defined_with_no_disagreement() -> None:
+    # Direction is carried by which count is larger, never by the p value, and two systems
+    # that never disagree are not evidence of a difference.
+    assert mcnemar_exact(3, 6) == pytest.approx(mcnemar_exact(6, 3))
+    assert mcnemar_exact(0, 0) == 1.0
+
+
+def test_mcnemar_never_exceeds_one_when_counts_are_balanced() -> None:
+    # The doubling in a two-sided exact test can push a naive implementation past 1.0.
+    for count in range(0, 6):
+        assert 0.0 <= mcnemar_exact(count, count) <= 1.0
 
 
 def test_bootstrap_ci_is_deterministic_and_ordered() -> None:

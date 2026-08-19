@@ -728,11 +728,16 @@ def _power_sentence(comparisons: dict) -> str:
     of quietly misreporting.
     """
     total = len(comparisons)
+    # Judged against the corrected floor, because the p in the neighbouring column is Holm
+    # corrected. Comparing a raw floor against a corrected p understates the floor: it made
+    # this caption report 8 of 9 blocked when the true answer is 9 of 9, and made the
+    # no-relevance ablation look reachable at 0.031 when its corrected floor is 0.125.
     blocked = sum(
         1
         for row in comparisons.values()
-        if row.get("attainable_p_floor") is not None
-        and row["attainable_p_floor"] >= SIGNIFICANCE_ALPHA
+        if row.get("attainable_p_floor_holm", row.get("attainable_p_floor")) is not None
+        and row.get("attainable_p_floor_holm", row["attainable_p_floor"])
+        >= SIGNIFICANCE_ALPHA
     )
     significant = sum(
         1

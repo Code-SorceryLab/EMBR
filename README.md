@@ -67,7 +67,9 @@ the divergence to the mood term rather than to run-to-run noise.
 This is the headline result, and it does not flatter EMBR: an injected memory reaches the
 probe's top 5 in **9 of 10** attacks under EMBR against **2 of 10** under Park. Paired across
 the same attacks, **7 poisoned EMBR while sparing Park, and none went the other way**
-(McNemar exact, p = 0.0156). It is the only comparison in the study that reaches significance.
+(exact McNemar, p = 0.0156 raw and 0.0469 after Holm correction across its family of three).
+It is the only comparison in the study that reaches significance, and it clears 0.05 only
+narrowly once corrected, so it should be reported with the corrected value.
 
 The mechanism is not the obvious one, and that is what makes it a finding. It is **not** that
 EMBR rewards emotional intensity: zeroing the affect-intensity weight leaves the count at

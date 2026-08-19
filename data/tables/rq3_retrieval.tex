@@ -1,6 +1,6 @@
-% EMBR table rq3_retrieval: run_dir=data\runs\20260818-074353, git_commit=49950a40c961895e6c728947bee379ab3e6c5525, label_version=v1, model=llama3.2:3b (local)
-% label_set=dawn-whitmore, label_sha256=5d5f38bc31c6230b8805964de2b56866cbcbb4c422133ca91aa68584e2ad1b82, results generated_at=2026-08-18T07:43:53.971442+00:00
-% Requires \usepackage{booktabs}. Flat twin: rq3_retrieval.csv. Rebuild: python assets/build_tables.py data\runs\20260818-074353
+% EMBR table rq3_retrieval: run_dir=data\runs\20260819-061120, git_commit=0097390448caea68e11a0135d4bd30ffc2df9fc3 (dirty working tree), label_version=v1, model=stub
+% label_set=dawn-whitmore, label_sha256=5d5f38bc31c6230b8805964de2b56866cbcbb4c422133ca91aa68584e2ad1b82, results generated_at=2026-08-19T06:11:20.291391+00:00
+% Requires \usepackage{booktabs}. Flat twin: rq3_retrieval.csv. Rebuild: python assets/build_tables.py data\runs\20260819-061120
 % If the tabular overflows the text block, make the float a table* or wrap the tabular in \resizebox{\linewidth}{!}{...}.
 % results.json rq3.metadata.tuning_protocol: tuned and ablation rows are leave-one-query-out
 % cross-validated: each query is scored under weights fit on the other nine, so no variant is
@@ -29,9 +29,9 @@
     overlapping intervals must not be read as evidence of no difference, and the interval on the
     quantity actually tested is the paired one in Table~\ref{tab:embr-rq3-comparisons}. P@3 is
     precision at rank 3 and R@5 is recall at rank 5. Every number here is preliminary: it was
-    produced on the llama3.2:3b (local) model with the deterministic lexical embedder, against the
-    dawn-whitmore v1 labels, which are pre-registered but single-author; the blind multi-annotator
-    pass with agreement statistics is still to come. Do not read an ordering off this table.
+    produced on the stub model with the deterministic lexical embedder, against the dawn-whitmore v1
+    labels, which are pre-registered but single-author; the blind multi-annotator pass with
+    agreement statistics is still to come. Do not read an ordering off this table.
   }
   \label{tab:embr-rq3-retrieval}
   \small

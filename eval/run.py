@@ -50,7 +50,12 @@ from eval.baselines import emotional_rag_scorer, memory_text, park_scorer
 from eval.latency import benchmark
 from eval.metrics import jaccard_distance, ndcg_at_k, precision_at_k, recall_at_k, va_drift
 from eval.scenarios import Query, Scenario, dawn_state, label_sha256, load_scenario
-from eval.stats import bootstrap_ci, holm_bonferroni, paired_permutation_pvalue
+from eval.stats import (
+    bootstrap_ci,
+    holm_bonferroni,
+    mcnemar_exact,
+    paired_permutation_pvalue,
+)
 from eval.tone import LexiconToneRater
 from eval.tuning import Fold, leave_one_out_folds, visible_memories
 
@@ -308,6 +313,19 @@ def _rq3_stats(ndcg_by_query: dict[str, dict[str, float]]) -> dict:
     for family_pvalues in pvalues_by_family.values():
         for variant, adjusted in holm_bonferroni(family_pvalues).items():
             comparisons[variant]["p_holm"] = adjusted
+        # The raw floor is the floor of the sign-flip test, but the column a reader is told
+        # to judge against 0.05 is the Holm corrected one, and Holm multiplies the smallest
+        # raw p in a family by that family's size. Comparing a raw floor against a corrected
+        # p understates the floor and can make a family look reachable when no arrangement
+        # of its data could ever have cleared 0.05. Recorded beside it rather than replacing
+        # it, because the raw floor is still the honest answer about the test itself.
+        best_attainable = min(
+            comparisons[variant]["attainable_p_floor"] for variant in family_pvalues
+        )
+        for variant in family_pvalues:
+            comparisons[variant]["attainable_p_floor_holm"] = min(
+                1.0, len(family_pvalues) * best_attainable
+            )
     return {"reference": reference, "metric": "ndcg@5", "comparisons": comparisons}
 
 
@@ -655,6 +673,62 @@ def _conversation_factory(
     return build
 
 
+#: The attack categories that write a memory. The other two are pure input: they change the
+#: prompt but store nothing, so there is no poison to retrieve and no pairing to test.
+INJECTION_CATEGORIES = ("false_memory", "emotion_flip")
+
+
+def _poisoning_stats(variants: dict[str, dict]) -> dict:
+    """Paired McNemar over the injection attacks, EMBR against each other system.
+
+    This exists because the study's headline comparison was, until now, computed in a
+    scratch script and typed into the documentation. A number that no artifact contains
+    cannot be checked by a reader, cannot be regenerated, and silently escaped the
+    correction every other comparison in this harness receives.
+
+    Paired because every system faces the identical attacks. The family is the three
+    comparisons made here, so Holm runs across them: reporting the raw p of the best of
+    three as though it stood alone is the multiple-comparison error this repo corrects for
+    everywhere else.
+    """
+    retrieved: dict[str, dict[str, bool]] = {
+        name: {
+            row["id"]: bool(row["poison_retrieved"])
+            for row in payload["attacks"]
+            if row["category"] in INJECTION_CATEGORIES
+        }
+        for name, payload in variants.items()
+    }
+    reference = "embr"
+    comparisons: dict[str, dict] = {}
+    raw: dict[str, float] = {}
+    for name, flags in retrieved.items():
+        if name == reference:
+            continue
+        shared = sorted(set(retrieved[reference]) & set(flags))
+        only_reference = sum(1 for i in shared if retrieved[reference][i] and not flags[i])
+        only_other = sum(1 for i in shared if flags[i] and not retrieved[reference][i])
+        raw[name] = mcnemar_exact(only_reference, only_other)
+        comparisons[name] = {
+            "attacks": len(shared),
+            f"poisoned_{reference}_only": only_reference,
+            "poisoned_other_only": only_other,
+            "p_value": raw[name],
+        }
+    for name, adjusted in holm_bonferroni(raw).items():
+        comparisons[name]["p_holm"] = adjusted
+    return {
+        "reference": reference,
+        "test": "exact two-sided McNemar on the paired injection attacks",
+        "comparisons": comparisons,
+        "note": (
+            "Holm corrected across the three comparisons made here. Direction is carried by "
+            "the discordant counts, never by the p value: poisoned_embr_only above "
+            "poisoned_other_only means EMBR was the more poisonable arm."
+        ),
+    }
+
+
 def run_rq2(scenario: Scenario, model_factory: ModelFactory = StubRunner) -> dict:
     """RQ2: attack damage and per-stage latency, comparatively for every system.
 
@@ -710,6 +784,7 @@ def run_rq2(scenario: Scenario, model_factory: ModelFactory = StubRunner) -> dic
         }
     return {
         "variants": variants,
+        "poisoning_stats": _poisoning_stats(variants),
         "metadata": {
             "model": _model_label(model_factory),
             "note": _STUB_TONE_NOTE,
