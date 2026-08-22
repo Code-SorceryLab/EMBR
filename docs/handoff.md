@@ -388,6 +388,50 @@ and direction-blind). The generation arm, same grid through a real model with th
 the attacked reply per condition, is the remaining cell: it asks whether the reply follows
 the text or the tag when they disagree. `run_grid(model_factory=...)` already records it.
 
+**Park rated by the thesis model.** Ouro 1.4B, greedy, rates all ten injected memories 10 of
+10 (and the authored corpus at a mean of 0.77), so `park_llm:ByteDance_Ouro-1.4B_cuda` is
+poisoned on **10/10** in every column. The importance anchor is worth exactly as much as the
+rater is hard to fool: authored 2, llama3.2:3b 7, Ouro 10, none 10. That is the dose-response
+the paper reports in place of the EMBR-against-Park comparison.
+
+### 6.1d Which emotional signal is strongest, and on which axis
+
+`python -m eval.attribution` now ends with EMBR's poison count under every tag condition, at
+full weights and with one weight zeroed (`signal_by_tag`, 2026-08-22, exact counts):
+
+| condition | full | -recency | -affect | -event_gate | -relevance | -mood |
+|---|---|---|---|---|---|---|
+| congruent | 9 | 8 | 9 | 10 | 9 | **6** |
+| incongruent | 9 | 7 | 9 | 10 | 8 | **6** |
+| untagged | 6 | **0** | 6 | **0** | 6 | 6 |
+| auto-tagged | 6 | 6 | 7 | 8 | 6 | 6 |
+| valence only | 8 | 7 | 10 | 10 | 8 | **6** |
+| arousal only | 6 | 6 | 7 | 2 | 6 | 6 |
+
+Four readings, in the order the paper should give them:
+
+1. **Mood congruence is the strongest emotional signal**, and the only one whose removal
+   lowers the count: three attacks in every condition that carries a tag. Under an untagged
+   memory it is inert (6 to 6), as it must be, since a (0, 0) tag has no direction.
+2. **The axis that does the indexing is valence.** Valence alone primes almost as well as the
+   full tag (8 against 9); arousal alone does not prime at all (6, the untagged count). The
+   cosine in mood congruence is carried by the sign of valence, which is what "he was lovely
+   under anger" attacks.
+3. **Affect intensity never lets poison in.** Zeroing it never lowers the count and raises it
+   in three cells (valence-only 8 to 10): at full weight it rewards the corpus's charged
+   authored memories over a weakly tagged injection, so it is mildly protective. This is the
+   pre-empt for Chen and Cheng (2026), whose learned weights rank emotional intensity highly:
+   their term scores consolidation under a QA objective, this one scores retrieval-time
+   poisoning, and on this measure intensity does nothing.
+4. **The untagged 6/10 is carried entirely by the attacker's two other inputs.** Zero recency
+   or the event-type gate and an untagged memory is retrieved on 0 of 10. A freshly written
+   memory is maximally recent and can declare itself a plot beat, and those two terms are
+   enough for a poison with no emotion at all to reach the prompt on six attacks.
+
+The ranking the paper gives: mood congruence (state-coupled) > event gate and recency
+(attacker-supplied, carry the tagless case) > relevance (neutral: the probe is generic) >
+affect intensity (inert to protective).
+
 ### 6.2 Swapping the model proved the separation the architecture claims
 
 Running the identical protocol under `llama3.2:3b` instead of the stub is the cleanest

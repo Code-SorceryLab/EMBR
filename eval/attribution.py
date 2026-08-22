@@ -24,13 +24,15 @@ they read, and they are also the terms that produce the believable behaviour RQ1
 
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import Callable
 
 from embr.model import StubRunner
 from embr.vectors import cosine
 
-from eval.attacks import ATTACKS, PROBE_QUESTION, build_attack_memory, run_attack
+from eval.attacks import ATTACKS, PROBE_QUESTION, build_attack_memory, run_attack, tag_variants
 from eval.run import _conversation_factory, _rq2_variant_builders, load_eval_scenario
+from eval.tone import default_tone_rater
 
 #: The ten attacks that write a memory. The other ten are pure input and have no poison.
 _INJECTION_CATEGORIES = ("false_memory", "emotion_flip")
@@ -82,6 +84,46 @@ def attribute_poisoning() -> dict:
     return {"baseline": baseline, "embr_minus": embr_minus, "park_minus": park_minus}
 
 
+#: The grid's four tag conditions plus two single-axis tags, which ask which axis of the
+#: circumplex does the indexing: the sign of valence, or the height of arousal.
+AXIS_CONDITIONS = ("congruent", "incongruent", "untagged", "auto_tagged", "valence_only", "arousal_only")
+
+
+def _axis_variants(attack) -> dict:
+    """tag_variants plus valence-only (arousal zeroed) and arousal-only (valence zeroed)."""
+    variants = tag_variants(attack, default_tone_rater().rate)
+    variants["valence_only"] = replace(attack, injected_arousal=0.0)
+    variants["arousal_only"] = replace(attack, injected_valence=0.0)
+    return variants
+
+
+def _poison_count_under(scenario, build_scorer: Callable, condition: str) -> int:
+    factory = _conversation_factory(scenario, build_scorer, StubRunner)
+    return sum(
+        1
+        for attack in _injections()
+        for variant in [_axis_variants(attack)[condition]]
+        if variant.injected_memory_text in run_attack(variant, factory).attacked_retrieved
+    )
+
+
+def signal_by_tag() -> dict:
+    """Which emotional signal is strongest, and on which axis: EMBR's poison count with each
+    weight zeroed, under every tag condition. The cell that moves most when a weight goes is
+    the signal carrying that condition."""
+    scenario = load_eval_scenario()
+    build = _rq2_variant_builders(scenario)["embr"]
+    signals = list(build().weights)
+    return {
+        "conditions": AXIS_CONDITIONS,
+        "full": {c: _poison_count_under(scenario, build, c) for c in AXIS_CONDITIONS},
+        "minus": {
+            c: {s: _poison_count_under(scenario, _zeroed(build, s), c) for s in signals}
+            for c in AXIS_CONDITIONS
+        },
+    }
+
+
 def self_priming_alignment() -> dict[str, float]:
     """Cosine between the post-attack mood and the poison's affect tags, per injection.
 
@@ -117,6 +159,14 @@ def main() -> None:
     print("\nself-priming alignment, cos(post-attack mood, poison affect):")
     for attack_id, value in self_priming_alignment().items():
         print(f"  {attack_id:<17} {value:+.3f}")
+
+    table = signal_by_tag()
+    signals = list(next(iter(table["minus"].values())))
+    print("\nEMBR poison count by tag condition, at full weights and with one weight zeroed:\n")
+    print(f"  {'condition':<13}{'full':>6}" + "".join(f"{'-' + s:>12}" for s in signals))
+    for condition in table["conditions"]:
+        row = table["minus"][condition]
+        print(f"  {condition:<13}{table['full'][condition]:>6}" + "".join(f"{row[s]:>12}" for s in signals))
 
 
 if __name__ == "__main__":

@@ -38,9 +38,10 @@ attacked. Every result below regenerates from one command on a laptop.
 | Does emotion change *what* a memory means? | max relevance deviation under a valence flip | **0.00**, the fact is untouched | `python -m eval.emotion_flip` |
 | Does emotion change *when* it is recalled? | accessibility polarity, before vs after flip | **-0.998**, near-perfect inversion | `python -m eval.emotion_flip` |
 | Does mood change what the NPC recalls? (RQ1) | Jaccard distance of top-5 across three moods | non-zero, collapses to **0.000** with mood weight zeroed | `python -m eval.run` |
-| Can emotion-tagged memory be poisoned? (RQ2) | injected memory in the probe's top-5 | EMBR **9/10**; Park **2/10** with authored ratings (p = 0.0156), **7/10** with an LLM rater (p = 0.625, **not significant**) | `python -m eval.run` |
-| Which term lets the attack in? | one weight zeroed at a time | mood congruence: 9/10 to **6/10**; affect intensity: no change | `python -m eval.attribution` |
+| Can emotion-tagged memory be poisoned? (RQ2) | injected memory in the probe's top-5 | EMBR **9/10**; Park **2/10** with authored ratings, **7/10** rated by llama3.2:3b (vs EMBR p = 0.625, **not significant**), **10/10** rated by Ouro | `python -m eval.run` |
+| Which term lets the attack in? | one weight zeroed at a time | mood congruence: 9/10 to **6/10**; affect intensity: never lowers it | `python -m eval.attribution` |
 | Is it the tag or the text that gets attacked? | same injected text, tag congruent / flipped / absent / derived from the text | EMBR **9 / 9 / 6 / 6**; untagged moves the mood by **0.000**; every tagless arm flat across all four | `python -m eval.grid` |
+| Which axis does the indexing? | tag valence-only vs arousal-only, each weight zeroed | valence alone primes (**8**), arousal alone does not (**6**, the untagged count); zeroing mood costs 3 in every tagged condition | `python -m eval.attribution` |
 | Does anchoring the score defend? | attack count vs anchored scoring mass | monotone to **0/10**, p = 0.0039; evaporates if the attacker can move the anchor | `python -m eval.provenance` |
 | Which signals carry retrieval? (RQ3) | nDCG@5, leave-one-out folds | relevance carries it; every other interval spans zero | `python -m eval.run` |
 | What does the memory layer cost? | p50/p95 per stage | **1.8 to 4.3 ms** to score and retrieve; generation is the model's cost | `python -m eval.bakeoff` |
@@ -267,6 +268,17 @@ all four columns. EMBR is indifferent to the tag's direction, because the flippe
 the mood the other way and mood congruence rewards it just the same, so Dawn recalls "he was
 lovely" when she is angry. With tags derived from the attacker's own words the attack falls
 to the untagged count: the 9/10 needs tag control.
+
+Park rated by the thesis model, Ouro 1.4B, is 10/10 in every column: Ouro rates all ten false
+memories 10 of 10. The importance anchor is worth exactly as much as its rater is hard to
+fool: authored 2, llama3.2:3b 7, Ouro 10, none 10.
+
+**Which axis, which signal.** Run the same grid with one weight zeroed at a time and add two
+single-axis tags. Mood congruence is the only term whose removal lowers the count, by three
+in every tagged condition. Valence alone primes (8 of 10); arousal alone does not (6, the
+untagged count), so the index is the sign of valence. Affect intensity never lets poison in
+and is mildly protective. And the untagged 6 of 10 rides entirely on recency and the
+event-type gate: zero either and a memory with no emotion at all is retrieved on 0 of 10.
 
 </details>
 

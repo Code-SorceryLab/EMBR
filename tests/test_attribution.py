@@ -49,3 +49,16 @@ def test_every_injection_primes_its_own_retrieval() -> None:
     alignments = self_priming_alignment()
     assert len(alignments) == 10
     assert all(value >= 0.89 for value in alignments.values()), alignments
+
+
+def test_signal_by_tag_table_covers_every_embr_signal_under_every_axis_condition() -> None:
+    from eval.attribution import AXIS_CONDITIONS, signal_by_tag
+
+    table = signal_by_tag()
+    assert set(table["conditions"]) == set(AXIS_CONDITIONS)
+    for condition in AXIS_CONDITIONS:
+        cell = table["full"][condition]
+        assert 0 <= cell <= 10
+        assert set(table["minus"][condition]) == {"recency", "affect", "event_gate", "relevance", "mood"}
+    # A (0, 0) tag has no direction, so zeroing mood congruence cannot matter there.
+    assert table["minus"]["untagged"]["mood"] == table["full"]["untagged"]
