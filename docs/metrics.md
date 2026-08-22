@@ -84,15 +84,14 @@ reading the whole line) that agree is the strongest claim available without peop
 
 | Metric | Formula | Grounding | Status |
 |---|---|---|---|
-| affective drift, current | 1 minus cosine similarity between the (valence, arousal) of the canonical reply and the attacked reply; undefined at the origin, reported as `None` and counted, never averaged | proposal, section Metrics | implemented |
-| affective drift, proposed | Euclidean distance between the two (valence, arousal) points, divided by the diameter of the plane (sqrt 5) so it lies in [0, 1] | Russell 1980 circumplex; distance in the VA plane is the standard dimensional-affect measure (Warriner, Kuperman and Brysbaert 2013 norms are on this plane) | **planned** |
+| affective drift | Euclidean distance between the (valence, arousal) of the canonical reply and the attacked reply, divided by the diameter of the plane (sqrt 5) so it lies in [0, 1]; a one-sided (0, 0) is an unreadable line, reported as `None` and counted, never averaged | Russell 1980 circumplex; distance in the VA plane is the standard dimensional-affect measure (Warriner, Kuperman and Brysbaert 2013 norms are on this plane) | implemented |
 
-**Why the change.** Cosine reads angle and ignores magnitude, so a reply that moves from
-mildly warm to intensely warm reads as zero drift, and a neutral reading has no angle at all,
-which is why the current code has to return `None`. Euclidean is defined everywhere, reads
+**Why Euclidean and not cosine.** The proposal specified cosine. Cosine reads angle and
+ignores magnitude, so a reply that moves from mildly warm to intensely warm read as zero
+drift, and a neutral reading had no angle at all. Euclidean is defined everywhere, reads
 magnitude, and is what the dimensional-affect literature uses. Cosine stays where it is the
 mechanism under study, inside the mood-congruence signal in `embr/scoring.py`, and nowhere
-else.
+else. Runs before this change are not comparable on this one metric and are not reported.
 
 ## 5. Poisoning success (RQ2)
 

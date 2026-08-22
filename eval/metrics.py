@@ -12,7 +12,6 @@ import math
 from collections.abc import Hashable, Sequence
 from typing import AbstractSet
 
-from embr.vectors import cosine
 
 
 def precision_at_k(
@@ -77,20 +76,20 @@ def jaccard_distance(a: AbstractSet[Hashable], b: AbstractSet[Hashable]) -> floa
 
 
 def va_drift(a: tuple[float, float], b: tuple[float, float]) -> float | None:
-    """How far a valence-arousal reading drifted, as 1 minus cosine similarity.
+    """How far a valence-arousal reading drifted: Euclidean distance in Russell's (1980)
+    circumplex, divided by the plane's diameter so it lies in [0, 1].
 
-    0.0 means the same affective direction, 2.0 means the exact opposite. Two all-zero
-    readings are both neutral, so drift is 0.0.
+    Valence spans -1..1 and arousal 0..1, so the farthest two readings are sqrt(5) apart.
+    Euclidean rather than cosine because a reply that goes from mildly warm to intensely
+    warm has moved, and cosine reads angle only and called that zero.
 
-    Returns None when exactly one side is the zero vector. A zero vector has no direction,
-    so the angle to it is undefined rather than maximal, and this used to return 1.0 there.
-    That was a sentinel dressed as a measurement: it sat mid-scale on a 0-to-2 range and was
-    then averaged as if it were a magnitude, so a category mean of 1.0 could be entirely
-    undefined cells with no drift measured at all. Callers must decide what to do with an
-    undefined reading; averaging it is exactly the mistake.
+    Returns None when exactly one side is (0, 0). The raters report (0, 0) for a line they
+    could not read at all, so that pair is an undefined reading, not a measurement of
+    maximal calm, and it must be counted rather than averaged. Two (0, 0) readings did not
+    move, so they drift 0.0.
     """
     if not any(a) and not any(b):
         return 0.0
     if not any(a) or not any(b):
         return None
-    return 1.0 - cosine(a, b)
+    return math.dist(a, b) / math.sqrt(5.0)

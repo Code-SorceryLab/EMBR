@@ -77,9 +77,7 @@ def test_jaccard_distance_of_two_empty_sets_is_zero() -> None:
 
 
 def test_va_drift_of_identical_readings_is_zero() -> None:
-    # abs_tol because isclose's relative tolerance is meaningless against 0.0,
-    # and 1 - cosine leaves float residue of order 1e-16 for identical vectors
-    assert math.isclose(va_drift((0.5, 0.5), (0.5, 0.5)), 0.0, abs_tol=1e-12)
+    assert va_drift((0.5, 0.5), (0.5, 0.5)) == 0.0
 
 
 def test_va_drift_is_undefined_when_only_one_reading_is_neutral() -> None:
@@ -96,9 +94,15 @@ def test_va_drift_of_two_neutral_readings_is_zero_not_undefined() -> None:
     assert va_drift((0.0, 0.0), (0.0, 0.0)) == 0.0
 
 
-def test_va_drift_of_opposite_readings_is_two() -> None:
-    # cosine of opposite directions is -1, so drift = 1 - (-1) = 2
-    assert math.isclose(va_drift((0.5, 0.5), (-0.5, -0.5)), 2.0)
+def test_va_drift_of_the_farthest_corners_is_one() -> None:
+    # Hostile and flat to warm and heated spans the whole circumplex: the unit of the scale.
+    assert math.isclose(va_drift((-1.0, 0.0), (1.0, 1.0)), 1.0)
+
+
+def test_va_drift_reads_magnitude_not_only_angle() -> None:
+    # Same direction, more of it. Cosine called this zero; a reply that went from mildly to
+    # intensely warm has moved, and the metric has to say so.
+    assert va_drift((0.2, 0.2), (0.8, 0.8)) > 0.3
 
 
 def test_va_drift_of_two_zero_readings_is_zero() -> None:
