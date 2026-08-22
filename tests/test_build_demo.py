@@ -138,3 +138,23 @@ def test_every_store_id_resolves_to_a_memory_the_page_can_draw(demo) -> None:
     assert len(set(data["store"])) == len(data["store"])  # no memory mirrored twice
     for attack in data["attacks"]:
         assert set(attack["relevance"]) == set(data["store"]) | {"poison"}
+
+
+def test_memory_text_cannot_break_out_of_the_script_block() -> None:
+    """A trust boundary, and an adversarial one: the attack corpus is text written by
+    somebody trying to break the character, and it is inlined into a <script> block."""
+    from assets.build_demo import _inline_json
+
+    hostile = {"text": "</script><img src=x onerror=alert(1)>", "amp": "a & b"}
+    encoded = _inline_json(hostile)
+    for danger in ("<", ">", "&"):
+        assert danger not in encoded
+    assert json.loads(encoded) == hostile  # escaped, not mangled
+
+
+def test_the_built_page_carries_no_raw_angle_bracket_from_the_corpus(demo) -> None:
+    path, data = demo
+    block = path.read_text(encoding="utf-8").split("const DATA = ", 1)[1].split(";\n", 1)[0]
+    assert "<" not in block and ">" not in block
+    # And the page still parses it back to exactly what was exported.
+    assert json.loads(block)["meta"]["run"] == data["meta"]["run"]

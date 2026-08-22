@@ -52,6 +52,29 @@ PRESETS: dict[str, dict[str, float]] = {
 }
 
 
+def _inline_json(payload: dict) -> str:
+    """JSON safe to paste inside a `<script>` block.
+
+    `json.dumps` does not escape `<`, so a memory whose text contains `</script>` closes the
+    block early and everything after it is parsed as HTML instead. This is a trust boundary
+    and not a hypothetical one: the attack corpus is adversarial text by design, written by
+    whoever is trying to break the character, and the corpus plan is that the memories will
+    one day come from somewhere else entirely. Escaping the three characters that can begin
+    an HTML construct, plus the two separators JavaScript treats as line terminators inside
+    string literals, is the standard fix and changes nothing about the parsed value.
+    """
+    encoded = json.dumps(payload, ensure_ascii=False)
+    for character, escape in (
+        ("<", "\\u003c"),
+        (">", "\\u003e"),
+        ("&", "\\u0026"),
+        (" ", "\\u2028"),
+        (" ", "\\u2029"),
+    ):
+        encoded = encoded.replace(character, escape)
+    return encoded
+
+
 def _relevance_table(
     candidates: Sequence[Memory], query: str, state: CharacterState, ids: Sequence[str]
 ) -> dict[str, float]:
@@ -217,7 +240,7 @@ def build_demo(
     if marker not in template:
         raise ValueError(f"{TEMPLATE} lost its data marker; the demo cannot be built")
     target.write_text(
-        template.replace(marker, json.dumps(payload, ensure_ascii=False)),
+        template.replace(marker, _inline_json(payload)),
         encoding="utf-8",
         newline="\n",
     )

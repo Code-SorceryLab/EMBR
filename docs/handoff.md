@@ -17,7 +17,7 @@ Phases 0 through 4 are built. The system runs, the evaluation runs and reproduce
 the paper's figures and tables generate from a run, the walkthrough plays, the bake-off
 compares real models, and the menu is the front door.
 
-**Suite: 383 passed.** The one skip is the live-Ollama test and appears only when the daemon
+**Suite: 385 passed.** The one skip is the live-Ollama test and appears only when the daemon
 is down. The Mac never got a fully green run.
 
 **The reported run now uses a real model.** `data/runs/20260818-074353` is the full protocol
@@ -62,7 +62,7 @@ uv venv --python 3.11 .venv          # see the launcher note in section 5
 .venv\Scripts\activate               # Windows; source .venv/bin/activate elsewhere
 
 uv pip install -e ".[dev,figures]"   # core, tests, paper figures
-pytest -q                            # expect 383 passed (1 skip if Ollama is down)
+pytest -q                            # expect 385 passed (1 skip if Ollama is down)
 embr                                 # the menu
 ```
 
@@ -616,6 +616,33 @@ A weak "my retrieval is better" paper and a strong "emotional memory is measurab
 attackable, the field is shipping it untested, and the standard metric cannot see the claim
 anyway" paper. The second framing is supported by the only significant result in the study.
 Lead with it.
+
+### 6.9 System audit, 2026-08-22
+
+A full pass over the system rather than the results. Findings, in order of severity:
+
+1. **The demo could be broken out of by a memory's text, and it is fixed.** `assets/build_demo.py`
+   inlines the exported JSON into a `<script>` block, and `json.dumps` does not escape `<`, so
+   a memory containing `</script>` would close the block and have everything after it parsed as
+   HTML. Nothing in the current corpus triggers it, but the attack corpus is adversarial text
+   by design and the corpus plan is to take memories from elsewhere entirely. `_inline_json`
+   now escapes `<`, `>`, `&`, U+2028 and U+2029, with a test that plants a hostile string.
+2. **The figure sidecar named the wrong model**, hard-coding "stub" where the run's own metadata
+   belonged (6.9 predecessor, fixed in the same session). Three mechanism figures also shipped
+   with no caveats recorded at all.
+3. **Judge and poignancy caches shared a directory** and the grid read every file in it as
+   ratings, which crashed. Separated, with a shape check.
+4. **`MemoryStore.add` renumbers ids on insert**, and the demo exported store ids without
+   mapping them back, so the attack view threw before drawing. Keyed by text now.
+5. **The tuning protocol degrades every system it touches** (6.9 table in findings.md 3.0a).
+   Not a defect, but it must be reported as a property of the label set rather than presented
+   as the fair comparison it was intended to be.
+
+Checked and clean: no API key or key-shaped string in any tracked file or in history, `.env`
+gitignored and the runner's `__repr__` reports only whether a key is set; LaTeX cells escaped
+through `escape_latex`; the animated SVG escapes through `xml.sax.saxutils`; the demo's own
+DOM writes go through an `esc()` helper; retrieval is bit-identical across independent passes;
+and the suite is green.
 
 ## 7. What must be fixed before submission
 

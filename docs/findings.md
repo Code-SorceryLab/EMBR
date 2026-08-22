@@ -20,7 +20,7 @@ was expected and did not appear, it is written down as a null, not omitted.
 | Tone raters | NRC VAD Lexicon v2.1 (44k human-rated unigrams) and a blinded judge, llama3.1:8b at temperature 0 |
 | Poignancy raters | Park's own prompt asked of Ouro 1.4B and of llama3.2:3b, cached in `data/ratings/` |
 | Labels | Dawn Whitmore v1: 24 memories, 10 queries, single author, pre-registered |
-| Suite | 383 tests passing |
+| Suite | 385 tests passing |
 
 Retrieval, appraisal and every poisoning count are model-independent by construction: they
 never call a model. The two runs agree on them to the last digit, which is the architecture's
@@ -285,6 +285,61 @@ at all. The honest reading:
   where mood congruence returns 0.5 for every memory: a rank-invariant constant. RQ3 therefore
   compares four signals, not five, and the Emotional RAG rows degenerate to a relevance-only
   baseline, which must be said wherever they appear.
+
+### 3.0 "Why does EMBR score below Park?" It does not, and here is the decomposition
+
+The point estimates invite the question, so it is answered directly rather than left to the
+intervals. Paired per query, EMBR against Park at published defaults:
+
+| | |
+|---|---|
+| queries where EMBR ranks better | **2** |
+| queries where Park ranks better | **3** |
+| queries where the two rank **identically** | **5** |
+| mean difference | -0.014, bootstrap CI **-0.083 to +0.059** |
+| paired permutation p | **0.6875** |
+
+**Half the label set does not distinguish them at all, and the whole gap is a three-to-two
+split on the five queries that do.** One query changing its mind reverses the ordering. There
+is no effect here to explain.
+
+If the point estimate is decomposed anyway, the answer is not that Park's extra term is
+better than EMBR's. It is that **every prior any of these systems adds costs score on this
+label set**, and EMBR adds two where Park adds one:
+
+| composite | nDCG@5 |
+|---|---|
+| recency + relevance, the core both systems share | **0.630** |
+| + importance (this is Park) | 0.608 |
+| + affect intensity (EMBR without its gate) | 0.617 |
+| + event-type gate (EMBR without affect) | 0.616 |
+| + both (this is EMBR) | 0.594 |
+
+The two-signal core outscores both published systems. That is not a recommendation, because
+it too sits inside the same interval; it is the shape of the problem. And it is not that the
+extra signals are uninformative: every one of them separates gold from non-gold in the right
+direction (relevance +0.155, importance +0.156, event gate +0.137, affect +0.062, recency
++0.021 on mean score). Each also *improves* relevance on its own. They stop helping only when
+combined at equal weight, which is what "published defaults" means here.
+
+**Which is the real finding: an all-ones weight vector is an arbitrary point, not a system.**
+Every number in this section is a statement about that arbitrary point on ten queries.
+
+### 3.0a The tuning protocol makes every system worse
+
+The comparison protocol tunes each variant by the same leave-one-query-out grid search, so
+that no system is judged at weights someone chose for it. Out of sample it degrades them:
+
+| system | published defaults | tuned | |
+|---|---|---|---|
+| EMBR | 0.594 | 0.556 | -0.038 |
+| Park | 0.608 | 0.513 | **-0.095** |
+| Emotional RAG | 0.552 | 0.552 | 0.000 |
+
+Fitting five weights on nine queries and testing on the tenth overfits, and the fairness
+device adds more noise than the asymmetry it removes. **Report the defaults as the primary
+rows and the tuned rows as evidence that the label set cannot support tuning**, which is the
+same ceiling as everything else in this section.
 
 ### 3.1 The measurement critique, now measured rather than argued
 

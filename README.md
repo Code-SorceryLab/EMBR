@@ -7,7 +7,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/python-3.10+-4584b6?style=flat-square&logo=python&logoColor=white" alt="Python 3.10+">
   <img src="https://img.shields.io/badge/core-zero%20dependencies-ea580c?style=flat-square" alt="Zero dependencies">
-  <img src="https://img.shields.io/badge/tests-383%20passing-22c55e?style=flat-square" alt="383 tests">
+  <img src="https://img.shields.io/badge/tests-385%20passing-22c55e?style=flat-square" alt="385 tests">
   <img src="https://img.shields.io/badge/runs-byte%20identical-22c55e?style=flat-square" alt="Reproducible">
   <img src="https://img.shields.io/badge/models-Ouro%201.4B%20%C2%B7%20llama3.2%3A3b-1e1e22?style=flat-square" alt="Models">
   <img src="https://img.shields.io/badge/GPU-optional-9a9a9a?style=flat-square" alt="GPU optional">
@@ -80,6 +80,7 @@ corrections and caveats, is in [`docs/findings.md`](docs/findings.md).
 | **RQ2** Does anchoring the score defend? | attack count against anchored scoring mass | monotone to **0/10** (p = 0.0039), and **10/10** once the attacker can move the anchor | `python -m eval.provenance` |
 | **RQ2** What does the memory layer cost? | p50 per stage over 100 turns | **1.2 to 2.2 ms** to score and retrieve, against 22.4 s to generate | `python -m eval.run` |
 | **RQ3** Which signals carry retrieval? | nDCG@5, leave-one-query-out | relevance carries it; **nothing here reaches significance at ten queries** | `python -m eval.run` |
+| **RQ3** Is EMBR really below Park? | paired per query at published defaults | **no**: 2 wins to 3 with **5 identical**, p = 0.69; and the two-signal core beats both | `python -m eval.run` |
 
 > **Read the nulls.** The comparison this project was built to make, EMBR against Park, is a
 > null once Park is rated the way Park et al. rate. It is reported as one. The mechanism
@@ -341,7 +342,7 @@ EMBR/
 │   └── bakeoff.py        #   same probes, different models
 ├── assets/               # hand-authored: branding, the diagram, every builder
 ├── docs/                 # findings, metrics, design, roadmap, related work, handoff
-├── tests/                # 383 tests
+├── tests/                # 385 tests
 └── data/                 # generated: runs, figures, tables, ratings, judgements
 ```
 
