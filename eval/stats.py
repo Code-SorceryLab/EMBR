@@ -104,3 +104,35 @@ def holm_bonferroni(pvalues: Mapping[str, float]) -> dict[str, float]:
         running = max(running, min(1.0, (family_size - rank) * p))
         adjusted[name] = running
     return adjusted
+
+
+def spearman(a: Sequence[float], b: Sequence[float]) -> float | None:
+    """Spearman's rank correlation, with average ranks for ties.
+
+    None when either side has no variance or fewer than two points: the statistic is
+    undefined there, and a caller must not average an undefined reading.
+    """
+    if len(a) != len(b) or len(a) < 2:
+        return None
+
+    def ranks(values: Sequence[float]) -> list[float]:
+        order = sorted(range(len(values)), key=lambda i: values[i])
+        ranked = [0.0] * len(values)
+        i = 0
+        while i < len(order):
+            j = i
+            while j + 1 < len(order) and values[order[j + 1]] == values[order[i]]:
+                j += 1
+            for k in range(i, j + 1):  # tied block shares the average rank
+                ranked[order[k]] = (i + j) / 2 + 1
+            i = j + 1
+        return ranked
+
+    ra, rb = ranks(a), ranks(b)
+    mean_a, mean_b = sum(ra) / len(ra), sum(rb) / len(rb)
+    cov = sum((x - mean_a) * (y - mean_b) for x, y in zip(ra, rb))
+    var_a = sum((x - mean_a) ** 2 for x in ra)
+    var_b = sum((y - mean_b) ** 2 for y in rb)
+    if var_a == 0 or var_b == 0:
+        return None
+    return cov / (var_a * var_b) ** 0.5

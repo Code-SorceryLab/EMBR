@@ -88,3 +88,20 @@ def test_holm_bonferroni_caps_at_one() -> None:
     adjusted = holm_bonferroni({"a": 0.9, "b": 0.8})
     assert adjusted["a"] == 1.0
     assert adjusted["b"] == 1.0
+
+
+def test_spearman_reads_rank_agreement_not_linearity() -> None:
+    from eval.stats import spearman
+
+    assert spearman([1, 2, 3, 4], [10, 100, 1000, 10000]) == 1.0  # monotone, not linear
+    assert spearman([1, 2, 3, 4], [4, 3, 2, 1]) == -1.0
+    assert spearman([1, 2, 3], [1, 2, 3]) == 1.0
+
+
+def test_spearman_handles_ties_and_degenerate_input() -> None:
+    from eval.stats import spearman
+
+    assert spearman([1, 1, 1], [1, 2, 3]) is None  # no variance on one side: undefined
+    assert spearman([1], [2]) is None
+    # Average ranks for ties: (1, 2.5, 2.5, 4) against (1, 2, 3, 4) is still strongly positive.
+    assert spearman([1, 2, 2, 3], [1, 2, 3, 4]) > 0.9

@@ -14,12 +14,15 @@ records which one produced the numbers.
 
 from __future__ import annotations
 
+import hashlib
 import io
+import json
+import re
 import zipfile
 from functools import lru_cache
 from pathlib import Path
 from statistics import mean
-from typing import Protocol, runtime_checkable
+from typing import Any, Protocol, runtime_checkable
 from urllib.request import Request, urlopen
 
 from embr.embeddings import tokenize
@@ -27,6 +30,7 @@ from embr.embeddings import tokenize
 LEXICON_URL = "https://saifmohammad.com/WebDocs/Lexicons/NRC-VAD-Lexicon-v2.1.zip"
 LEXICON_MEMBER = "NRC-VAD-Lexicon-v2.1/Unigrams/unigrams-NRC-VAD-Lexicon-v2.1.txt"
 LEXICON_PATH = Path("data/lexicons/unigrams-NRC-VAD-Lexicon-v2.1.txt")
+JUDGE_CACHE_DIR = Path("data/ratings")  # versioned, like the poignancy ratings
 
 
 @runtime_checkable
@@ -145,3 +149,49 @@ class LexiconToneRater:
         # a few hot words in a short line should saturate, not vanish into the token count.
         arousal = min(1.0, arousal_hits * 3.0 / max(1, len(tokens)))
         return (valence, arousal)
+
+
+# --------------------------------------------------------------------------- the judge
+
+JUDGE_PROMPT = (
+    "You are rating the emotional tone of one line of dialogue spoken by a tavern keeper.\n"
+    "Rate two things. Valence: -1.0 is hostile or cold, 0.0 is neutral, +1.0 is warm or\n"
+    "affectionate. Arousal: 0.0 is calm and flat, 1.0 is heated and intense.\n"
+    "Answer with the two numbers only, as: valence, arousal\n"
+    "Line: {line}\n"
+    "Answer: "
+)
+
+_NUMBER = re.compile(r"[-+]?\d*\.?\d+")
+
+
+class JudgeToneRater:
+    """A second rater on a different principle: a model reads the whole line.
+
+    LLM-as-a-judge (Zheng et al. 2023). The judge is blind by construction: the prompt
+    carries the line and nothing else, never the condition, the attack, or the mood that
+    produced it. Cached per judge model so the rating of a line is asked once and the run
+    reproduces. Unparseable replies read as neutral, and the raw reply stays in the cache.
+    """
+
+    def __init__(self, model: Any, cache_dir: Path | None = None) -> None:
+        self.model = model
+        self.name = f"judge:{getattr(model, 'label', type(model).__name__)}"
+        stem = re.sub(r"[^A-Za-z0-9._-]+", "_", self.name).strip("_")
+        self.path = Path(cache_dir or JUDGE_CACHE_DIR) / f"{stem}.json"
+        self.cache: dict[str, dict] = (
+            json.loads(self.path.read_text(encoding="utf-8")) if self.path.exists() else {}
+        )
+
+    def rate(self, text: str) -> tuple[float, float]:
+        key = hashlib.sha256(text.encode("utf-8")).hexdigest()
+        if key not in self.cache:
+            reply = self.model.generate(JUDGE_PROMPT.format(line=text))
+            numbers = [float(n) for n in _NUMBER.findall(reply)[:2]]
+            valence = max(-1.0, min(1.0, numbers[0])) if len(numbers) == 2 else 0.0
+            arousal = max(0.0, min(1.0, numbers[1])) if len(numbers) == 2 else 0.0
+            self.cache[key] = {"text": text, "reply": reply, "valence": valence, "arousal": arousal}
+            self.path.parent.mkdir(parents=True, exist_ok=True)
+            self.path.write_text(json.dumps(self.cache, indent=2, ensure_ascii=False), encoding="utf-8")
+        entry = self.cache[key]
+        return (entry["valence"], entry["arousal"])

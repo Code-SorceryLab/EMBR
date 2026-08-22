@@ -570,6 +570,7 @@ def run_rq1(scenario: Scenario, model_factory: ModelFactory = StubRunner) -> dic
         state = dawn_state(scenario, mood_condition=condition)
         valences: list[float] = []
         arousals: list[float] = []
+        replies: list[dict] = []
         for query in scenario.queries:
             # The reply runs through the real pipeline (stub standing in for the model).
             # The store gets replicas because MemoryStore.add reassigns ids on insert,
@@ -580,9 +581,13 @@ def run_rq1(scenario: Scenario, model_factory: ModelFactory = StubRunner) -> dic
             conversation = Conversation(
                 state=state, store=store, scorer=scorer, model=model_factory(), top_k=5
             )
-            valence, arousal = rater.rate(conversation.take_turn(query.query).reply)
+            reply = conversation.take_turn(query.query).reply
+            valence, arousal = rater.rate(reply)
             valences.append(valence)
             arousals.append(arousal)
+            # The text itself, so a second rater (the blinded judge) can score the same
+            # replies later without regenerating them.
+            replies.append({"query": query.id, "reply": reply, "valence": valence, "arousal": arousal})
         per_condition[condition] = {
             "top5_ids": top5[condition],
             "mean_reply_valence": _mean(valences),
@@ -590,6 +595,7 @@ def run_rq1(scenario: Scenario, model_factory: ModelFactory = StubRunner) -> dic
             # Per-query bootstrap CIs (Phase 2 Task 6): same fixed-seed protocol as RQ3.
             "reply_valence_ci95": list(bootstrap_ci(valences)),
             "reply_arousal_ci95": list(bootstrap_ci(arousals)),
+            "replies": replies,
         }
 
     # How differently each pair of moods remembers: jaccard distance of top-5 sets, with an
@@ -772,6 +778,8 @@ def run_rq2(
                 {
                     "id": attack.id,
                     "category": attack.category,
+                    "canonical_reply": outcome.canonical_reply,
+                    "attacked_reply": outcome.attacked_reply,
                     "drift": drift,
                     "immediate_drift": va_drift(
                         canonical_tone, rater.rate(outcome.attack_reply)

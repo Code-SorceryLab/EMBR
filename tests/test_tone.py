@@ -144,3 +144,42 @@ def test_fetch_extracts_the_unigram_file_from_the_archive(
 
     assert written.read_text(encoding="utf-8") == _FIXTURE
     assert VadLexiconToneRater(written).rate("glad")[0] > 0.5
+
+
+# --------------------------------------------------------------------------- the judge
+
+
+class _Scripted:
+    label = "judge-test"
+
+    def __init__(self, reply: str) -> None:
+        self.reply, self.prompts = reply, []
+
+    def generate(self, prompt: str) -> str:
+        self.prompts.append(prompt)
+        return self.reply
+
+
+def test_judge_parses_two_numbers_and_clamps_to_the_documented_ranges(tmp_path: Path) -> None:
+    from eval.tone import JudgeToneRater
+
+    judge = JudgeToneRater(_Scripted("valence: -0.8, arousal: 0.7"), cache_dir=tmp_path)
+    assert judge.rate("You betrayed me.") == (-0.8, 0.7)
+    judge = JudgeToneRater(_Scripted("2.0 and 5"), cache_dir=tmp_path)
+    assert judge.rate("anything") == (1.0, 1.0)  # clamped, never out of range
+    assert JudgeToneRater(_Scripted("no idea"), cache_dir=tmp_path).rate("x") == (0.0, 0.0)
+
+
+def test_judge_never_sees_the_condition_and_caches_per_model(tmp_path: Path) -> None:
+    from eval.tone import JudgeToneRater
+
+    runner = _Scripted("0.5 0.5")
+    judge = JudgeToneRater(runner, cache_dir=tmp_path)
+    judge.rate("Welcome back, friend.")
+    judge.rate("Welcome back, friend.")
+    assert len(runner.prompts) == 1  # second call served from the cache
+    from eval.tone import JUDGE_PROMPT
+
+    # Blind by construction: the prompt is the fixed template plus the line, nothing else.
+    assert runner.prompts[0] == JUDGE_PROMPT.format(line="Welcome back, friend.")
+    assert judge.name == "judge:judge-test"
