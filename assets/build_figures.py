@@ -87,10 +87,22 @@ INJECTION_STYLE = ((AMBER, "...."), (DEEP_BROWN, "////"))
 #: Readable names for the systems the harness compares.
 SYSTEM_LABELS = {
     "embr": "EMBR",
-    "park": "Park",
+    "park": "Park (authored)",
+    "park_llm": "Park (model-rated)",
     "emo_rag": "Emotional RAG",
     "recency_only": "recency only",
+    "relevance_only": "relevance only",
+    "mnemosyne": "Mnemosyne",
 }
+
+#: The order systems appear in left to right: EMBR, then the two Park arms side by side so
+#: the anchor comparison reads as one glance, then the rest. Unknown systems go last.
+SYSTEM_ORDER = ("embr", "park", "park_llm", "emo_rag", "recency_only", "relevance_only", "mnemosyne")
+
+
+def ordered_systems(names: Sequence[str]) -> tuple[str, ...]:
+    known = [name for name in SYSTEM_ORDER if name in names]
+    return tuple(known + [name for name in names if name not in SYSTEM_ORDER])
 
 FIGURE_DPI = 200
 #: How much of the commit hash the footer carries. Twelve is unambiguous in this repo and
@@ -437,7 +449,7 @@ def poison_summary(results: Mapping[str, object]) -> PoisonSummary:
     is derived rather than hard coded to category names.
     """
     variants: Mapping[str, Mapping[str, object]] = results["rq2"]["variants"]  # type: ignore[index]
-    systems = tuple(variants)
+    systems = ordered_systems(tuple(variants))
     first_attacks: Sequence[Mapping[str, object]] = next(iter(variants.values()))["attacks"]  # type: ignore[index]
 
     category_order: list[str] = []
@@ -469,8 +481,13 @@ def poison_summary(results: Mapping[str, object]) -> PoisonSummary:
         attack for attack in first_attacks if str(attack["category"]) in pure_input
     ]
     # The worst case system: the one whose poison reached the probe most often. Named here
-    # so the figure can point at the floor instead of the reader having to find it.
-    floor_system = max(systems, key=lambda name: sum(retrieved_counts[name].values()))
+    # so the figure can point at the floor instead of the reader having to find it. Ties are
+    # broken towards the deliberate no defence baseline: recency only is the floor by design,
+    # and once a second system reaches the same ceiling the reference line has to keep naming
+    # the designed one, or the figure starts calling a measured result the floor.
+    worst = max(sum(retrieved_counts[name].values()) for name in systems)
+    at_worst = [name for name in systems if sum(retrieved_counts[name].values()) == worst]
+    floor_system = "recency_only" if "recency_only" in at_worst else at_worst[0]
     return PoisonSummary(
         systems=systems,
         injection_categories=injections,
@@ -491,7 +508,8 @@ def latency_rows(
     """One row per system for a single stage, in the order the harness reports them."""
     variants: Mapping[str, Mapping[str, object]] = results["rq2"]["variants"]  # type: ignore[index]
     rows: list[LatencyRow] = []
-    for system, payload in variants.items():
+    for system in ordered_systems(tuple(variants)):
+        payload = variants[system]
         report = payload["latency_ms"][stage]  # type: ignore[index]
         rows.append(
             LatencyRow(
@@ -978,7 +996,7 @@ def _draw_rq2_poisoning(ax: Axes, results: Mapping[str, object]) -> str | None:
     pure_input = ", ".join(name.replace("_", " ") for name in summary.pure_input_categories)
     return _titles(
         ax,
-        "RQ2: emotional weighting makes memory the easiest to poison",
+        "RQ2: only an anchor the attacker cannot write resists poisoning",
         f"{len(categories) * total} injection attacks per system "
         f"({len(categories)} categories of {total}); a bar counts the attacks whose "
         "planted memory entered the probe's top 5. A flat stub on the baseline is a "

@@ -30,7 +30,9 @@ from embr.embeddings import tokenize
 LEXICON_URL = "https://saifmohammad.com/WebDocs/Lexicons/NRC-VAD-Lexicon-v2.1.zip"
 LEXICON_MEMBER = "NRC-VAD-Lexicon-v2.1/Unigrams/unigrams-NRC-VAD-Lexicon-v2.1.txt"
 LEXICON_PATH = Path("data/lexicons/unigrams-NRC-VAD-Lexicon-v2.1.txt")
-JUDGE_CACHE_DIR = Path("data/ratings")  # versioned, like the poignancy ratings
+JUDGE_CACHE_DIR = Path("data/judgements")  # versioned; a directory of its own,
+# because a poignancy rating and a tone judgement are different shapes and the poignancy
+# loader reads every file in its directory.
 
 
 @runtime_checkable

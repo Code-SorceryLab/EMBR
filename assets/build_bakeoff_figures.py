@@ -35,6 +35,7 @@ from matplotlib.ticker import FuncFormatter  # noqa: E402
 
 from assets.build_figures import (  # noqa: E402
     AMBER,
+    SYSTEM_LABELS,
     CREAM,
     DEEP_BROWN,
     EMBER_ORANGE,
@@ -438,6 +439,146 @@ def build_provenance_figure(out_dir: Path | str = DEFAULT_OUT_DIR) -> list[Path]
     return [pdf_path, png_path]
 
 
+#: Device and location suffixes the runners append to a model label, dropped when a cache
+#: file stem is turned back into a name a reader recognises.
+_RATER_SUFFIXES = ("_cuda", "_cpu", "_mps", "_auto", "_local", "_cloud")
+
+
+def arm_label(arm: str) -> str:
+    """A grid arm's name for a figure. `park_llm:<cache stem>` becomes "Park rated by <model>",
+    with the vendor prefix and the device suffix dropped and the tag separator restored."""
+    if not arm.startswith("park_llm:"):
+        return SYSTEM_LABELS.get(arm, arm)
+    stem = arm.split(":", 1)[1]
+    for suffix in _RATER_SUFFIXES:
+        if stem.endswith(suffix):
+            stem = stem[: -len(suffix)]
+            break
+    head, _, tail = stem.partition("_")
+    if tail and head[:1].isupper():  # a vendor prefix: ByteDance_Ouro-1.4B
+        stem = tail
+    return f"Park rated by {stem.replace('_', ':')}"
+
+
+CONDITION_LABELS = {
+    "congruent": "as written",
+    "incongruent": "valence\nflipped",
+    "untagged": "tag\nremoved",
+    "auto_tagged": "tag from\nthe text",
+}
+
+
+def build_grid_figure(
+    grid_path: Path | str = "data/experiments/grid.json", out_dir: Path | str = DEFAULT_OUT_DIR
+) -> list[Path]:
+    """The content x tag grid: what an attack loses when only its affect tag changes.
+
+    One line per system across the four tag conditions. A flat line is a system with no
+    affect term: nothing it scores changed, so nothing it retrieved changed. Only EMBR
+    slopes, and only where the tag disappears, never where the tag merely points the other
+    way. The mood shift under each condition runs along the bottom, because it is the same
+    in every arm (appraisal is shared) and it is what the retrieval counts cannot show.
+    """
+    report = json.loads(Path(grid_path).read_text(encoding="utf-8"))
+    conditions = list(report["conditions"])
+    cells = report["cells"]
+    total = cells[next(iter(cells))][conditions[0]]["attacks"]
+
+    # Systems whose counts never move share one label, so the reader is not asked to
+    # separate lines that are identical by measurement rather than by accident.
+    groups: dict[tuple[int, ...], list[str]] = {}
+    for arm, cell in cells.items():
+        counts = tuple(cell[c]["poison_retrieved"] for c in conditions)
+        groups.setdefault(counts, []).append(arm)
+
+    out_path = Path(out_dir)
+    out_path.mkdir(parents=True, exist_ok=True)
+    xs = list(range(len(conditions)))
+
+    with plt.rc_context(HOUSE_RC):
+        figure, ax = plt.subplots(figsize=(7.8, 5.2), dpi=FIGURE_DPI)
+        figure.subplots_adjust(left=0.085, right=0.715, top=0.83, bottom=0.255)
+        _style_axes(ax)
+
+        for counts, arms in sorted(groups.items(), key=lambda item: -sum(item[0])):
+            embr = "embr" in arms
+            label = " / ".join(arm_label(a) for a in arms)
+            ax.plot(
+                xs, counts,
+                color=EMBER_ORANGE if embr else DEEP_BROWN,
+                linewidth=2.4 if embr else 1.2,
+                alpha=1.0 if embr else 0.55,
+                marker="o", markersize=7 if embr else 5,
+                markerfacecolor=EMBER_ORANGE if embr else CREAM,
+                markeredgecolor=NEAR_BLACK, markeredgewidth=0.8,
+                zorder=3 if embr else 2,
+            )
+            ax.text(
+                xs[-1] + 0.09, counts[-1], f"  {label}",
+                color=NEAR_BLACK if embr else DEEP_BROWN,
+                fontsize=8.2 if embr else 7.4,
+                fontweight="bold" if embr else "normal",
+                va="center", ha="left",
+            )
+
+        # The state channel, identical in every arm because one appraisal serves them all.
+        # Below the tick labels, in axes fraction, so it reads as a second row of the axis
+        # rather than as data: it is the same measurement for every line on the plot.
+        below = ax.get_xaxis_transform()
+        shifts = [cells["embr"][c]["mean_mood_valence_delta"] for c in conditions]
+        for x, shift in zip(xs, shifts):
+            ax.text(
+                x, -0.175, f"{shift:+.3f}", transform=below,
+                color=DEEP_BROWN if shift else NEAR_BLACK,
+                fontsize=8.2, fontweight="normal" if shift else "bold",
+                ha="center", va="center",
+            )
+        ax.text(
+            -0.66, -0.175, "mood shift", transform=below,
+            color=NEAR_BLACK, fontsize=7.6, ha="left", va="center",
+        )
+
+        ax.set_xticks(xs)
+        ax.set_xticklabels([CONDITION_LABELS.get(c, c) for c in conditions])
+        ax.set_xlim(-0.7, len(conditions) - 0.75)
+        ax.set_ylim(-0.6, total + 0.6)
+        ax.set_yticks(range(0, total + 1, 2))
+        ax.set_ylabel(f"planted memories recalled (of {total})")
+        ax.set_xlabel("what was changed about the planted memory's emotion tag", labelpad=26.0)
+        _value_grid(ax, axis="y")
+        ax.set_title(
+            "The tag is what gets attacked, not the words:\n"
+            "remove it and the attack weakens, flip it and nothing changes",
+            loc="left", pad=12.0, color=NEAR_BLACK, fontweight="bold",
+        )
+        try:
+            pdf_path = out_path / "content_tag_grid.pdf"
+            png_path = out_path / "content_tag_grid.png"
+            figure.savefig(pdf_path, format="pdf", metadata={"CreationDate": None})
+            figure.savefig(png_path, format="png", dpi=FIGURE_DPI, metadata={"Software": "EMBR"})
+        finally:
+            plt.close(figure)
+    return [pdf_path, png_path]
+
+
+def build_experiment_figures(out_dir: Path | str = DEFAULT_OUT_DIR) -> list[Path]:
+    """Every figure that comes from a mechanism experiment rather than from a run directory.
+
+    These recompute from the harness (retrieval and state never call a model, so they are
+    fast and exact) or read an experiment's own JSON. Kept beside the run derived figures so
+    one command rebuilds the whole figure set: a paper with half its assets regenerated from
+    a stale cache is the failure mode this exists to prevent.
+    """
+    written = list(build_affective_indexing_figure(out_dir))
+    written += list(build_provenance_figure(out_dir))
+    grid = Path("data/experiments/grid.json")
+    if grid.exists():
+        written += list(build_grid_figure(grid, out_dir))
+    else:
+        print("  (skipping the content x tag grid figure: run python -m eval.grid first)")
+    return written
+
+
 def _write_notes(
     source: Path, payload: dict[str, Any], arms: list[dict[str, Any]], out_dir: Path
 ) -> Path:
@@ -497,7 +638,8 @@ def main(argv: Sequence[str] | None = None) -> None:
         help="only build the bake-off figures, not the replication one",
     )
     args = parser.parse_args(argv)
-    written = build_bakeoff_figures(args.bakeoff_dir, args.out_dir)
+    written = build_experiment_figures(args.out_dir)
+    written += build_bakeoff_figures(args.bakeoff_dir, args.out_dir)
     if not args.skip_replicate:
         try:
             written += build_replicate_figure(out_dir=args.out_dir)

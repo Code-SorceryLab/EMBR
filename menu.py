@@ -81,7 +81,7 @@ _MENU_ITEMS = [
     ("8", "Poisoning Attribution", "which signal lets the attack in, one ablation each"),
     ("9", "Provenance Sweep", "the defence: anchored scoring mass vs poisoning"),
     ("10", "Content x Tag Grid", "same poison, four tags: the text never reaches the state"),
-    ("11", "Generate Paper Assets", "rebuild figures and tables from a run"),
+    ("11", "Generate Paper Assets", "rebuild every figure and table, run and experiments"),
     ("12", "Latest Results", "summarise the newest run directory"),
     ("S", "Settings", "weights, top-k, backends, model runner"),
     ("L", "Fetch Tone Lexicon", "NRC VAD v2.1, research use, stays out of git"),
@@ -451,16 +451,23 @@ def _do_generate_assets() -> None:
         print(_DIM('    Install them with: pip install -e ".[figures]"'))
         return
 
-    chosen = toggle_select("ASSETS", ["tables (LaTeX + CSV)", "figures (PDF + PNG)"], default_indices=[0, 1])
+    options = ["tables (LaTeX + CSV)", "figures from the run", "figures from the experiments"]
+    chosen = toggle_select("ASSETS", options, default_indices=[0, 1, 2])
     if not chosen:
         print(_DIM("    Cancelled."))
         return
     print(_DIM(f"\n    Building from {run_dir}..."))
     written: list[Path] = []
-    if any(c.startswith("tables") for c in chosen):
+    if options[0] in chosen:
         written += list(build_all_tables(run_dir))
-    if any(c.startswith("figures") for c in chosen):
+    if options[1] in chosen:
         written += list(build_all_figures(run_dir))
+    if options[2] in chosen:
+        # The mechanism figures recompute from the harness rather than from the run, and
+        # leaving them out is how half a figure set goes stale without anyone noticing.
+        from assets.build_bakeoff_figures import build_experiment_figures
+
+        written += list(build_experiment_figures())
     print(f"    {_GRN(f'✓ Wrote {len(written)} files.')}")
     for path in written:
         print(_DIM(f"      {path}"))

@@ -136,3 +136,28 @@ def spearman(a: Sequence[float], b: Sequence[float]) -> float | None:
     if var_a == 0 or var_b == 0:
         return None
     return cov / (var_a * var_b) ** 0.5
+
+
+def spearman_pvalue(
+    a: Sequence[float], b: Sequence[float], resamples: int = 10_000, seed: int = 0
+) -> float | None:
+    """Two-sided permutation p for Spearman's rho: how often a reshuffle of one side reaches
+    the observed |rho|.
+
+    Permutation rather than the t approximation because n here is tens, not hundreds, and
+    the readings are bounded and tied. The seed is fixed so two runs report the same p.
+    None when rho itself is undefined.
+    """
+    observed = spearman(a, b)
+    if observed is None:
+        return None
+    rng = random.Random(seed)
+    shuffled = list(b)
+    hits = 0
+    for _ in range(resamples):
+        rng.shuffle(shuffled)
+        value = spearman(a, shuffled)
+        if value is not None and abs(value) >= abs(observed) - 1e-12:
+            hits += 1
+    # Add-one smoothing: a p of exactly 0 would claim more precision than resamples give.
+    return (hits + 1) / (resamples + 1)

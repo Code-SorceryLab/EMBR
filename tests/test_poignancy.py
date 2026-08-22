@@ -90,3 +90,20 @@ def test_rq2_gains_the_llm_rated_park_arm_only_behind_a_real_model(
     scenario = load_eval_scenario()
     assert "park_llm" not in _rq2_variant_builders(scenario, StubRunner)
     assert "park_llm" in _rq2_variant_builders(scenario, lambda: ScriptedRunner("9"))
+
+
+def test_a_judge_cache_is_not_mistaken_for_a_poignancy_cache(tmp_path: Path) -> None:
+    """The two caches used to share a directory, and the grid read every file in it as
+    ratings, which crashed on the judge's different shape. Shape is checked now."""
+    import json
+
+    from eval.poignancy import is_ratings_cache
+
+    ratings = tmp_path / "ratings.json"
+    ratings.write_text(json.dumps({"k": {"text": "a memory", "reply": "7", "rating": 0.7}}), encoding="utf-8")
+    judgements = tmp_path / "judge.json"
+    judgements.write_text(json.dumps({"k": {"text": "a line", "reply": "0.5, 0.5", "valence": 0.5, "arousal": 0.5}}), encoding="utf-8")
+
+    assert is_ratings_cache(ratings)
+    assert not is_ratings_cache(judgements)
+    assert not is_ratings_cache(tmp_path / "missing.json")

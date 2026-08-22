@@ -36,7 +36,7 @@ from embr import CompositeScorer, Conversation, Relevance, StubRunner
 from eval.attacks import ATTACKS, Attack, run_attack, tag_variants
 from eval.backends import MnemosyneBackend, mnemosyne_available
 from eval.baselines import memory_text, park_scorer
-from eval.poignancy import CACHE_DIR, cached_ratings
+from eval.poignancy import CACHE_DIR, cached_ratings, is_ratings_cache
 from eval.run import (
     _EMBEDDER,
     ModelFactory,
@@ -66,7 +66,7 @@ def _arms(scenario: Scenario, model_factory: ModelFactory) -> dict[str, Callable
     )
     # Park rated by whichever models have rated before: the cache is versioned, so this row
     # reproduces on a machine with no model at all.
-    for cache in sorted(CACHE_DIR.glob("*.json")):
+    for cache in sorted(p for p in CACHE_DIR.glob("*.json") if is_ratings_cache(p)):
         ratings = cached_ratings(cache)
         arms[f"park_llm:{cache.stem}"] = lambda ratings=ratings: park_scorer(
             ratings, embedder=_EMBEDDER, now=_eval_clock, rating_key=memory_text

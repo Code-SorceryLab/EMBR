@@ -94,6 +94,18 @@ def llm_ratings(
     }
 
 
+def is_ratings_cache(path: Path) -> bool:
+    """Whether a file is a poignancy cache, rather than some other JSON in the directory."""
+    try:
+        cache = json.loads(Path(path).read_text(encoding="utf-8"))
+        return bool(cache) and all(
+            isinstance(entry, dict) and "text" in entry and "rating" in entry
+            for entry in cache.values()
+        )
+    except (OSError, ValueError, AttributeError):
+        return False
+
+
 def cached_ratings(path: Path) -> Mapping[Hashable, float]:
     """The ratings a previous run cached, keyed by text: the versioned reproducibility path,
     so the park_llm arm can be rebuilt on a machine that has no model at all."""

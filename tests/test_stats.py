@@ -105,3 +105,21 @@ def test_spearman_handles_ties_and_degenerate_input() -> None:
     assert spearman([1], [2]) is None
     # Average ranks for ties: (1, 2.5, 2.5, 4) against (1, 2, 3, 4) is still strongly positive.
     assert spearman([1, 2, 2, 3], [1, 2, 3, 4]) > 0.9
+
+
+def test_spearman_pvalue_separates_a_real_correlation_from_noise() -> None:
+    from eval.stats import spearman_pvalue
+
+    ordered = list(range(12))
+    assert spearman_pvalue(ordered, ordered, resamples=2000) < 0.01
+    # Deterministically interleaved, so rho is near zero without needing a random fixture.
+    scrambled = [6, 0, 7, 1, 8, 2, 9, 3, 10, 4, 11, 5]
+    assert spearman_pvalue(ordered, scrambled, resamples=2000) > 0.1
+    assert spearman_pvalue([1, 1, 1], [1, 2, 3]) is None  # undefined rho, undefined p
+
+
+def test_spearman_pvalue_never_reports_exactly_zero() -> None:
+    from eval.stats import spearman_pvalue
+
+    ordered = list(range(8))
+    assert spearman_pvalue(ordered, ordered, resamples=100) > 0.0

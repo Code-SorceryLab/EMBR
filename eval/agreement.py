@@ -21,7 +21,7 @@ from typing import Any
 
 from embr.model import GenerationSettings, OllamaRunner
 from eval.scenarios import dawn_state, load_scenario
-from eval.stats import spearman
+from eval.stats import spearman, spearman_pvalue
 from eval.tone import JudgeToneRater, ToneRater, default_tone_rater
 
 JUDGE_SETTINGS = GenerationSettings(temperature=0.0, max_new_tokens=20, seed=7)
@@ -64,21 +64,37 @@ def rate_run(run_dir: Path, judge: ToneRater | None = None, lexicon: ToneRater |
         row["judge_valence"], row["judge_arousal"] = judge.rate(row["reply"])
 
     rq1 = [r for r in rows if r["study"] == "rq1"]
+    lex_v = [r["lexicon_valence"] for r in rows]
+    judge_v = [r["judge_valence"] for r in rows]
+    lex_a = [r["lexicon_arousal"] for r in rows]
+    judge_a = [r["judge_arousal"] for r in rows]
+    pinned = [r["pinned_valence"] for r in rq1]
+    rq1_lex = [r["lexicon_valence"] for r in rq1]
+    rq1_judge = [r["judge_valence"] for r in rq1]
     report = {
         "run": run_dir.name,
         "model": results.get("metadata", {}).get("model"),
         "raters": {"lexicon": lexicon.name, "judge": judge.name},
         "replies": len(rows),
         "agreement": {
-            "valence_rho": spearman([r["lexicon_valence"] for r in rows], [r["judge_valence"] for r in rows]),
-            "arousal_rho": spearman([r["lexicon_arousal"] for r in rows], [r["judge_arousal"] for r in rows]),
+            "valence_rho": spearman(lex_v, judge_v),
+            "valence_p": spearman_pvalue(lex_v, judge_v),
+            "arousal_rho": spearman(lex_a, judge_a),
+            "arousal_p": spearman_pvalue(lex_a, judge_a),
+            "note": "Spearman rho between the two raters over every stored reply. Low "
+            "agreement is a result, not a bug: it bounds how far any single-rater tone "
+            "claim in this project can be trusted.",
         },
         "rq1_tone_shift": {
             "replies": len(rq1),
-            "lexicon_rho": spearman([r["pinned_valence"] for r in rq1], [r["lexicon_valence"] for r in rq1]),
-            "judge_rho": spearman([r["pinned_valence"] for r in rq1], [r["judge_valence"] for r in rq1]),
+            "lexicon_rho": spearman(pinned, rq1_lex),
+            "lexicon_p": spearman_pvalue(pinned, rq1_lex),
+            "judge_rho": spearman(pinned, rq1_judge),
+            "judge_p": spearman_pvalue(pinned, rq1_judge),
             "note": "Spearman rho between the pinned mood valence and the rated reply valence "
-            "over every RQ1 reply; None when a rater reads every reply the same.",
+            "over every RQ1 reply, with a two-sided permutation p; None when a rater reads "
+            "every reply the same. This is the RQ1 generation claim: whether an authored mood "
+            "changes what the character says, not only what it recalls.",
         },
         "rows": rows,
     }
@@ -92,11 +108,13 @@ def main() -> None:
     fmt = lambda v: "undefined" if v is None else f"{v:+.3f}"  # noqa: E731
     print(f"run {report['run']} on {report['model']}: {report['replies']} replies")
     print(f"  raters: {report['raters']['lexicon']} vs {report['raters']['judge']}")
-    print(f"  agreement  valence rho {fmt(report['agreement']['valence_rho'])}"
-          f"   arousal rho {fmt(report['agreement']['arousal_rho'])}")
+    agree = report["agreement"]
+    print(f"  rater agreement  valence rho {fmt(agree['valence_rho'])} (p {agree['valence_p']:.4f})"
+          f"   arousal rho {fmt(agree['arousal_rho'])} (p {agree['arousal_p']:.4f})")
     shift = report["rq1_tone_shift"]
-    print(f"  RQ1 tone shift, pinned mood vs reply valence over {shift['replies']} replies:"
-          f"  lexicon {fmt(shift['lexicon_rho'])}   judge {fmt(shift['judge_rho'])}")
+    print(f"  RQ1 tone shift, pinned mood vs reply valence over {shift['replies']} replies:")
+    print(f"    lexicon rho {fmt(shift['lexicon_rho'])} (p {shift['lexicon_p']:.4f})"
+          f"   judge rho {fmt(shift['judge_rho'])} (p {shift['judge_p']:.4f})")
     print(f"  written to {run_dir / 'agreement.json'}")
 
 
