@@ -564,3 +564,15 @@ def test_the_poison_floor_stays_the_designed_baseline_when_a_measured_arm_ties_i
         for name, hits in (("embr", 1), ("park_llm", 3), ("recency_only", 3))
     }}}
     assert poison_summary(results).floor_system == "recency_only"
+
+
+def test_the_preliminary_warning_names_the_run_s_own_model(run_dir: Path) -> None:
+    # It used to hard-code "stub model", so a run on a real model shipped a sidecar claiming
+    # its numbers came from a stub. The caveat has to follow the run, not the code.
+    from assets.build_figures import preliminary_warning
+
+    results = load_run_results(run_dir)
+    assert "stub" in preliminary_warning(results)
+    results["metadata"]["model"] = "ByteDance/Ouro-1.4B (cuda)"
+    warning = preliminary_warning(results)
+    assert "Ouro" in warning and "stub" not in warning

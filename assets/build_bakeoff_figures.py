@@ -561,6 +561,60 @@ def build_grid_figure(
     return [pdf_path, png_path]
 
 
+#: The caveat for each experiment figure, keyed by file stem. The house rule is that a figure
+#: carries data and its notes live in results.txt, and these three had no notes at all, which
+#: is how a figure ends up in a slide deck with nothing to stop it being over-read.
+EXPERIMENT_NOTES: dict[str, tuple[str, str]] = {
+    "affective_indexing": (
+        "Flip a memory's emotion and its recall inverts; what it means does not move",
+        "Deterministic and model independent: relevance and mood congruence are both pure "
+        "functions of the memory and the state. The 5 memories outside the charged set have "
+        "|valence| below the 0.2 threshold, so a sign flip barely moves them and their "
+        "emotional home is set by arousal instead, the axis a valence flip does not touch. "
+        "Reproduce with python -m eval.emotion_flip.",
+    ),
+    "provenance_sweep": (
+        "Poisoning against the share of scoring mass anchored to authored data",
+        "Ten injection attacks per point, exact McNemar against the unanchored arm. The "
+        "second curve is the same sweep with the injected memories given the corpus maximum "
+        "rating, which models the LLM poignancy rater Park et al. actually use and the "
+        "attacker reaches through the memory text: the defence does not survive it at any "
+        "weight. The claim is bounded to exactly that. Reproduce with python -m "
+        "eval.provenance.",
+    ),
+    "content_tag_grid": (
+        "The tag is what gets attacked, not the words",
+        "Ten injected texts held fixed under four affect-tag conditions against every arm. "
+        "Counts are exact, not estimates: retrieval and appraisal never call a model. The "
+        "mood shift row is identical in every arm because one appraisal serves them all, "
+        "which is the state channel the retrieval counts cannot show. relevance_only and "
+        "Mnemosyne read 0/10 because the probe shares no words with any memory, so they "
+        "retrieve nothing at all: immune by silence, not by defence. Reproduce with python "
+        "-m eval.grid.",
+    ),
+    "mood_recall": (
+        "The same question asked in three moods (animated)",
+        "Built from the reported run rather than drawn: every dot sits at a memory's real "
+        "affect tag and every lit set is the real top 5 for the king-news query. Animated "
+        "with SMIL because Blink does not run CSS animations inside an img tag, which is how "
+        "GitHub embeds an SVG. Reproduce with python assets/build_animations.py.",
+    ),
+}
+
+
+def write_experiment_notes(stems: Sequence[str], out_dir: Path) -> Path:
+    """Append the experiment figures' caveats to results.txt, replacing any previous block."""
+    lines = ["", "=" * 72, "Mechanism experiments", "=" * 72, ""]
+    for stem in stems:
+        title, note = EXPERIMENT_NOTES[stem]
+        lines += ["-" * 72, stem, "-" * 72, "", title, "", note, ""]
+    notes = Path(out_dir) / RESULTS_TEXT_FILENAME
+    existing = notes.read_text(encoding="utf-8") if notes.exists() else ""
+    trimmed = existing.split("\n" + "=" * 72 + "\nMechanism experiments")[0]
+    notes.write_text(trimmed + "\n".join(lines), encoding="utf-8", newline="\n")
+    return notes
+
+
 def build_experiment_figures(out_dir: Path | str = DEFAULT_OUT_DIR) -> list[Path]:
     """Every figure that comes from a mechanism experiment rather than from a run directory.
 
@@ -582,6 +636,8 @@ def build_experiment_figures(out_dir: Path | str = DEFAULT_OUT_DIR) -> list[Path
         written += list(build_grid_figure(grid, out_dir))
     else:
         print("  (skipping the content x tag grid figure: run python -m eval.grid first)")
+    stems = [path.stem for path in written if path.suffix in (".png", ".svg")]
+    written.append(write_experiment_notes(stems, Path(out_dir)))
     return written
 
 

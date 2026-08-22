@@ -93,3 +93,21 @@ def test_the_track_holds_each_phase_flat_and_crossfades_the_wrap(tmp_path: Path)
     assert values[0] == "1" and values[-1] == "1"  # the loop closes on the state it opened in
     assert times[0] == 0.0 and times[-1] == 1.0
     assert times == sorted(times)  # SMIL rejects a keyTimes list that is not increasing
+
+
+def test_every_experiment_figure_has_a_note_beside_it(tmp_path: Path) -> None:
+    """The house rule is that a figure carries data and its caveats live in results.txt.
+    These three shipped with no notes at all, which is how a figure reaches a slide deck
+    with nothing to stop it being over-read."""
+    from assets.build_bakeoff_figures import EXPERIMENT_NOTES, write_experiment_notes
+
+    stems = ["affective_indexing", "provenance_sweep", "content_tag_grid", "mood_recall"]
+    assert set(stems) <= set(EXPERIMENT_NOTES)
+    notes = write_experiment_notes(stems, tmp_path)
+    text = notes.read_text(encoding="utf-8")
+    for stem in stems:
+        assert stem in text
+        assert EXPERIMENT_NOTES[stem][1][:40] in text
+    # A rebuild replaces the block rather than stacking a second copy under it.
+    write_experiment_notes(stems, tmp_path)
+    assert notes.read_text(encoding="utf-8").count("Mechanism experiments") == 1

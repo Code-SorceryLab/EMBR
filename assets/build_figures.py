@@ -207,13 +207,22 @@ def latest_run_dir(runs_root: Path | str = "data/runs") -> Path:
 # Provenance footer
 # --------------------------------------------------------------------------------------
 
-#: Kept next to the footer builder because it is the one sentence that stops any of these
-#: figures being over read. Reworded here, it is reworded everywhere.
-PRELIMINARY_WARNING = (
-    "PRELIMINARY: stub model (echoes the player's line), deterministic lexical embedder, "
-    "v1 single author labels, 10 queries. Every interval spans zero and no Holm corrected "
-    "comparison is significant: read direction, not ranking."
-)
+def preliminary_warning(results: Mapping[str, object]) -> str:
+    """The one sentence that stops these figures being over read, naming the run's own model.
+
+    It used to hard-code "stub model", which is how a run on Ouro shipped a sidecar claiming
+    its numbers came from a stub. The scope statement is about RQ3, which is where every
+    interval spans zero; the results that do reach significance live elsewhere, and the
+    sentence now says where.
+    """
+    metadata: Mapping[str, object] = results.get("metadata", {})  # type: ignore[assignment]
+    model = str(metadata.get("model", "unknown model"))
+    return (
+        f"PRELIMINARY: model {model}, deterministic lexical embedder, v1 single author "
+        "labels, 10 queries. No RQ3 comparison is significant and every RQ3 interval spans "
+        "zero: read direction, not ranking. The results that do reach significance are "
+        "stated in docs/findings.md."
+    )
 
 
 def figure_footer_text(results: Mapping[str, object], run_stamp: str) -> str:
@@ -233,7 +242,7 @@ def figure_footer_text(results: Mapping[str, object], run_stamp: str) -> str:
         f"labels {metadata.get('label_set')} {metadata.get('label_version')}  |  "
         f"built by assets/build_figures.py"
     )
-    return f"{provenance}\n{PRELIMINARY_WARNING}"
+    return f"{provenance}\n{preliminary_warning(results)}"
 
 
 # --------------------------------------------------------------------------------------
