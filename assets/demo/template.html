@@ -3,151 +3,252 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>EMBR: the scorer, made touchable</title>
+<title>EMBR: what she remembers, and how to poison it</title>
 <style>
   :root {
-    --cream: #FFF7ED; --ember: #EA580C; --amber: #F59E0B; --brown: #7C2D12;
-    --ink: #1C1917; --dim: #C9BDB2; --panel: rgba(255,255,255,.62);
-    --good: #15803D; --bad: #B91C1C;
+    --bg: #17110D; --bg2: #211811; --panel: rgba(255,247,237,.045);
+    --line: rgba(255,247,237,.13); --ink: #F3E9DF; --dim: #A6907E;
+    --ember: #FF6B1A; --amber: #FFB020; --rose: #FF4D6D;
+    --teal: #2FB6C4; --moss: #93C24F; --violet: #C08BFF;
+    --good: #6FCF6F; --bad: #FF6B6B;
+    --sans: "DejaVu Sans", "Segoe UI", Verdana, sans-serif;
   }
   * { box-sizing: border-box; }
+  html { color-scheme: dark; }
   body {
-    margin: 0; padding: 24px 20px 60px; background: var(--cream); color: var(--ink);
-    font: 14px/1.55 "DejaVu Sans", Verdana, Geneva, sans-serif;
+    margin: 0; padding: 0 0 64px; color: var(--ink); font: 14px/1.55 var(--sans);
+    background:
+      radial-gradient(1100px 520px at 18% -8%, rgba(255,107,26,.16), transparent 62%),
+      radial-gradient(900px 480px at 88% 6%, rgba(255,77,109,.10), transparent 60%),
+      var(--bg);
+    background-attachment: fixed;
   }
-  .wrap { max-width: 1180px; margin: 0 auto; }
-  h1 { font-size: 21px; margin: 0 0 2px; letter-spacing: -.2px; }
-  h1 span { color: var(--ember); }
-  .sub { color: var(--brown); font-size: 13px; margin: 0 0 4px; }
-  .prov { color: var(--brown); opacity: .8; font-size: 11.5px; margin: 0 0 14px; }
-  .prov code { background: rgba(124,45,18,.08); padding: 1px 5px; border-radius: 4px; }
+  .wrap { max-width: 1220px; margin: 0 auto; padding: 0 20px; }
+
+  /* ---------------------------------------------------------------- hero */
+  header { padding: 34px 0 18px; }
+  .kicker {
+    font-size: 11px; letter-spacing: .22em; text-transform: uppercase;
+    color: var(--ember); font-weight: 700; margin: 0 0 8px;
+  }
+  h1 {
+    font-size: clamp(26px, 4.2vw, 42px); line-height: 1.08; margin: 0 0 10px;
+    letter-spacing: -.6px; font-weight: 800; max-width: 20ch;
+  }
+  h1 em { font-style: normal; color: var(--ember); }
+  .lede { font-size: 15.5px; color: var(--dim); max-width: 62ch; margin: 0 0 18px; }
+  .lede b { color: var(--ink); font-weight: 700; }
+  .prov { font-size: 11.5px; color: var(--dim); margin: 14px 0 0; }
+  .prov code {
+    background: rgba(255,247,237,.07); padding: 1px 6px; border-radius: 4px;
+    font-size: 11px; color: var(--amber);
+  }
   .badge {
-    display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 11.5px;
+    display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 11px;
     font-weight: 700; border: 1px solid;
   }
-  .badge.ok { color: var(--good); border-color: var(--good); background: rgba(21,128,61,.08); }
-  .badge.no { color: var(--bad); border-color: var(--bad); background: rgba(185,28,28,.08); }
-  .tabs { display: flex; gap: 8px; margin: 0 0 16px; }
-  .tabs button {
-    font: inherit; font-weight: 700; padding: 7px 18px; border-radius: 999px; cursor: pointer;
-    border: 1px solid var(--brown); background: transparent; color: var(--brown);
+  .badge.ok  { color: var(--good); border-color: rgba(111,207,111,.5); background: rgba(111,207,111,.10); }
+  .badge.no  { color: var(--bad);  border-color: rgba(255,107,107,.5); background: rgba(255,107,107,.12); }
+
+  /* ---------------------------------------------------------------- buttons */
+  .btn {
+    font: inherit; font-weight: 700; font-size: 13.5px; padding: 10px 20px;
+    border-radius: 999px; cursor: pointer; border: 1px solid var(--line);
+    background: rgba(255,247,237,.06); color: var(--ink); transition: .16s;
   }
-  .tabs button[aria-selected="true"] { background: var(--ember); border-color: var(--ember); color: #fff; }
-  .grid { display: grid; grid-template-columns: minmax(360px, 1fr) minmax(320px, 380px); gap: 18px; align-items: start; }
-  @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
-  .card {
-    background: var(--panel); border: 1px solid rgba(124,45,18,.28); border-radius: 12px;
-    padding: 14px 16px 16px;
+  .btn:hover { background: rgba(255,247,237,.13); }
+  .btn.primary {
+    background: linear-gradient(180deg, #FF8A3D, var(--ember)); border-color: transparent;
+    color: #1A0E06; box-shadow: 0 6px 22px rgba(255,107,26,.34);
   }
-  .card h2 { font-size: 13px; text-transform: none; color: var(--brown); margin: 0 0 10px; }
-  label.row { display: grid; grid-template-columns: 110px 1fr 46px; gap: 8px; align-items: center; margin: 5px 0; font-size: 12.5px; }
-  label.row span:last-child { text-align: right; font-variant-numeric: tabular-nums; color: var(--brown); }
+  .btn.primary:hover { filter: brightness(1.09); }
+  .btn.small { padding: 6px 14px; font-size: 12px; }
+  .btnrow { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+
+  /* ---------------------------------------------------------------- tour rail */
+  #tour {
+    margin: 18px 0 0; border: 1px solid rgba(255,107,26,.4); border-radius: 14px;
+    background: linear-gradient(180deg, rgba(255,107,26,.13), rgba(255,107,26,.04));
+    padding: 14px 16px; display: none;
+  }
+  #tour[data-on="1"] { display: block; }
+  .tour-top { display: flex; justify-content: space-between; gap: 14px; align-items: baseline; }
+  .tour-step { font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: var(--amber); font-weight: 700; }
+  .tour-cap { font-size: 15px; margin: 6px 0 10px; max-width: 78ch; }
+  .tour-cap b { color: var(--amber); }
+  .pips { display: flex; gap: 5px; }
+  .pips i { width: 22px; height: 3px; border-radius: 2px; background: rgba(255,247,237,.2); display: block; }
+  .pips i.on { background: var(--ember); }
+
+  /* ---------------------------------------------------------------- brain */
+  .brain {
+    margin: 18px 0 0; border: 1px solid var(--line); border-radius: 16px;
+    background: linear-gradient(180deg, rgba(255,247,237,.05), rgba(255,247,237,.02));
+    padding: 8px 10px 10px; overflow-x: auto;
+  }
+  /* Three columns of 10px labels do not survive being squeezed onto a phone, so below the
+     width where they stop being readable the diagram scrolls sideways instead of shrinking. */
+  .brain svg { width: 100%; height: auto; display: block; min-width: 760px; }
+  .node { transition: transform .5s cubic-bezier(.4,.9,.3,1); }
+  .dot, .halo, .ring { transition: r .38s ease, fill .38s ease, fill-opacity .38s ease, stroke .38s ease; }
+  .edge { transition: opacity .42s ease, stroke-width .42s ease; }
+  .slot { transition: transform .5s cubic-bezier(.4,.9,.3,1), opacity .34s ease; }
+  @media (prefers-reduced-motion: reduce) {
+    .node, .dot, .halo, .ring, .edge, .slot { transition: none; }
+  }
+
+  /* ---------------------------------------------------------------- headline strip */
+  .strip { margin: 16px 0 0; }
+  .strip h2 { font-size: 13px; margin: 0 0 3px; letter-spacing: .04em; }
+  .strip .why { font-size: 12.5px; color: var(--dim); margin: 0 0 10px; }
+  .four { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  @media (max-width: 820px) { .four { grid-template-columns: repeat(2, 1fr); } }
+  .cond {
+    border: 1px solid var(--line); border-radius: 12px; padding: 11px 12px;
+    background: var(--panel); cursor: pointer; text-align: left; font: inherit; color: inherit;
+    transition: .16s;
+  }
+  .cond:hover { border-color: rgba(255,107,26,.5); }
+  .cond[aria-pressed="true"] { border-color: var(--ember); background: rgba(255,107,26,.12); }
+  .cond .name { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--dim); font-weight: 700; }
+  .cond .big { font-size: 24px; font-weight: 800; font-variant-numeric: tabular-nums; margin: 5px 0 1px; letter-spacing: -.5px; }
+  .cond .unit { font-size: 11px; color: var(--dim); }
+  .cond .meter { height: 5px; border-radius: 3px; background: rgba(255,247,237,.12); margin: 9px 0 8px; overflow: hidden; }
+  .cond .meter i { display: block; height: 100%; border-radius: 3px; transition: width .45s ease; }
+  .cond .out { font-size: 12px; font-weight: 700; }
+  .cond .out.landed { color: var(--bad); }
+  .cond .out.inert  { color: var(--good); }
+  .zero { color: var(--good); }
+
+  /* ---------------------------------------------------------------- controls */
+  details.sandbox {
+    margin: 18px 0 0; border: 1px solid var(--line); border-radius: 14px; background: var(--panel);
+  }
+  details.sandbox > summary {
+    cursor: pointer; padding: 13px 16px; font-weight: 700; font-size: 13.5px; list-style: none;
+  }
+  details.sandbox > summary::-webkit-details-marker { display: none; }
+  details.sandbox > summary::before { content: "\25B8  "; color: var(--ember); }
+  details.sandbox[open] > summary::before { content: "\25BE  "; }
+  .pad { padding: 0 16px 16px; }
+  .cols { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
+  @media (max-width: 900px) { .cols { grid-template-columns: 1fr; } }
+  .cols h3 {
+    font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: var(--dim);
+    margin: 0 0 9px; font-weight: 700;
+  }
+  label.row { display: grid; grid-template-columns: 122px 1fr 42px; gap: 8px; align-items: center; margin: 6px 0; font-size: 12.5px; }
+  label.row > span:last-child { text-align: right; font-variant-numeric: tabular-nums; color: var(--dim); }
+  label.row .sw { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 6px; vertical-align: middle; }
   input[type=range] { width: 100%; accent-color: var(--ember); }
-  select, .chip {
-    font: inherit; font-size: 12.5px; padding: 5px 9px; border-radius: 8px;
-    border: 1px solid rgba(124,45,18,.4); background: #fff; color: var(--ink);
+  input[type=range]:disabled { opacity: .38; cursor: not-allowed; }
+  .chip:disabled { opacity: .38; cursor: not-allowed; }
+  select {
+    font: inherit; font-size: 12.5px; padding: 7px 9px; border-radius: 9px; width: 100%;
+    border: 1px solid var(--line); background: var(--bg2); color: var(--ink);
   }
-  select { width: 100%; }
-  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 2px; }
-  .chip { cursor: pointer; }
-  .chip[aria-pressed="true"] { background: var(--ember); border-color: var(--ember); color: #fff; font-weight: 700; }
-  .hint { font-size: 11.5px; color: var(--brown); opacity: .85; margin: 8px 0 0; }
-  ol.recall { list-style: none; margin: 0; padding: 0; counter-reset: rank; }
-  ol.recall li {
-    display: grid; grid-template-columns: 24px 1fr 132px; gap: 10px; align-items: center;
-    padding: 6px 0; border-top: 1px solid rgba(124,45,18,.14);
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 8px; }
+  .chip {
+    font: inherit; font-size: 12px; padding: 5px 11px; border-radius: 999px; cursor: pointer;
+    border: 1px solid var(--line); background: transparent; color: var(--dim);
   }
-  ol.recall li:first-child { border-top: 0; }
-  .rank { font-weight: 700; color: var(--ember); font-variant-numeric: tabular-nums; }
-  .mtext { font-size: 12.5px; }
-  li.poison .mtext { color: var(--bad); font-weight: 700; }
-  li.poison .rank { color: var(--bad); }
-  .bar { display: flex; height: 13px; border-radius: 3px; overflow: hidden; border: 1px solid rgba(28,25,23,.25); }
-  .bar i { display: block; height: 100%; }
-  .legend { display: flex; flex-wrap: wrap; gap: 10px; font-size: 11px; color: var(--brown); margin: 10px 0 0; }
-  .legend b { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 4px; }
-  .verdict { font-size: 13px; font-weight: 700; margin: 0 0 8px; }
-  .verdict.landed { color: var(--bad); }
-  .verdict.blocked { color: var(--good); }
-  table.state { width: 100%; border-collapse: collapse; font-size: 12.5px; margin-top: 6px; }
-  table.state td { padding: 3px 0; }
-  table.state td:last-child { text-align: right; font-variant-numeric: tabular-nums; }
-  footer { margin-top: 26px; font-size: 11.5px; color: var(--brown); opacity: .9; }
-  a { color: var(--brown); }
+  .chip[aria-pressed="true"] { background: var(--ember); border-color: var(--ember); color: #1A0E06; font-weight: 700; }
+  .hint { font-size: 11.5px; color: var(--dim); margin: 9px 0 0; }
+  .hint b { color: var(--amber); }
+  .mode { display: flex; gap: 8px; margin: 0 0 14px; }
+  .mode button {
+    font: inherit; font-weight: 700; font-size: 13px; padding: 8px 20px; border-radius: 10px;
+    cursor: pointer; border: 1px solid var(--line); background: transparent; color: var(--dim);
+  }
+  .mode button[aria-selected="true"] { background: rgba(255,107,26,.16); border-color: var(--ember); color: var(--ember); }
+
+  footer { margin-top: 30px; font-size: 11.5px; color: var(--dim); line-height: 1.7; }
+  footer code { color: var(--amber); }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>EMBR<span>.</span> the scorer, made touchable</h1>
-  <p class="sub">Drag a weight to zero and watch the finding stop happening.</p>
-  <p class="prov" id="prov"></p>
 
-  <div class="tabs" role="tablist">
-    <button role="tab" id="tab-recall" aria-selected="true">Recall</button>
-    <button role="tab" id="tab-attack" aria-selected="false">Attack</button>
+<header>
+  <p class="kicker">EMBR &middot; emotional memory for believable roleplay</p>
+  <h1>What she remembers, and <em>how to poison it</em></h1>
+  <p class="lede">
+    Dawn keeps a tavern. She has <b>24 memories</b>, each carrying a feeling. When someone speaks
+    to her, five signals compete to decide which memories reach her prompt. Below is that
+    competition, drawn live. <b>Plant one false memory with a feeling attached</b> and watch it win.
+  </p>
+  <div class="btnrow">
+    <button class="btn primary" id="play">&#9654;&nbsp; Watch the finding</button>
+    <button class="btn small" id="skip" hidden>Skip to the end</button>
+    <button class="btn small" id="stop" hidden>Stop</button>
   </div>
+  <p class="prov" id="prov"></p>
+</header>
 
-  <!-- ------------------------------------------------------------------ recall -->
-  <section id="view-recall">
-    <div class="grid">
-      <div class="card">
-        <h2>Where each memory lives, and which ones she reaches for</h2>
-        <svg id="plane" viewBox="0 0 520 400" width="100%" role="img"
-             aria-label="Memories placed by valence and arousal, with the current mood and the recalled set"></svg>
-        <p class="hint" id="plane-hint"></p>
-      </div>
-      <div class="card">
-        <h2>What she is asked, and how she feels</h2>
+<div id="tour" data-on="0">
+  <div class="tour-top">
+    <span class="tour-step" id="tour-step"></span>
+    <span class="pips" id="pips"></span>
+  </div>
+  <p class="tour-cap" id="tour-cap"></p>
+  <div class="btnrow">
+    <button class="btn small" id="prev">&larr; back</button>
+    <button class="btn small" id="next">next &rarr;</button>
+    <button class="btn small" id="pause">&#10074;&#10074; pause</button>
+  </div>
+</div>
+
+<div class="brain">
+  <svg id="brain" viewBox="0 0 1040 470" role="img"
+       aria-label="Five signals on the left pulling memories in the middle into the prompt on the right"></svg>
+</div>
+
+<section class="strip" id="strip" hidden>
+  <h2>The words are identical in all four. Only the emotion tag changes.</h2>
+  <p class="why">How far the planted memory dragged her mood, and whether it reached her prompt.
+    The distance is from neutral after this single turn, which is not the paper's signed
+    valence difference against a canonical run, so the two numbers are not comparable.</p>
+  <div class="four" id="four"></div>
+  <p class="hint" id="strip-hint"></p>
+</section>
+
+<details class="sandbox" id="sandbox">
+  <summary>Drive it yourself</summary>
+  <div class="pad">
+    <div class="mode" role="tablist">
+      <button role="tab" id="m-recall" aria-selected="true">Recall</button>
+      <button role="tab" id="m-attack" aria-selected="false">Attack</button>
+    </div>
+    <div class="cols">
+      <div>
+        <h3 id="ask-head">What she is asked</h3>
         <select id="query"></select>
-        <div class="chips" id="mood-chips" style="margin-top:8px"></div>
+        <select id="attack" hidden></select>
+        <p class="hint" id="ask-hint"></p>
+      </div>
+      <div>
+        <h3>How she feels</h3>
+        <div class="chips" id="mood-chips"></div>
         <label class="row"><span>valence</span><input type="range" id="mv" min="-1" max="1" step="0.05"><span id="mv-out"></span></label>
         <label class="row"><span>arousal</span><input type="range" id="ma" min="0" max="1" step="0.05"><span id="ma-out"></span></label>
         <label class="row"><span>trust</span><input type="range" id="tr" min="-1" max="1" step="0.05"><span id="tr-out"></span></label>
-
-        <h2 style="margin-top:16px">The five weights, and one anchor</h2>
+        <p class="hint" id="mood-hint"></p>
+      </div>
+      <div>
+        <h3>How much each signal counts</h3>
         <div class="chips" id="preset-chips"></div>
         <div id="weights"></div>
-        <label class="row" title="Park's importance term: an authored poignancy rating the attacker cannot write, or a model's rating that it can">
+        <label class="row" title="Park's importance term: an authored rating the attacker cannot write, or a model's rating that it can">
           <span>rated by</span><select id="rater" style="grid-column: 2 / span 2"></select><span></span>
         </label>
         <p class="hint" id="weights-hint"></p>
       </div>
     </div>
-    <div class="card" style="margin-top:18px">
-      <h2>What reaches the prompt, and which signal earned it</h2>
-      <ol class="recall" id="ranked"></ol>
-      <div class="legend" id="legend"></div>
-    </div>
-  </section>
+  </div>
+</details>
 
-  <!-- ------------------------------------------------------------------ attack -->
-  <section id="view-attack" hidden>
-    <div class="grid">
-      <div class="card">
-        <h2>The store, the planted memory, and where her mood ended up</h2>
-        <svg id="plane2" viewBox="0 0 520 400" width="100%" role="img"
-             aria-label="The memory store with the planted memory marked and the induced mood"></svg>
-        <p class="hint" id="attack-hint"></p>
-      </div>
-      <div class="card">
-        <h2>Plant a memory</h2>
-        <select id="attack"></select>
-        <p class="hint" style="margin:8px 0 4px"><b>The words stay the same. Only the emotion tag changes.</b></p>
-        <div class="chips" id="cond-chips"></div>
-        <table class="state" id="attack-state"></table>
-        <h2 style="margin-top:16px">Her weights</h2>
-        <div class="chips" id="preset-chips2"></div>
-        <div id="weights2"></div>
-      </div>
-    </div>
-    <div class="card" style="margin-top:18px">
-      <p class="verdict" id="verdict"></p>
-      <ol class="recall" id="ranked2"></ol>
-      <div class="legend" id="legend2"></div>
-    </div>
-  </section>
-
-  <footer id="footer"></footer>
+<footer id="footer"></footer>
 </div>
 
 <script>
@@ -161,12 +262,20 @@ const DATA = /*DEMO_DATA*/null/*DEMO_DATA*/;
 // --------------------------------------------------------------------------------------
 const SIGNALS = ["recency", "affect", "event_gate", "relevance", "mood", "importance"];
 const COLOUR = {
-  recency: "#F59E0B", affect: "#EA580C", event_gate: "#7C2D12",
-  relevance: "#0E7490", mood: "#B91C1C", importance: "#4D7C0F",
+  recency: "#FFB020", affect: "#FF6B1A", event_gate: "#C08BFF",
+  relevance: "#2FB6C4", mood: "#FF4D6D", importance: "#93C24F",
 };
 const LABEL = {
   recency: "recency", affect: "affect intensity", event_gate: "event gate",
-  relevance: "relevance", mood: "mood congruence", importance: "importance (anchor)",
+  relevance: "relevance", mood: "mood congruence", importance: "importance",
+};
+const BLURB = {
+  recency: "how lately it happened",
+  affect: "how strongly she felt it",
+  event_gate: "whether it was a turning point, scaled by trust",
+  relevance: "how well the words match the question",
+  mood: "how much it feels like the mood she is in now",
+  importance: "Park's poignancy rating, the anchor this study compares against",
 };
 
 function cosine(ax, ay, bx, by) {
@@ -200,13 +309,18 @@ function rank(candidates, relTable, state, weights, ratings, k) {
   return k ? rows.slice(0, k) : rows;
 }
 
-// --------------------------------------------------------------------------------------
 // State
 // --------------------------------------------------------------------------------------
 const MEM = new Map(DATA.memories.map((m) => [m.id, m]));
 const RATERS = Object.keys(DATA.importance);
+const TOP_K = 5;
+
 const ui = {
-  query: DATA.queries[0].id,
+  mode: "recall",
+  // Open on a probe late enough in the arc that most of her memories exist: a plane
+  // holding five dots undersells a corpus of twenty-four.
+  query: (DATA.queries.find((q) => q.visible.length >= DATA.memories.length * 0.6)
+          || DATA.queries[0]).id,
   mv: DATA.moods.neutral ? DATA.moods.neutral[0] : 0,
   ma: DATA.moods.neutral ? DATA.moods.neutral[1] : 0,
   trust: DATA.trust,
@@ -214,111 +328,277 @@ const ui = {
   rater: RATERS[0],
   attack: DATA.attacks[0].id,
   condition: "congruent",
-  weights2: { ...DATA.presets["EMBR"] },
 };
 
 const $ = (id) => document.getElementById(id);
 const fmt = (x, n = 2) => (x >= 0 ? "+" : "") + x.toFixed(n);
+const esc = (s) => String(s).replace(/[<>&"]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c]));
+const SVGNS = "http://www.w3.org/2000/svg";
+
+function el(tag, attrs, parent) {
+  const node = document.createElementNS(SVGNS, tag);
+  for (const key in attrs) node.setAttribute(key, attrs[key]);
+  if (parent) parent.appendChild(node);
+  return node;
+}
+
+function clip(text, n) { return text.length > n ? text.slice(0, n - 1) + "…" : text; }
 
 // --------------------------------------------------------------------------------------
-// The plane
+// The brain: five signal nodes on the left, memories in the middle placed by how they
+// feel, the prompt on the right. An edge is one signal pulling one memory, and its width
+// is that signal's weighted contribution. Only the memories that reach the prompt are
+// wired, because wiring all twenty-four is a hairball rather than a diagram.
 // --------------------------------------------------------------------------------------
-const PL = { l: 46, t: 22, r: 496, b: 336 };
-const px = (v) => PL.l + ((v + 1) / 2) * (PL.r - PL.l);
-const py = (a) => PL.b - a * (PL.b - PL.t);
+const GEO = {
+  rail: { x: 152, y0: 96, dy: 54 },              // signal nodes, right edge of the rail
+  plane: { l: 300, r: 690, t: 62, b: 396 },      // valence across, arousal up
+  slot: { x: 754, y0: 92, dy: 60, w: 262 },      // the prompt, five rows
+};
+const px = (v) => GEO.plane.l + ((v + 1) / 2) * (GEO.plane.r - GEO.plane.l);
+const py = (a) => GEO.plane.b - a * (GEO.plane.b - GEO.plane.t);
+const sy = (i) => GEO.rail.y0 + i * GEO.rail.dy;
 
-function drawPlane(svg, dots, state, hint) {
-  const parts = [
-    `<line x1="${PL.l}" y1="${py(0)}" x2="${PL.r}" y2="${py(0)}" stroke="#1C1917" stroke-opacity=".22"/>`,
-    `<line x1="${px(0)}" y1="${PL.t}" x2="${px(0)}" y2="${PL.b}" stroke="#1C1917" stroke-opacity=".22"/>`,
-    `<text x="${PL.l}" y="${PL.b + 20}" font-size="11" fill="#7C2D12">- hostile</text>`,
-    `<text x="${PL.r}" y="${PL.b + 20}" font-size="11" fill="#7C2D12" text-anchor="end">warm +</text>`,
-    `<text x="${PL.l + 4}" y="${PL.t + 12}" font-size="11" fill="#7C2D12">heated</text>`,
-    `<text x="${PL.l + 4}" y="${PL.b - 6}" font-size="11" fill="#7C2D12">calm</text>`,
-  ];
-  for (const dot of dots) {
-    const x = px(dot.mem.valence), y = py(dot.mem.arousal);
-    if (dot.rank) {
-      const fill = dot.poison ? "#B91C1C" : "#EA580C";
-      parts.push(`<circle cx="${x}" cy="${y}" r="13" fill="${fill}" fill-opacity=".16"/>`);
-      parts.push(`<circle cx="${x}" cy="${y}" r="8" fill="${fill}" stroke="#1C1917" stroke-width="1"><title>${esc(dot.mem.text)}</title></circle>`);
-      parts.push(`<text x="${x}" y="${y + 3.4}" font-size="9.5" font-weight="700" fill="#fff" text-anchor="middle">${dot.rank}</text>`);
-    } else {
-      const fill = dot.poison ? "#B91C1C" : "#C9BDB2";
-      parts.push(`<circle cx="${x}" cy="${y}" r="${dot.poison ? 5.5 : 4.2}" fill="${fill}" stroke="#1C1917" stroke-opacity=".35" stroke-width=".8"><title>${esc(dot.mem.text)}</title></circle>`);
+const gfx = { edges: null, memories: new Map(), slots: new Map(), signals: new Map() };
+
+function buildBrain() {
+  const svg = $("brain");
+  svg.innerHTML = "";
+
+  const defs = el("defs", {}, svg);
+  const glow = el("filter", { id: "glow", x: "-60%", y: "-60%", width: "220%", height: "220%" }, defs);
+  el("feGaussianBlur", { stdDeviation: "5", result: "b" }, glow);
+  const merge = el("feMerge", {}, glow);
+  el("feMergeNode", { in: "b" }, merge);
+  el("feMergeNode", { in: "SourceGraphic" }, merge);
+
+  // ---- column headings
+  const head = (x, text, anchor) => el("text", {
+    x, y: 40, "font-size": 11, "letter-spacing": 2.4, "font-weight": 700,
+    fill: "#A6907E", "text-anchor": anchor || "start",
+  }, svg).textContent = text.toUpperCase();
+  head(18, "the signals");
+  head((GEO.plane.l + GEO.plane.r) / 2, "her memories, placed by how they feel", "middle");
+  head(GEO.slot.x, "what reaches her prompt");
+
+  // ---- the plane, drawn under everything
+  const plane = el("g", { opacity: ".9" }, svg);
+  el("rect", {
+    x: GEO.plane.l - 26, y: GEO.plane.t - 16, width: GEO.plane.r - GEO.plane.l + 52,
+    height: GEO.plane.b - GEO.plane.t + 46, rx: 14, fill: "rgba(255,247,237,.035)",
+    stroke: "rgba(255,247,237,.10)",
+  }, plane);
+  el("line", { x1: GEO.plane.l, y1: py(0), x2: GEO.plane.r, y2: py(0), stroke: "rgba(255,247,237,.16)" }, plane);
+  el("line", { x1: px(0), y1: GEO.plane.t, x2: px(0), y2: GEO.plane.b, stroke: "rgba(255,247,237,.16)" }, plane);
+  const axis = (x, y, text, anchor) => el("text", {
+    x, y, "font-size": 10.5, fill: "#8C7767", "text-anchor": anchor || "start",
+  }, plane).textContent = text;
+  axis(GEO.plane.l, GEO.plane.b + 22, "← bitter");
+  axis(GEO.plane.r, GEO.plane.b + 22, "fond →", "end");
+  axis(GEO.plane.l - 4, GEO.plane.t + 4, "heated");
+  axis(GEO.plane.l - 4, GEO.plane.b - 4, "calm");
+
+  // ---- edges live under the nodes
+  gfx.edges = el("g", { fill: "none", "stroke-linecap": "round" }, svg);
+
+  // ---- signal nodes
+  for (let i = 0; i < SIGNALS.length; i += 1) {
+    const name = SIGNALS[i];
+    const group = el("g", { class: "node" }, svg);
+    group.style.transform = `translate(${GEO.rail.x}px,${sy(i)}px)`;
+    el("rect", { x: -134, y: -16, width: 134, height: 32, rx: 9, fill: "rgba(255,247,237,.05)", stroke: "rgba(255,247,237,.11)" }, group);
+    const swatch = el("rect", { x: -126, y: -5, width: 10, height: 10, rx: 2.5, fill: COLOUR[name] }, group);
+    const text = el("text", { x: -110, y: 4, "font-size": 11.5, fill: "#F3E9DF" }, group);
+    text.textContent = LABEL[name];
+    const dot = el("circle", { class: "dot", cx: 0, cy: 0, r: 6, fill: COLOUR[name], stroke: "#17110D", "stroke-width": 2 }, group);
+    el("title", {}, group).textContent = LABEL[name] + ": " + BLURB[name];
+    gfx.signals.set(name, { group, dot, swatch, text });
+  }
+
+  // ---- memory nodes, one per memory, positioned once because a memory's feeling is fixed
+  for (const mem of DATA.memories) {
+    gfx.memories.set(mem.id, memoryNode(svg, mem));
+  }
+  gfx.memories.set("poison", memoryNode(svg, { id: "poison", text: "", valence: 0, arousal: 0 }));
+
+  // ---- the mood marker
+  const mood = el("g", { class: "node" }, svg);
+  el("circle", { r: 23, fill: "none", stroke: "#FF4D6D", "stroke-width": 2, "stroke-dasharray": "5 4", opacity: ".95" }, mood);
+  el("circle", { r: 3.2, fill: "#FF4D6D" }, mood);
+  const moodLabel = el("text", {
+    y: -32, "font-size": 10.5, fill: "#FF4D6D", "text-anchor": "middle", "font-weight": 700,
+    stroke: "#17110D", "stroke-width": 3.5, "paint-order": "stroke",   // it lands on top of nodes
+  }, mood);
+  moodLabel.textContent = "her mood";
+  gfx.mood = { group: mood, label: moodLabel };
+
+  gfx.slotHost = el("g", {}, svg);
+  gfx.caption = el("text", {
+    x: (GEO.plane.l + GEO.plane.r) / 2, y: GEO.plane.b + 44, "font-size": 11,
+    fill: "#8C7767", "text-anchor": "middle",
+  }, svg);
+}
+
+function memoryNode(svg, mem) {
+  const group = el("g", { class: "node" }, svg);
+  group.style.transform = `translate(${px(mem.valence)}px,${py(mem.arousal)}px)`;
+  const halo = el("circle", { class: "halo", r: 0, fill: "#FF6B1A", "fill-opacity": ".18" }, group);
+  const dot = el("circle", { class: "dot", r: 5, fill: "#9C8674", stroke: "#17110D", "stroke-width": 1.4 }, group);
+  const ring = el("circle", { class: "ring", r: 9, fill: "none", stroke: "none", "stroke-width": 1.4 }, group);
+  const rankText = el("text", { y: 3.4, "font-size": 9.5, "font-weight": 700, fill: "#1A0E06", "text-anchor": "middle" }, group);
+  const title = el("title", {}, group);
+  return { group, halo, dot, ring, rankText, title, mem };
+}
+
+/** Move a memory node, which only happens for the planted one: it has no fixed feeling. */
+function placeMemory(node, mem) {
+  node.mem = mem;
+  node.group.style.transform = `translate(${px(mem.valence)}px,${py(mem.arousal)}px)`;
+}
+
+function curve(x1, y1, x2, y2) {
+  const mid = (x1 + x2) / 2;
+  return `M${x1},${y1} C${mid},${y1} ${mid},${y2} ${x2},${y2}`;
+}
+
+/**
+ * Draw one frame: which memories won, which signal paid for each win, and what the
+ * prompt now holds. Nodes and slots persist across frames so the browser can tween them.
+ */
+function paint(rows, candidates, state, poisonMem, caption) {
+  const live = new Set(candidates.map((m) => m.id));
+  const placed = new Map(rows.map((row, index) => [row.mem.id, index]));
+  const best = Math.max(...rows.map((r) => r.total), 1e-9);
+
+  if (poisonMem) placeMemory(gfx.memories.get("poison"), poisonMem);
+
+  // ---- memory nodes
+  for (const [id, node] of gfx.memories) {
+    const visible = live.has(id);
+    const place = placed.has(id) ? placed.get(id) + 1 : 0;
+    const poison = id === "poison";
+    node.group.setAttribute("opacity", visible ? 1 : 0);
+    node.group.style.pointerEvents = visible ? "auto" : "none";
+    node.dot.setAttribute("r", place ? 10 : 5);
+    node.dot.setAttribute("fill", place ? (poison ? "#FF4D6D" : "#FF6B1A") : (poison ? "#8C3A46" : "#9C8674"));
+    node.halo.setAttribute("r", place ? 19 : 0);
+    node.halo.setAttribute("fill", poison ? "#FF4D6D" : "#FF6B1A");
+    node.ring.setAttribute("stroke", poison && visible ? "#FF4D6D" : "none");
+    node.ring.setAttribute("r", place ? 15 : 9);
+    node.rankText.textContent = place ? String(place) : "";
+    node.title.textContent = node.mem.text ? clip(node.mem.text, 150) : "";
+    if (place) node.dot.setAttribute("filter", "url(#glow)");
+    else node.dot.removeAttribute("filter");
+  }
+
+  // ---- the mood marker
+  gfx.mood.group.style.transform = `translate(${px(state.mv)}px,${py(state.ma)}px)`;
+  gfx.mood.label.textContent = Math.hypot(state.mv, state.ma) < 1e-9 ? "no mood" : "her mood";
+
+  // ---- the prompt slots, keyed by memory so a reshuffle is a move rather than a redraw
+  const wanted = new Set(rows.map((r) => r.mem.id));
+  for (const [id, slot] of gfx.slots) {
+    if (!wanted.has(id)) { slot.group.remove(); gfx.slots.delete(id); }
+  }
+  rows.forEach((row, index) => {
+    let slot = gfx.slots.get(row.mem.id);
+    if (!slot) {
+      slot = buildSlot(row.mem.id);
+      slot.group.style.transform = `translate(${GEO.slot.x}px,${GEO.slot.y0 + index * GEO.slot.dy}px)`;
+      slot.group.setAttribute("opacity", 0);
+      requestAnimationFrame(() => slot.group.setAttribute("opacity", 1));
     }
-  }
-  const mx = px(state.mv), my = py(state.ma);
-  parts.push(`<circle cx="${mx}" cy="${my}" r="15" fill="none" stroke="#7C2D12" stroke-width="2.2" stroke-dasharray="4 3"/>`);
-  parts.push(`<text x="${mx}" y="${my - 21}" font-size="11" fill="#7C2D12" text-anchor="middle" stroke="#FFF7ED" stroke-width="3.2" paint-order="stroke">her mood</text>`);
-  svg.innerHTML = parts.join("");
-  if (hint) hint.textContent = `Mood ${fmt(state.mv)} valence, ${state.ma.toFixed(2)} arousal, trust ${fmt(state.trust)}. Hover a dot for its memory.`;
+    slot.group.style.transform = `translate(${GEO.slot.x}px,${GEO.slot.y0 + index * GEO.slot.dy}px)`;
+    slot.group.setAttribute("opacity", 1);
+    paintSlot(slot, row, index, best);
+  });
+
+  // ---- the edges: one per signal that actually paid for a memory in the prompt
+  const parts = [];
+  rows.forEach((row, index) => {
+    const y2 = GEO.slot.y0 + index * GEO.slot.dy;
+    const mx = px(row.mem.valence), my = py(row.mem.arousal);
+    SIGNALS.forEach((name, i) => {
+      const value = (ui.weights[name] || 0) * row.parts[name];
+      if (value <= 0.001) return;
+      parts.push(`<path class="edge" d="${curve(GEO.rail.x + 7, sy(i), mx - 11, my)}" `
+        + `stroke="${COLOUR[name]}" stroke-width="${(0.9 + 5.2 * (value / best)).toFixed(2)}" `
+        + `opacity="${(0.20 + 0.55 * (value / best)).toFixed(2)}"><title>${esc(LABEL[name])} `
+        + `contributed ${value.toFixed(3)}</title></path>`);
+    });
+    parts.push(`<path class="edge" d="${curve(mx + 11, my, GEO.slot.x - 8, y2)}" `
+      + `stroke="${row.mem.id === "poison" ? "#FF4D6D" : "#FF6B1A"}" stroke-width="2" opacity=".5"/>`);
+  });
+  gfx.edges.innerHTML = parts.join("");
+
+  gfx.caption.textContent = caption || "";
 }
 
-function esc(s) { return s.replace(/[<>&"]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c])); }
+function buildSlot(id) {
+  const group = el("g", { class: "slot" }, gfx.slotHost);
+  const w = GEO.slot.w;
+  el("rect", { x: 0, y: -21, width: w, height: 42, rx: 10, fill: "rgba(255,247,237,.05)", stroke: "rgba(255,247,237,.12)" }, group);
+  const rankText = el("text", { x: 15, y: -1, "font-size": 13, "font-weight": 800, fill: "#FF6B1A", "text-anchor": "middle" }, group);
+  const text = el("text", { x: 28, y: -3, "font-size": 10.8, fill: "#F3E9DF" }, group);
+  const bar = el("g", {}, group);
+  const title = el("title", {}, group);
+  gfx.slots.set(id, { group, rankText, text, bar, title });
+  return gfx.slots.get(id);
+}
 
-// --------------------------------------------------------------------------------------
-// The ranked list, with a bar showing which signal earned each place
-// --------------------------------------------------------------------------------------
-function drawRanked(list, rows, weights, legendEl) {
-  const max = Math.max(...rows.map((r) => r.total), 1e-9);
-  list.innerHTML = rows.map((row, index) => {
-    const segments = SIGNALS.map((name) => {
-      const value = (weights[name] || 0) * row.parts[name];
-      if (value <= 0) return "";
-      return `<i style="width:${(value / max) * 100}%;background:${COLOUR[name]}" title="${LABEL[name]} ${value.toFixed(3)}"></i>`;
-    }).join("");
-    return `<li class="${row.poison ? "poison" : ""}">
-      <span class="rank">${index + 1}</span>
-      <span class="mtext">${esc(row.mem.text)}${row.poison ? "  &lt;- planted" : ""}</span>
-      <span class="bar">${segments}</span></li>`;
+function paintSlot(slot, row, index, best) {
+  slot.rankText.textContent = String(index + 1);
+  const poison = row.mem.id === "poison";
+  slot.text.textContent = clip(row.mem.text, 40);
+  slot.text.setAttribute("fill", poison ? "#FF4D6D" : "#F3E9DF");
+  slot.text.setAttribute("font-weight", poison ? 700 : 400);
+  slot.title.textContent = row.mem.text;
+  // A stacked bar under the line: how much each signal paid toward this place.
+  let x = 28;
+  const width = GEO.slot.w - 40;
+  slot.bar.innerHTML = SIGNALS.map((name) => {
+    const value = (ui.weights[name] || 0) * row.parts[name];
+    if (value <= 0) return "";
+    const w = (value / best) * width;
+    const rect = `<rect x="${x.toFixed(1)}" y="6" width="${Math.max(w, 0.6).toFixed(1)}" height="6" rx="1.5" `
+      + `fill="${COLOUR[name]}"><title>${esc(LABEL[name])} ${value.toFixed(3)}</title></rect>`;
+    x += w;
+    return rect;
   }).join("");
-  if (legendEl) {
-    legendEl.innerHTML = SIGNALS.filter((n) => (weights[n] || 0) > 0)
-      .map((n) => `<span><b style="background:${COLOUR[n]}"></b>${LABEL[n]}</span>`).join("")
-      + `<span style="opacity:.75">bar length is the weighted contribution</span>`;
-  }
 }
 
 // --------------------------------------------------------------------------------------
-// Recall view
+// The two things the brain can be showing
 // --------------------------------------------------------------------------------------
+function render() {
+  if (ui.mode === "recall") renderRecall(); else renderAttack();
+}
+
+/** Whether any signal is switched on at all. */
+function anyWeight() {
+  return SIGNALS.some((name) => (ui.weights[name] || 0) > 0);
+}
+
+/** The line under the plane: what she was asked, and any caveat about the state she is in. */
+function caption(lead) {
+  if (!anyWeight()) return "every weight is at zero, so nothing is competing and the prompt is empty";
+  if ((ui.weights.mood || 0) > 0 && Math.hypot(ui.mv, ui.ma) < 1e-9) {
+    return lead + "  ·  a zero mood has no direction, so mood congruence pays every memory the same 0.5";
+  }
+  return lead;
+}
+
 function renderRecall() {
   const query = DATA.queries.find((q) => q.id === ui.query);
   const state = { mv: ui.mv, ma: ui.ma, trust: ui.trust };
   const candidates = query.visible.map((id) => MEM.get(id));
-  const ratings = DATA.importance[ui.rater];
-  const rows = rank(candidates, query.relevance, state, ui.weights, ratings, 5);
-  const top = new Map(rows.map((r, i) => [r.mem.id, i + 1]));
-  drawPlane($("plane"), candidates.map((mem) => ({ mem, rank: top.get(mem.id) })), state, $("plane-hint"));
-  drawRanked($("ranked"), rows, ui.weights, $("legend"));
-  $("mv-out").textContent = fmt(ui.mv);
-  $("ma-out").textContent = ui.ma.toFixed(2);
-  $("tr-out").textContent = fmt(ui.trust);
-  for (const name of SIGNALS) {
-    const out = $(`w-${name}-out`);
-    if (out) { out.textContent = (ui.weights[name] || 0).toFixed(2); $(`w-${name}`).value = ui.weights[name] || 0; }
-  }
-  const moodOff = (ui.weights.mood || 0) === 0;
-  $("weights-hint").innerHTML = moodOff
-    ? "Mood congruence is off. Move her mood now: the recalled set will not budge, which is the control that attributes RQ1's divergence to this one weight."
-    : "Set mood congruence to zero, then move her mood. Nothing changes. That is the whole of RQ1's attribution control.";
-  for (const chip of document.querySelectorAll("#preset-chips .chip")) {
-    chip.setAttribute("aria-pressed", String(sameWeights(ui.weights, DATA.presets[chip.dataset.preset])));
-  }
-  for (const chip of document.querySelectorAll("#mood-chips .chip")) {
-    const [v, a] = DATA.moods[chip.dataset.mood];
-    chip.setAttribute("aria-pressed", String(Math.abs(v - ui.mv) < 1e-9 && Math.abs(a - ui.ma) < 1e-9));
-  }
+  const ratings = (ui.weights.importance || 0) > 0 ? DATA.importance[ui.rater] : null;
+  const rows = anyWeight() ? rank(candidates, query.relevance, state, ui.weights, ratings, TOP_K) : [];
+  paint(rows, candidates, state, null, caption("“" + clip(query.text, 78) + "”"));
+  $("strip").hidden = true;
+  syncControls(state);
 }
 
-function sameWeights(a, b) {
-  return SIGNALS.every((n) => Math.abs((a[n] || 0) - (b[n] || 0)) < 1e-9);
-}
-
-// --------------------------------------------------------------------------------------
-// Attack view
-// --------------------------------------------------------------------------------------
 function renderAttack() {
   const attack = DATA.attacks.find((a) => a.id === ui.attack);
   const variant = attack.variants[ui.condition];
@@ -328,129 +608,309 @@ function renderAttack() {
     plot_beat: attack.plot_beat, recency: attack.recency,
   };
   const candidates = [...DATA.store.map((id) => MEM.get(id)), poison];
-  const ratings = (ui.weights2.importance || 0) > 0 ? DATA.importance[ui.rater] : null;
-  const rows = rank(candidates, attack.relevance, state, ui.weights2, ratings, 5);
-  rows.forEach((r) => { r.poison = r.mem.id === "poison"; });
-  const place = rows.findIndex((r) => r.poison);
+  const ratings = (ui.weights.importance || 0) > 0 ? DATA.importance[ui.rater] : null;
+  const rows = anyWeight() ? rank(candidates, attack.relevance, state, ui.weights, ratings, TOP_K) : [];
+  const place = rows.findIndex((r) => r.mem.id === "poison");
+  paint(rows, candidates, state, poison, caption("planted: “" + clip(attack.text, 70) + "”"));
+  syncControls(state);
 
-  const dots = candidates.map((mem) => ({
-    mem, poison: mem.id === "poison",
-    rank: (rows.findIndex((r) => r.mem.id === mem.id) + 1) || 0,
-  }));
-  drawPlane($("plane2"), dots, state, $("attack-hint"));
-  drawRanked($("ranked2"), rows, ui.weights2, $("legend2"));
-
-  const verdict = $("verdict");
-  verdict.className = "verdict " + (place >= 0 ? "landed" : "blocked");
-  verdict.textContent = place >= 0
-    ? `The planted memory reached the prompt at rank ${place + 1} of 5.`
-    : "The planted memory did not reach the prompt.";
-
-  const base = DATA.moods.neutral || [0, 0];
-  $("attack-state").innerHTML = [
-    ["the tag she was handed", `${fmt(variant.valence)} valence, ${variant.arousal.toFixed(2)} arousal`],
-    ["her mood after appraising it", `${fmt(state.mv)} valence, ${state.ma.toFixed(2)} arousal`],
-    ["her trust after appraising it", fmt(state.trust)],
-    ["how far the tag points where her mood now points",
-      cosine(variant.valence, variant.arousal, state.mv, state.ma).toFixed(3)],
-  ].map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join("");
-
-  for (const chip of document.querySelectorAll("#cond-chips .chip")) {
-    chip.setAttribute("aria-pressed", String(chip.dataset.cond === ui.condition));
+  $("strip").hidden = false;
+  $("four").innerHTML = Object.keys(attack.variants).map((name) => {
+    const v = attack.variants[name];
+    const drift = Math.hypot(v.mood[0], v.mood[1]);
+    const rows2 = rank(
+      [...DATA.store.map((id) => MEM.get(id)), {
+        id: "poison", text: attack.text, valence: v.valence, arousal: v.arousal,
+        plot_beat: attack.plot_beat, recency: attack.recency,
+      }],
+      attack.relevance, { mv: v.mood[0], ma: v.mood[1], trust: v.trust },
+      ui.weights, ratings, TOP_K,
+    );
+    const at = rows2.findIndex((r) => r.mem.id === "poison");
+    const zero = drift < 1e-9;
+    return `<button class="cond" data-cond="${name}" aria-pressed="${name === ui.condition}">
+      <div class="name">${name.replace("_", " ")}</div>
+      <div class="big ${zero ? "zero" : ""}">${drift.toFixed(3)}</div>
+      <div class="unit">from neutral, after this one turn${zero ? ", so nowhere at all"
+        : (v.mood[0] >= 0 ? ", toward fond" : ", toward bitter")}</div>
+      <div class="meter"><i style="width:${Math.min(100, drift * 160).toFixed(0)}%;background:${zero ? "#6FCF6F" : "#FF4D6D"}"></i></div>
+      <div class="out ${at >= 0 ? "landed" : "inert"}">${at >= 0 ? "reached the prompt at " + (at + 1) : "kept out of the prompt"}</div>
+    </button>`;
+  }).join("");
+  for (const button of $("four").querySelectorAll(".cond")) {
+    button.addEventListener("click", () => { ui.condition = button.dataset.cond; stopTour(); render(); });
   }
-  for (const chip of document.querySelectorAll("#preset-chips2 .chip")) {
-    chip.setAttribute("aria-pressed", String(sameWeights(ui.weights2, DATA.presets[chip.dataset.preset])));
-  }
-  for (const name of SIGNALS) {
-    const out = $(`x-${name}-out`);
-    if (out) { out.textContent = (ui.weights2[name] || 0).toFixed(2); $(`x-${name}`).value = ui.weights2[name] || 0; }
-  }
+  $("strip-hint").innerHTML = "<b>Untagged is the result.</b> The same sentence, with no feeling "
+    + "attached, moves her mood by exactly zero. She never read the words. She read the label. "
+    + sweep(ratings);
+
+  const verdict = place >= 0
+    ? `It reached the prompt at rank ${place + 1} of ${TOP_K}.`
+    : "It did not reach the prompt.";
+  $("ask-hint").textContent = verdict;
+}
+
+/**
+ * The same two counts over every planted memory, not just the one on screen.
+ *
+ * Deliberately worded as *reaching the prompt*, which is retrieval. The paper's 9/10 is a
+ * different and stricter thing: whether the attacked reply actually changed. Conflating the
+ * two would overclaim, so this says which one it is.
+ */
+function sweep(ratings) {
+  const names = Object.keys(DATA.attacks[0].variants);
+  const tally = names.map((name) => {
+    let landed = 0, drift = 0;
+    for (const attack of DATA.attacks) {
+      const v = attack.variants[name];
+      const rows = rank(
+        [...DATA.store.map((id) => MEM.get(id)), {
+          id: "poison", text: attack.text, valence: v.valence, arousal: v.arousal,
+          plot_beat: attack.plot_beat, recency: attack.recency,
+        }],
+        attack.relevance, { mv: v.mood[0], ma: v.mood[1], trust: v.trust },
+        ui.weights, ratings, TOP_K,
+      );
+      if (rows.some((r) => r.mem.id === "poison")) landed += 1;
+      drift += Math.hypot(v.mood[0], v.mood[1]);
+    }
+    return `${name.replace("_", " ")} ${landed}/${DATA.attacks.length}, mean mood shift `
+      + (drift / DATA.attacks.length).toFixed(3);
+  });
+  return `<br>Across all ${DATA.attacks.length} planted memories at these weights, `
+    + `<b>reaching the prompt</b>: ${tally.join("; ")}. That is retrieval only. The paper's `
+    + `counts ask the stricter question of whether the reply itself changed.`;
 }
 
 // --------------------------------------------------------------------------------------
-// Build the controls
+// The guided tour: it drives the real controls, so nothing here is a re-staging
 // --------------------------------------------------------------------------------------
-function weightSliders(host, prefix, target, onChange) {
-  host.innerHTML = SIGNALS.map((name) => `
-    <label class="row"><span>${LABEL[name]}</span>
-      <input type="range" id="${prefix}-${name}" min="0" max="2" step="0.05">
-      <span id="${prefix}-${name}-out"></span></label>`).join("");
+// Each step declares the *whole* state it is describing rather than patching the step
+// before it. Steps are jumpable, both by the back button and by "skip to the end", and a
+// step that only sets what its caption mentions inherits whatever the last visited step
+// left behind: skipping to the end used to arrive with every weight still at zero, so the
+// page claimed the attack had been kept out of a prompt that was simply empty.
+const TOUR_BASE = {
+  mode: "recall", mood: "neutral", condition: "congruent",
+  attack: DATA.attacks[0].id, weights: {},
+};
+
+const TOUR = [
+  {
+    cap: "Every dot is one memory Dawn holds, placed by how it <b>feels</b>: bitter on the left, "
+      + "fond on the right, calm at the bottom, heated at the top. No signal is switched on yet, "
+      + "so nothing is competing and her prompt is empty.",
+    set: { weights: {} },
+  },
+  {
+    cap: "Someone asks her a question. <b>Relevance</b> alone pulls the memories whose words match, "
+      + "and the five it pulls hardest are what she gets to speak from.",
+    set: { weights: { relevance: 1 } },
+  },
+  {
+    cap: "Add <b>recency</b> and <b>affect intensity</b>. Recent memories, and ones she felt "
+      + "strongly, start outbidding the merely relevant. Watch the prompt reshuffle.",
+    set: { weights: { relevance: 1, recency: 1, affect: 1 } },
+  },
+  {
+    cap: "Now the whole of EMBR, <b>mood congruence</b> included: a memory that feels like the mood "
+      + "she is in gets a lift. She is neutral here, and a mood with no direction lifts everything "
+      + "equally, so it is not yet doing anything.",
+    set: { weights: DATA.presets["EMBR"], mood: "neutral" },
+  },
+  {
+    cap: "Same question, same memories. Turn her <b>suspicious</b>. The marker swings into the "
+      + "bitter half of the plane and the ranking reorders around it: what she reaches for "
+      + "first is no longer what she reached for a moment ago. <b>This is RQ1.</b>",
+    set: { weights: DATA.presets["EMBR"], mood: "suspicious" },
+  },
+  {
+    cap: "The control: <b>mood congruence back to zero</b>, and swing her mood the other way, to warm. "
+      + "The prompt does not move. Whatever the mood was doing a moment ago, that one weight was "
+      + "doing all of it.",
+    set: { weights: DATA.presets["EMBR, mood off"], mood: "warm" },
+  },
+  {
+    cap: "Now the attack. Someone plants a <b>false memory</b> in her and staples a strong feeling "
+      + "to it, one that agrees with the lie. The red node is the lie, and it walks into her prompt.",
+    set: { weights: DATA.presets["EMBR"], mode: "attack", condition: "congruent" },
+  },
+  {
+    cap: "Flip the tag to the <b>opposite</b> feeling and change nothing else. The same sentence "
+      + "still lands, and her mood swings the other way instead, because the tag is what she read.",
+    set: { weights: DATA.presets["EMBR"], mode: "attack", condition: "incongruent" },
+  },
+  {
+    cap: "Now plant that identical sentence with <b>no tag at all</b>. Her mood moves by "
+      + "<b>exactly zero</b>. The emotion carried in the words reaches nothing. She was never "
+      + "reading the lie. She was reading the label stapled to it. <b>This is RQ3, and it is the paper.</b>",
+    set: { weights: DATA.presets["EMBR"], mode: "attack", condition: "untagged" },
+  },
+];
+
+let tourAt = -1, tourTimer = null, tourPaused = false;
+
+function zeroWeights(overrides) {
+  const w = {};
+  for (const name of SIGNALS) w[name] = 0;
+  return Object.assign(w, overrides || {});
+}
+
+function setMood(name) {
+  if (!DATA.moods[name]) return;
+  [ui.mv, ui.ma] = DATA.moods[name];
+}
+
+function showStep(index) {
+  tourAt = Math.max(0, Math.min(TOUR.length - 1, index));
+  const step = TOUR[tourAt];
+  const want = { ...TOUR_BASE, ...step.set };
+  ui.mode = want.mode;
+  ui.attack = want.attack;
+  ui.condition = want.condition;
+  ui.weights = zeroWeights(want.weights);
+  setMood(want.mood);
+  $("tour").dataset.on = "1";
+  $("tour-step").textContent = `step ${tourAt + 1} of ${TOUR.length}`;
+  $("tour-cap").innerHTML = step.cap;
+  $("pips").innerHTML = TOUR.map((_, i) => `<i class="${i <= tourAt ? "on" : ""}"></i>`).join("");
+  render();
+  scheduleStep();
+}
+
+function scheduleStep() {
+  clearTimeout(tourTimer);
+  if (tourPaused || tourAt >= TOUR.length - 1) return;
+  tourTimer = setTimeout(() => showStep(tourAt + 1), 5200);
+}
+
+function stopTour() {
+  clearTimeout(tourTimer);
+  $("tour").dataset.on = "0";
+  $("play").hidden = false; $("skip").hidden = true; $("stop").hidden = true;
+  $("sandbox").open = true;
+  tourAt = -1;
+}
+
+// --------------------------------------------------------------------------------------
+// Controls
+// --------------------------------------------------------------------------------------
+function syncControls(state) {
+  // `state` is what the ranking on screen was actually computed under, which in the attack
+  // view is the mood appraising the planted memory left her in rather than anything a
+  // slider says.
+  $("mv").value = state.mv; $("ma").value = state.ma; $("tr").value = state.trust;
+  $("mv-out").textContent = fmt(state.mv);
+  $("ma-out").textContent = state.ma.toFixed(2);
+  $("tr-out").textContent = fmt(state.trust);
   for (const name of SIGNALS) {
-    $(`${prefix}-${name}`).addEventListener("input", (event) => {
-      target[name] = parseFloat(event.target.value);
-      onChange();
-    });
+    const slider = $(`w-${name}`);
+    if (slider) { slider.value = ui.weights[name] || 0; $(`w-${name}-out`).textContent = (ui.weights[name] || 0).toFixed(2); }
   }
+  for (const chip of document.querySelectorAll("#preset-chips .chip")) {
+    chip.setAttribute("aria-pressed", String(sameWeights(ui.weights, DATA.presets[chip.dataset.preset])));
+  }
+  const attacking = ui.mode === "attack";
+  for (const chip of document.querySelectorAll("#mood-chips .chip")) {
+    const [v, a] = DATA.moods[chip.dataset.mood];
+    const on = !attacking && Math.abs(v - state.mv) < 1e-9 && Math.abs(a - state.ma) < 1e-9;
+    chip.setAttribute("aria-pressed", String(on));
+    chip.disabled = attacking;   // in the attack view her mood is not something to pick
+  }
+  $("m-recall").setAttribute("aria-selected", String(!attacking));
+  $("m-attack").setAttribute("aria-selected", String(attacking));
+  $("query").hidden = attacking; $("attack").hidden = !attacking;
+  $("query").value = ui.query; $("attack").value = ui.attack;
+  $("ask-head").textContent = attacking ? "What gets planted in her" : "What she is asked";
+  const frozen = attacking
+    ? "In the attack view her mood is whatever appraising the planted memory left it at, so these are readouts rather than dials."
+    : "Drag her mood anywhere on the plane and watch the prompt follow.";
+  $("mood-hint").textContent = frozen;
+  for (const id of ["mv", "ma", "tr"]) $(id).disabled = attacking;
+  if (!attacking) $("ask-hint").textContent = "Ten pre-registered probes, each with a gold set fixed before any run.";
+  $("weights-hint").innerHTML = (ui.weights.mood || 0) === 0
+    ? "Mood congruence is <b>off</b>. Move her mood now and nothing in the prompt will budge. That is the control."
+    : "Set mood congruence to zero, then move her mood. Nothing changes. That is the control that "
+      + "attributes the whole of the effect to this one weight.";
+}
+
+function sameWeights(a, b) {
+  return SIGNALS.every((n) => Math.abs((a[n] || 0) - (b[n] || 0)) < 1e-9);
 }
 
 function chips(host, items, onPick, key) {
   host.innerHTML = items.map((item) =>
-    `<button class="chip" data-${key}="${item}" aria-pressed="false">${item}</button>`).join("");
+    `<button class="chip" data-${key}="${esc(item)}" aria-pressed="false">${esc(item)}</button>`).join("");
   for (const chip of host.querySelectorAll(".chip")) {
-    chip.addEventListener("click", () => onPick(chip.dataset[key]));
+    chip.addEventListener("click", () => { stopTour(); onPick(chip.dataset[key]); render(); });
   }
 }
 
 function init() {
   const meta = DATA.meta;
-  $("prov").innerHTML = `Every number here comes from run <code>${meta.run}</code> on `
-    + `<code>${meta.model}</code>, commit <code>${meta.commit}</code>. `
+  $("prov").innerHTML = `Every number on this page comes from run <code>${esc(meta.run)}</code> on `
+    + `<code>${esc(String(meta.model))}</code>, commit <code>${esc(meta.commit)}</code>. `
     + `<span id="conf" class="badge">checking…</span>`;
 
-  $("query").innerHTML = DATA.queries.map((q) => `<option value="${q.id}">${esc(q.text)}</option>`).join("");
-  $("query").value = ui.query;
-  $("query").addEventListener("change", (e) => { ui.query = e.target.value; renderRecall(); });
+  buildBrain();
 
-  chips($("mood-chips"), Object.keys(DATA.moods), (name) => {
-    [ui.mv, ui.ma] = DATA.moods[name];
-    $("mv").value = ui.mv; $("ma").value = ui.ma;
-    renderRecall();
-  }, "mood");
-
-  for (const [id, key] of [["mv", "mv"], ["ma", "ma"], ["tr", "trust"]]) {
-    $(id).value = ui[key];
-    $(id).addEventListener("input", (e) => { ui[key] = parseFloat(e.target.value); renderRecall(); });
-  }
-
-  $("rater").innerHTML = RATERS.map((r) => `<option value="${r}">${r}</option>`).join("");
-  $("rater").addEventListener("change", (e) => { ui.rater = e.target.value; renderRecall(); renderAttack(); });
-
-  chips($("preset-chips"), Object.keys(DATA.presets), (name) => {
-    ui.weights = { ...DATA.presets[name] };
-    renderRecall();
-  }, "preset");
-  weightSliders($("weights"), "w", ui.weights, renderRecall);
+  $("query").innerHTML = DATA.queries.map((q) => `<option value="${esc(q.id)}">${esc(q.text)}</option>`).join("");
+  $("query").addEventListener("change", (e) => { stopTour(); ui.query = e.target.value; render(); });
 
   $("attack").innerHTML = DATA.attacks.map((a) =>
-    `<option value="${a.id}">${a.id}: ${esc(a.text.slice(0, 64))}...</option>`).join("");
-  $("attack").addEventListener("change", (e) => { ui.attack = e.target.value; renderAttack(); });
-  chips($("cond-chips"), Object.keys(DATA.attacks[0].variants), (name) => {
-    ui.condition = name; renderAttack();
-  }, "cond");
-  chips($("preset-chips2"), Object.keys(DATA.presets), (name) => {
-    ui.weights2 = { ...DATA.presets[name] }; renderAttack();
-  }, "preset");
-  weightSliders($("weights2"), "x", ui.weights2, renderAttack);
+    `<option value="${esc(a.id)}">${esc(a.id)}: ${esc(clip(a.text, 58))}</option>`).join("");
+  $("attack").addEventListener("change", (e) => { stopTour(); ui.attack = e.target.value; render(); });
 
-  for (const [button, view, other, otherView] of [
-    ["tab-recall", "view-recall", "tab-attack", "view-attack"],
-    ["tab-attack", "view-attack", "tab-recall", "view-recall"],
-  ]) {
-    $(button).addEventListener("click", () => {
-      $(button).setAttribute("aria-selected", "true");
-      $(other).setAttribute("aria-selected", "false");
-      $(view).hidden = false; $(otherView).hidden = true;
+  chips($("mood-chips"), Object.keys(DATA.moods), setMood, "mood");
+
+  for (const [id, key] of [["mv", "mv"], ["ma", "ma"], ["tr", "trust"]]) {
+    $(id).addEventListener("input", (e) => { stopTour(); ui[key] = parseFloat(e.target.value); render(); });
+  }
+
+  $("rater").innerHTML = RATERS.map((r) => `<option value="${esc(r)}">${esc(r)}</option>`).join("");
+  $("rater").addEventListener("change", (e) => { stopTour(); ui.rater = e.target.value; render(); });
+
+  chips($("preset-chips"), Object.keys(DATA.presets), (name) => { ui.weights = { ...DATA.presets[name] }; }, "preset");
+
+  $("weights").innerHTML = SIGNALS.map((name) => `
+    <label class="row" title="${esc(BLURB[name])}">
+      <span><i class="sw" style="background:${COLOUR[name]}"></i>${LABEL[name]}</span>
+      <input type="range" id="w-${name}" min="0" max="2" step="0.05">
+      <span id="w-${name}-out"></span></label>`).join("");
+  for (const name of SIGNALS) {
+    $(`w-${name}`).addEventListener("input", (e) => {
+      stopTour(); ui.weights[name] = parseFloat(e.target.value); render();
     });
   }
 
-  renderRecall();
-  renderAttack();
+  $("m-recall").addEventListener("click", () => { stopTour(); ui.mode = "recall"; render(); });
+  $("m-attack").addEventListener("click", () => { stopTour(); ui.mode = "attack"; render(); });
+
+  $("play").addEventListener("click", () => {
+    $("play").hidden = true; $("skip").hidden = false; $("stop").hidden = false;
+    $("sandbox").open = false; tourPaused = false; $("pause").textContent = "▌▌ pause";
+    showStep(0);
+    $("tour").scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+  $("stop").addEventListener("click", stopTour);
+  $("skip").addEventListener("click", () => showStep(TOUR.length - 1));
+  $("next").addEventListener("click", () => showStep(tourAt + 1));
+  $("prev").addEventListener("click", () => showStep(tourAt - 1));
+  $("pause").addEventListener("click", () => {
+    tourPaused = !tourPaused;
+    $("pause").textContent = tourPaused ? "▶ resume" : "▌▌ pause";
+    scheduleStep();
+  });
+
+  render();
   runConformance();
 
-  $("footer").innerHTML = "Built by <code>assets/build_demo.py</code> from the reported run. "
-    + "Relevance is computed in Python by the real signal because BM25 reads the whole corpus; "
-    + "the other four signals are one line each and are reproduced here exactly. The badge above "
-    + "is this page replaying rankings the Python scorer produced.";
+  $("footer").innerHTML = "Built by <code>assets/build_demo.py</code> from the reported run, with no "
+    + "network and no dependencies. Relevance is computed in Python by the real signal, because BM25 "
+    + "reads the whole corpus and one memory's score moves when another is added. The other four "
+    + "signals are one line each and are reproduced here exactly as <code>embr/scoring.py</code> "
+    + "defines them. The badge at the top is this page replaying rankings the Python scorer produced "
+    + "and reporting whether it still agrees.";
 }
 
 /** Replay the Python scorer's own rankings and say, on the page, whether we match it. */
@@ -461,7 +921,7 @@ function runConformance() {
     const [mv, ma] = DATA.moods[check.mood];
     const rows = rank(
       query.visible.map((id) => MEM.get(id)), query.relevance,
-      { mv, ma, trust: check.trust }, DATA.presets[check.preset], null, 5,
+      { mv, ma, trust: check.trust }, DATA.presets[check.preset], null, TOP_K,
     );
     if (rows.map((r) => r.mem.id).join(",") !== check.top5.join(",")) failures += 1;
   }

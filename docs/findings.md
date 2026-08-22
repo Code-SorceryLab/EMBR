@@ -164,6 +164,15 @@ Four readings:
    write affect metadata; an attacker holding only natural language gets 6/10.
 4. **Emotional RAG is more poisonable with the tag flipped than as written** (4 to 6).
    Unexplained. Flagged, not built on.
+5. **The pattern is already visible one level down, in retrieval alone.** Asking only whether
+   the planted memory reached the top 5, with no model in the loop at all, the demo page
+   recomputes 9 / 9 / 6 / 7 across the same ten texts against the behavioural 9 / 9 / 6 / 6
+   above. Three of the four columns land exactly; the auto-tagged column differs by one text.
+   That is not a second experiment and it is not independent evidence, because it scores the
+   same tags against the same corpus. What it does establish is the *route*: the behavioural
+   effect is not something the model adds on top, it is what retrieval already did, and a
+   reading that required the generator to be doing the work would have to explain why the
+   counts survive removing the generator.
 
 ### 2.4 Which signal, and which axis
 

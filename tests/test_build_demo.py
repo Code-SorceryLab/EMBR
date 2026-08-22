@@ -128,6 +128,22 @@ console.log(JSON.stringify({ checks: DATA.checks.length, failures }));
     assert report["failures"] == [], report["failures"]
 
 
+def test_every_guided_step_declares_the_weights_it_is_describing() -> None:
+    """A tour step that only patches what its caption mentions inherits the step before it.
+
+    The back button and "skip to the end" both jump, so a step that leaves the weights to
+    whoever ran last can arrive with every signal at zero and then narrate an empty prompt
+    as though the attack had been repelled. Each step declares its whole state instead, and
+    the weights are the field that broke, so the weights are the field pinned here.
+    """
+    template = (Path("assets") / "demo" / "template.html").read_text(encoding="utf-8")
+    body = template.split("const TOUR = [", 1)[1].split("\n];", 1)[0]
+    steps = re.findall(r"set: \{(.*?)\},\n", body, re.S)
+    assert len(steps) >= 8, "the tour lost its steps, or its shape changed"
+    for index, step in enumerate(steps):
+        assert "weights" in step, f"tour step {index + 1} does not say what the weights are"
+
+
 def test_every_store_id_resolves_to_a_memory_the_page_can_draw(demo) -> None:
     """MemoryStore.add renumbers on insert, so the attack view once shipped store ids that
     matched nothing and the whole tab threw before it drew anything. Keyed by text now."""
