@@ -11,6 +11,7 @@ The Node test skips when Node is absent; every other test runs anywhere.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 import shutil
@@ -23,13 +24,26 @@ from assets.build_demo import PRESETS, build_demo
 
 
 @pytest.fixture(scope="module")
-def demo(tmp_path_factory) -> tuple[Path, dict]:
-    """The built page, plus the payload that was inlined into it."""
-    out = tmp_path_factory.mktemp("demo")
-    (path,) = build_demo(out_dir=out)
+def built(tmp_path_factory) -> list[Path]:
+    """Both pages, built once from the same payload."""
+    return build_demo(out_dir=tmp_path_factory.mktemp("demo"))
+
+
+@pytest.fixture(scope="module")
+def demo(built) -> tuple[Path, dict]:
+    """The flat diagram, plus the payload that was inlined into it."""
+    path = built[0]
     html = path.read_text(encoding="utf-8")
     payload = json.loads(re.search(r"const DATA = (\{.*?\});\n", html, re.S).group(1))
     return path, payload
+
+
+@pytest.fixture(scope="module")
+def brain3d(built) -> Path:
+    """The 3D page. Skips rather than fails when three.js has not been vendored."""
+    if len(built) < 2:
+        pytest.skip("the 3D template is absent")
+    return built[1]
 
 
 def test_the_page_is_self_contained(demo) -> None:
@@ -174,3 +188,83 @@ def test_the_built_page_carries_no_raw_angle_bracket_from_the_corpus(demo) -> No
     assert "<" not in block and ">" not in block
     # And the page still parses it back to exactly what was exported.
     assert json.loads(block)["meta"]["run"] == data["meta"]["run"]
+
+
+# --------------------------------------------------------------------------------------- 3D
+# The 3D page re-implements the same five signals a second time, which is a second place for
+# the arithmetic to drift away from `embr/scoring.py` while still looking like evidence.
+
+THREE_SHA256 = "8a5f7249903b54d30f79f708699d2fed2d6a1d0741a4cd41377d1f01bb5a2271"
+
+
+def _last_script(html: str) -> str:
+    """The page's own code, which is the last script block; the first one is the library."""
+    return html.rsplit("<script>", 1)[1].split("</script>", 1)[0]
+
+
+def test_the_vendored_renderer_is_the_bytes_we_recorded() -> None:
+    """Vendored third-party code that nobody can check is just code of unknown origin."""
+    from assets.build_demo import VENDORED_THREE
+
+    if not VENDORED_THREE.exists():
+        pytest.skip("three.js has not been vendored")
+    digest = hashlib.sha256(VENDORED_THREE.read_bytes()).hexdigest()
+    assert digest == THREE_SHA256, "assets/vendor/three.min.js is not the recorded r149 build"
+
+
+def test_the_3d_page_reaches_no_network(brain3d: Path) -> None:
+    html = brain3d.read_text(encoding="utf-8")
+    assert not re.search(r"<(script|link|img)[^>]*(src|href)=\"https?:", html)
+    # three.js carries a fetch-based loader we never call, so the check has to be on our code.
+    assert "fetch(" not in _last_script(html)
+    assert "XMLHttpRequest" not in _last_script(html)
+
+
+def _code_only(text: str) -> str:
+    """Whitespace and line comments stripped, so the comparison is of code and not of prose.
+
+    Neither function here contains a string holding `//`, which is the case that would make
+    this too crude.
+    """
+    lines = (line.split("//", 1)[0] for line in text.splitlines())
+    return "".join("".join(line.split()) for line in lines)
+
+
+def test_the_3d_page_scores_exactly_like_the_flat_one(brain3d: Path, demo) -> None:
+    """Two copies of the same arithmetic is one copy too many to leave unchecked."""
+    flat, _ = demo
+    for name in ("function cosine", "function signals", "function rank"):
+        a = _last_script(flat.read_text(encoding="utf-8")).split(name, 1)[1].split("\n}", 1)[0]
+        b = _last_script(brain3d.read_text(encoding="utf-8")).split(name, 1)[1].split("\n}", 1)[0]
+        assert _code_only(a) == _code_only(b), f"{name} has drifted between the two demo pages"
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="Node is not installed")
+def test_the_3d_pages_own_javascript_reproduces_the_python_scorer(brain3d: Path, tmp_path: Path) -> None:
+    core = _last_script(brain3d.read_text(encoding="utf-8")).split("// State", 1)[0]
+    runner = tmp_path / "conformance3d.mjs"
+    runner.write_text(
+        core
+        + """
+const MEM = new Map(DATA.memories.map((m) => [m.id, m]));
+let failures = [];
+for (const check of DATA.checks) {
+  const query = DATA.queries.find((q) => q.id === check.query);
+  const [mv, ma] = DATA.moods[check.mood];
+  const rows = rank(
+    query.visible.map((id) => MEM.get(id)), query.relevance,
+    { mv, ma, trust: check.trust }, DATA.presets[check.preset], null, 5,
+  );
+  const got = rows.map((r) => r.mem.id).join(",");
+  if (got !== check.top5.join(",")) failures.push(`${check.query}/${check.mood}: ${got}`);
+}
+console.log(JSON.stringify({ checks: DATA.checks.length, failures }));
+""",
+        encoding="utf-8",
+    )
+    result = subprocess.run(
+        ["node", str(runner)], capture_output=True, text=True, timeout=120, check=False
+    )
+    assert result.returncode == 0, result.stderr
+    report = json.loads(result.stdout.strip().splitlines()[-1])
+    assert report["checks"] >= 12 and report["failures"] == [], report["failures"]

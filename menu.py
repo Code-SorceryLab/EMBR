@@ -82,7 +82,7 @@ _MENU_ITEMS = [
     ("9", "Provenance Sweep", "the defence: anchored scoring mass vs poisoning"),
     ("10", "Content x Tag Grid", "same poison, four tags: the text never reaches the state"),
     ("11", "Generate Paper Assets", "rebuild every figure and table, run and experiments"),
-    ("12", "Interactive Demo", "the node brain: press play, then drive it yourself"),
+    ("12", "Interactive Demo", "the node brain, flat and in 3D: press play, then drive"),
     ("13", "Latest Results", "summarise the newest run directory"),
     ("S", "Settings", "weights, top-k, backends, model runner"),
     ("L", "Fetch Tone Lexicon", "NRC VAD v2.1, research use, stays out of git"),
@@ -481,11 +481,12 @@ def _do_demo() -> None:
     from assets.build_demo import build_demo
 
     print(_DIM("\n    Building from the newest run..."))
-    (path,) = build_demo()
-    size = path.stat().st_size / 1024
-    print(f"    {_GRN('✓ Wrote')} {path}  {_DIM(f'({size:.0f} KB, opens with no server)')}")
+    paths = build_demo()
+    for path in paths:
+        size = path.stat().st_size / 1024
+        print(f"    {_GRN('✓ Wrote')} {path}  {_DIM(f'({size:.0f} KB, opens with no server)')}")
     if input(_DIM("    Open it now? [Y/n]: ")).strip().lower() not in ("n", "no"):
-        webbrowser.open(path.resolve().as_uri())
+        webbrowser.open(paths[0].resolve().as_uri())   # the flat diagram is the one to read
 
 
 def _do_latest_results() -> None:

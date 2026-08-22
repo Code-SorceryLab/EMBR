@@ -20,6 +20,8 @@
 <p align="center">
   <a href="data/demo/index.html"><b>Open the interactive demo</b></a>
   &nbsp;·&nbsp; press play and the finding walks itself, in nine steps, ending on the poisoning
+  <br><a href="data/demo/brain3d.html">or the same memories in 3D</a>
+  &nbsp;·&nbsp; left to right is how it felt, height is how strongly, depth is how well it answers the question
 </p>
 
 <p align="center"><sub><b>Watch it think.</b> One question, one memory store, three moods. Every dot sits at a real memory's affect tag and every lit set is the real top 5 the harness retrieved. Warm, she reaches for the player's kindnesses. Suspicious, she reaches for the evidence the story never added up.</sub></p>
@@ -125,7 +127,7 @@ transformers 4.x, which the extra pins: on 5.x its remote code does not load.
 | | | 5 | Seeded runs: replicate, or compare models | 9 | Provenance sweep: the defence |
 | | | 6 | Model bake-off | 10 | Content x tag grid |
 | | | | | 11 | Generate every figure and table |
-| | | | | 12 | **Interactive demo**: the node brain, guided, then yours to drive |
+| | | | | 12 | **Interactive demo**: the node brain in 2D and 3D, guided, then yours |
 | | | | | 13 | Latest results |
 | | | | | L | Fetch the tone lexicon (NRC VAD v2.1) |
 | | | | | D | Delete all generated data, types `DELETE` |

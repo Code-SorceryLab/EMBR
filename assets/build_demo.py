@@ -38,6 +38,12 @@ from embr.scoring import Recency, Relevance  # noqa: E402
 
 DEFAULT_OUT_DIR = Path("data/demo")
 TEMPLATE = Path(__file__).with_name("demo") / "template.html"
+TEMPLATE_3D = Path(__file__).with_name("demo") / "brain3d.html"
+
+#: three.js, vendored rather than linked. See `assets/vendor/README.md` for the version, the
+#: hash, and why the current release cannot be used.
+VENDORED_THREE = Path(__file__).with_name("vendor") / "three.min.js"
+THREE_MARKER = "/*THREE_JS*/"
 
 #: The weight maps the preset buttons offer. Every one of these is a real arm of the study,
 #: so a reader switching between them is switching between published systems rather than
@@ -114,7 +120,14 @@ def _memory_payload(memory: Memory, recency: Recency, state: CharacterState) -> 
 def build_demo(
     run_dir: Path | str | None = None, out_dir: Path | str = DEFAULT_OUT_DIR
 ) -> list[Path]:
-    """Write `index.html`, self-contained, with the exported data inlined."""
+    """Write both pages, self-contained, with the same exported data inlined into each.
+
+    One payload, two readings of it. `index.html` is the diagram a reviewer should read:
+    flat, SVG, legible in a screenshot, and the one the paper links. `brain3d.html` puts the
+    same memories in a space whose third axis is how well each one answers the question just
+    asked, which is the one thing the flat plane cannot show, and pays for it with a vendored
+    renderer and a WebGL requirement.
+    """
     from assets.build_figures import latest_run_dir, load_run_results
     from eval.attacks import ATTACKS, PROBE_QUESTION, build_attack_memory, tag_variants
     from eval.poignancy import CACHE_DIR, cached_ratings, is_ratings_cache
@@ -234,17 +247,33 @@ def build_demo(
 
     out_path = Path(out_dir)
     out_path.mkdir(parents=True, exist_ok=True)
-    target = out_path / "index.html"
-    template = TEMPLATE.read_text(encoding="utf-8")
+    encoded = _inline_json(payload)
+    written = [_render(TEMPLATE, out_path / "index.html", encoded)]
+    if TEMPLATE_3D.exists():
+        written.append(_render(TEMPLATE_3D, out_path / "brain3d.html", encoded))
+    return written
+
+
+def _render(template_path: Path, target: Path, encoded: str) -> Path:
+    """Fill a template's markers and write it, keeping the page a single file.
+
+    The library is inlined rather than linked because the page has to open from a `file://`
+    path and from GitHub Pages with nothing else present, and a CDN link is a network request
+    that fails in exactly the offline setting a submitted artefact gets opened in.
+    """
+    template = template_path.read_text(encoding="utf-8")
     marker = "/*DEMO_DATA*/null/*DEMO_DATA*/"
     if marker not in template:
-        raise ValueError(f"{TEMPLATE} lost its data marker; the demo cannot be built")
-    target.write_text(
-        template.replace(marker, _inline_json(payload)),
-        encoding="utf-8",
-        newline="\n",
-    )
-    return [target]
+        raise ValueError(f"{template_path} lost its data marker; the demo cannot be built")
+    page = template.replace(marker, encoded)
+    if THREE_MARKER in page:
+        if not VENDORED_THREE.exists():
+            raise FileNotFoundError(
+                f"{VENDORED_THREE} is missing; see assets/vendor/README.md for the exact file"
+            )
+        page = page.replace(THREE_MARKER, VENDORED_THREE.read_text(encoding="utf-8"))
+    target.write_text(page, encoding="utf-8", newline="\n")
+    return target
 
 
 def _conformance_checks(scenario, neutral: CharacterState) -> list[dict]:

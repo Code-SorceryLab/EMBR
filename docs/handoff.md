@@ -773,7 +773,8 @@ provenance idea from 6.1 already in production, and worth citing either way.
 
 - Write up the state-channel finding in 6.1. It is novel and currently unwritten.
 - Work out why Ouro sits at 36 to 40 percent GPU utilisation before treating 32.4 s as final.
-- The demo recording and companion page.
+- A recorded walkthrough of the demo, to link from the README. The pages themselves are
+  done: `data/demo/index.html` flat, `data/demo/brain3d.html` in 3D.
 
 ## 9. House rules
 

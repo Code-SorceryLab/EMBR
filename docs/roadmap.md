@@ -53,7 +53,7 @@ git switch -c phase-5-yourwork     # your own phase branch
 | 3 | Paper assets (figures & tables from results) | | ✅ done |
 | 4 | Real models, playable walkthrough, the menu | | ✅ done |
 | 5 | Defensible instruments, the content x tag grid, a real third-party system | | ✅ done |
-| 6 | A larger ground-truth corpus, and the interactive demo | | next |
+| 6 | A larger ground-truth corpus, and the interactive demo | | demo done, corpus blocked |
 
 ---
 
@@ -250,9 +250,24 @@ Not started. Two pieces, in order:
    can win under. The labels themselves are the blocker, and deliberately cannot be written
    here: see [`corpus.md`](corpus.md) for the schema, the acquisition path, the legal
    constraint, and the pre-registered prediction.
-2. **The interactive demo.** `eval/grid.py` and the animation already produce everything a
-   page needs; what is missing is the page, and a recorded walkthrough to link from the
-   README.
+2. **The interactive demo.** Done, in two readings of one payload, both built by
+   `assets/build_demo.py` from a named run and both openable from a `file://` path.
+
+   - `data/demo/index.html`, **69 KB, no dependency at all.** Five signal nodes, the memories
+     between them, her prompt on the right, and an edge for every signal that paid for a
+     memory's place. A nine-step guided pass drives the real controls and ends on the
+     poisoning; the sandbox underneath is the whole weight vector. This is the one the paper
+     links, because it survives being a screenshot.
+   - `data/demo/brain3d.html`, **643 KB, three.js r149 vendored.** The same memories in a
+     space whose third axis is how well each one answers the question just asked, which is
+     the one thing the flat plane cannot show. Needs WebGL and says so when it is absent.
+
+   Both re-implement the four one-line signals in the browser, so both replay rankings the
+   Python scorer produced and report on screen whether they still agree, and
+   `tests/test_build_demo.py` runs that replay under Node for each page plus a check that the
+   two pages' scoring code has not drifted apart.
+
+   Still missing: a recorded walkthrough to link from the README.
 
 ## Out of scope (future work, not these phases)
 - A full-budget **Ouro 1.4B** run on the eval hardware (8 GB VRAM). The runner itself landed in
