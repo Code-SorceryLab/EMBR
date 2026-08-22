@@ -244,11 +244,12 @@ defending; the one that did not is reported as a null.
 
 Not started. Two pieces, in order:
 
-1. **A larger, state-conditioned label set.** Ten single-author queries is the ceiling on
-   everything in RQ3, and the reason no ablation reaches significance. The plan is the
-   Stardew corpus in [`handoff.md`](handoff.md) section 8.1: authored dialogue where the
-   writers already encoded which line fires at which relationship state, extracted from the
-   user's own installed game and never committed.
+1. **A larger, state-conditioned label set.** Half done. The harness half shipped in phase 5:
+   a query may carry one relevant set per state, and `state_conditioned_ndcg` scores each
+   state against its own gold, which is the only shape of measurement a mood-congruent signal
+   can win under. The labels themselves are the blocker, and deliberately cannot be written
+   here: see [`corpus.md`](corpus.md) for the schema, the acquisition path, the legal
+   constraint, and the pre-registered prediction.
 2. **The interactive demo.** `eval/grid.py` and the animation already produce everything a
    page needs; what is missing is the page, and a recorded walkthrough to link from the
    README.

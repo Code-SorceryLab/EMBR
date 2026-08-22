@@ -286,7 +286,7 @@ def test_run_all_writes_results_json_and_both_csvs(full_run) -> None:
     assert out_dir.parent == root
 
     results = json.loads((out_dir / "results.json").read_text())
-    assert set(results) == {"rq1", "rq2", "rq3", "metadata"}
+    assert set(results) == {"rq1", "rq2", "rq3", "rq3_state", "metadata"}
     assert results["metadata"]["model"] == "stub"
     assert results["metadata"]["reference_time"] == REFERENCE_TIME.isoformat()
     assert "git_branch" in results["metadata"]

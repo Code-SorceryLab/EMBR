@@ -9,7 +9,7 @@ files label ground truth.
 from __future__ import annotations
 
 import math
-from collections.abc import Hashable, Sequence
+from collections.abc import Hashable, Iterable, Mapping, Sequence
 from typing import AbstractSet
 
 
@@ -93,3 +93,40 @@ def va_drift(a: tuple[float, float], b: tuple[float, float]) -> float | None:
     if not any(a) or not any(b):
         return None
     return math.dist(a, b) / math.sqrt(5.0)
+
+
+def state_conditioned_ndcg(
+    rankings: Mapping[str, Sequence[Hashable]],
+    relevant: Mapping[str, AbstractSet[Hashable]],
+    k: int,
+) -> dict[str, float]:
+    """nDCG@k scored per state against that state's own relevant set, plus the mean.
+
+    This is the metric the measurement critique asks for. Ordinary nDCG compares one
+    ranking against one fixed gold set, so a signal that moves retrieval as the character's
+    state moves can only ever be penalised by it: any departure from the single relevant set
+    costs score, whatever the state. That is why RQ3 cannot see mood-congruent recall and
+    why RQ1 has to measure divergence instead of accuracy (docs/findings.md 3.1).
+
+    Here each state carries its own gold set, so a scorer is asked the question the system
+    is actually built to answer: at *this* state, did you surface what belongs to it? A
+    state-independent scorer returns the same ranking everywhere and therefore scores the
+    average of the per-state golds, which it cannot beat. A state-coupled scorer can.
+
+    `rankings` and `relevant` are keyed by state name and must cover the same states.
+    """
+    if set(rankings) != set(relevant):
+        raise ValueError(
+            f"rankings cover {sorted(rankings)} but the labels cover {sorted(relevant)}; "
+            "scoring a state against another state's gold set is never what is meant"
+        )
+    per_state = {
+        name: ndcg_at_k(rankings[name], relevant[name], k) for name in sorted(rankings)
+    }
+    per_state["mean"] = _mean(per_state.values())
+    return per_state
+
+
+def _mean(values: Iterable[float]) -> float:
+    collected = list(values)
+    return sum(collected) / len(collected) if collected else 0.0

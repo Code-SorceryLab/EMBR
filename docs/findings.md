@@ -20,7 +20,7 @@ was expected and did not appear, it is written down as a null, not omitted.
 | Tone raters | NRC VAD Lexicon v2.1 (44k human-rated unigrams) and a blinded judge, llama3.1:8b at temperature 0 |
 | Poignancy raters | Park's own prompt asked of Ouro 1.4B and of llama3.2:3b, cached in `data/ratings/` |
 | Labels | Dawn Whitmore v1: 24 memories, 10 queries, single author, pre-registered |
-| Suite | 367 tests passing |
+| Suite | 383 tests passing |
 
 Retrieval, appraisal and every poisoning count are model-independent by construction: they
 never call a model. The two runs agree on them to the last digit, which is the architecture's
@@ -286,7 +286,25 @@ at all. The honest reading:
   compares four signals, not five, and the Emotional RAG rows degenerate to a relevance-only
   baseline, which must be said wherever they appear.
 
-### 3.1 The measurement critique, which is a contribution rather than an excuse
+### 3.1 The measurement critique, now measured rather than argued
+
+The critique used to be an argument. It is now a number. `run_rq3_state_conditioned` scores
+each variant per mood against that mood's own relevant set; on a label set whose gold sets do
+**not** vary by state, that measures exactly what being state-coupled costs:
+
+| variant | scored at neutral only | scored per state | the cost of the coupling |
+|---|---|---|---|
+| Park, no state channel at all | 0.608 | 0.608 | **0.000** |
+| EMBR | 0.594 | 0.586 | -0.007 |
+| Emotional RAG | 0.552 | 0.515 | -0.036 |
+
+Park pays nothing because it returns the same ranking in every state, so it scores the
+average of the per-state golds and cannot be moved off it. Every system that does read the
+character's state pays, and pays in proportion to how much it reads it. **Under labels of this
+shape the optimal design is to have no emotional memory**, which is not a finding about
+emotional memory but about the labels.
+
+### 3.2 The measurement critique, which is a contribution rather than an excuse
 
 **nDCG against mood-independent gold labels cannot reward mood-congruent recall, in
 principle.** A signal that moves retrieval away from a fixed relevant set can only lower the
@@ -296,6 +314,25 @@ why RQ1 measures divergence rather than accuracy.
 The same argument is now made independently by Chen and Cheng (2026) about retention metrics
 and by A-TMA (2026) about end-to-end QA accuracy, which turns a lone assertion into a
 converging line. Cite all three.
+
+### 3.3 What was built about it, and what is still missing
+
+The harness side is done. A query may now carry one relevant set per state
+(`Query.relevant_by_state`), `Scenario.is_state_conditioned` reports whether a label set uses
+it, and `eval.metrics.state_conditioned_ndcg` scores each state against its own gold. A test
+demonstrates the consequence directly: with state-conditioned labels a mood-congruent scorer
+scores 1.0 against a mood-blind scorer's 0.5, and against a single fixed gold set **the
+ordering reverses**. Which scorer looks better is decided by the shape of the labels.
+
+**What is missing is the labels, and nobody in this repository may write them.** A gold set
+authored by the party that wants a particular ordering is not evidence. The corpus has to come
+from writers who gated lines on relationship state before anyone thought about retrieval, which
+is the argument for Stardew's heart-gated dialogue. Stardew is not installed on the development
+machine, so no extractor was written: guessing at a file format nobody here can open is how a
+confident wrong parser gets shipped. The specification, the acquisition path, the legal
+constraint and the pre-registered prediction are in [`corpus.md`](corpus.md).
+
+**Until that lands, every RQ3 number above stands unchanged**, and so does the ceiling.
 
 ---
 

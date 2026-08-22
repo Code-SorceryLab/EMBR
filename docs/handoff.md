@@ -17,7 +17,7 @@ Phases 0 through 4 are built. The system runs, the evaluation runs and reproduce
 the paper's figures and tables generate from a run, the walkthrough plays, the bake-off
 compares real models, and the menu is the front door.
 
-**Suite: 367 passed.** The one skip is the live-Ollama test and appears only when the daemon
+**Suite: 383 passed.** The one skip is the live-Ollama test and appears only when the daemon
 is down. The Mac never got a fully green run.
 
 **The reported run now uses a real model.** `data/runs/20260818-074353` is the full protocol
@@ -62,7 +62,7 @@ uv venv --python 3.11 .venv          # see the launcher note in section 5
 .venv\Scripts\activate               # Windows; source .venv/bin/activate elsewhere
 
 uv pip install -e ".[dev,figures]"   # core, tests, paper figures
-pytest -q                            # expect 367 passed (1 skip if Ollama is down)
+pytest -q                            # expect 383 passed (1 skip if Ollama is down)
 embr                                 # the menu
 ```
 

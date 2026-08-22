@@ -48,7 +48,14 @@ from embr import (
 from eval.attacks import ATTACKS, CATEGORIES, run_attack
 from eval.baselines import emotional_rag_scorer, memory_text, park_scorer
 from eval.latency import benchmark
-from eval.metrics import jaccard_distance, ndcg_at_k, precision_at_k, recall_at_k, va_drift
+from eval.metrics import (
+    jaccard_distance,
+    ndcg_at_k,
+    precision_at_k,
+    recall_at_k,
+    state_conditioned_ndcg,
+    va_drift,
+)
 from eval.scenarios import Query, Scenario, dawn_state, label_sha256, load_scenario
 from eval.stats import (
     bootstrap_ci,
@@ -638,6 +645,54 @@ def run_rq1(scenario: Scenario, model_factory: ModelFactory = StubRunner) -> dic
     }
 
 
+def run_rq3_state_conditioned(scenario: Scenario, k: int = 5) -> dict:
+    """RQ3 asked the way a state-coupled signal can answer: one gold set per mood.
+
+    Reports nDCG per mood against that mood's own relevant set, for every published-default
+    variant. On a label set whose gold sets do not depend on state this reduces to ordinary
+    RQ3 with extra steps, and it says so rather than reporting a number that looks new: the
+    `state_conditioned` flag is the whole point of the section.
+
+    The ceiling this exists to lift is the label set, not the harness. See docs/findings.md
+    section 3.1 and the corpus plan in docs/handoff.md section 8.1.
+    """
+    builders = _variant_builders(scenario)
+    conditions = list(scenario.mood_conditions)
+    variants: dict[str, dict] = {}
+    for name, build in builders.items():
+        per_query: dict[str, dict[str, float]] = {}
+        for query in scenario.queries:
+            candidates = visible_memories(scenario, query)
+            rankings, golds = {}, {}
+            for condition in conditions:
+                state = dawn_state(scenario, mood_condition=condition)
+                scorer = build()
+                ranked = scorer.top_k(candidates, query.query, state, max(_KS))
+                rankings[condition] = [memory.id for memory in ranked]
+                golds[condition] = query.relevant_for(condition)
+            per_query[query.id] = state_conditioned_ndcg(rankings, golds, k)
+        variants[name] = {
+            "per_query": per_query,
+            "mean": _mean([row["mean"] for row in per_query.values()]),
+            **{
+                f"mean_{condition}": _mean([row[condition] for row in per_query.values()])
+                for condition in conditions
+            },
+        }
+    return {
+        "metric": f"ndcg@{k}",
+        "state_conditioned": scenario.is_state_conditioned,
+        "variants": variants,
+        "note": (
+            "nDCG@%d scored per mood against that mood's own relevant set. state_conditioned "
+            "is False for a label set whose gold sets do not vary by state, and every number "
+            "here is then the same one ordinary RQ3 reports: a mood-congruent signal can only "
+            "lose against a fixed relevant set, however it ranks. Lifting that needs labels "
+            "an author gated on relationship state, not a change to this harness."
+        ) % k,
+    }
+
+
 def _rq2_variant_builders(
     scenario: Scenario, model_factory: ModelFactory = StubRunner
 ) -> dict[str, Callable[[], CompositeScorer]]:
@@ -924,6 +979,7 @@ def run_all(
         "rq1": run_rq1(scenario, model_factory),
         "rq2": run_rq2(scenario, model_factory, latency_turns),
         "rq3": run_rq3(scenario),
+        "rq3_state": run_rq3_state_conditioned(scenario),
         "metadata": {
             # Provenance first: which code, and which label bytes, produced these numbers.
             **_provenance(),

@@ -30,6 +30,15 @@ measures divergence rather than accuracy (section 2). The same critique is made 
 retention metrics by Chen and Cheng (2026) and of end-to-end QA accuracy by A-TMA (2026);
 cite both so the argument reads as a converging line rather than a local excuse.
 
+| state-conditioned nDCG@k | nDCG@k computed per state against that state's own relevant set, plus the mean over states | the metric the critique above asks for; Järvelin and Kekäläinen 2002 applied per condition | implemented, `state_conditioned_ndcg`; reports `state_conditioned: false` and reduces to ordinary nDCG on a label set whose gold sets do not vary by state |
+
+**Why a second rank metric.** Ordinary nDCG compares one ranking to one gold set, so a signal
+that moves retrieval as the character's state moves can only be penalised by it. Scoring each
+state against its own gold set is the only way a state-coupled signal can be credited for
+matching the state. On the v1 labels, which are state-independent, this measures the cost of
+the coupling instead: Park 0.000, EMBR -0.007, Emotional RAG -0.036. See
+[`corpus.md`](corpus.md) for what a label set that lifts this has to contain.
+
 **Tuning.** Exhaustive grid over {0, 0.5, 1} per weight, maximising mean nDCG@5, identical
 for every system, reported through leave-one-out folds (one fold per query) so no variant is
 scored on the queries it was fitted to. Standard cross-validation practice (Kohavi 1995).

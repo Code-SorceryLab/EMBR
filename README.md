@@ -7,7 +7,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/python-3.10+-4584b6?style=flat-square&logo=python&logoColor=white" alt="Python 3.10+">
   <img src="https://img.shields.io/badge/core-zero%20dependencies-ea580c?style=flat-square" alt="Zero dependencies">
-  <img src="https://img.shields.io/badge/tests-367%20passing-22c55e?style=flat-square" alt="367 tests">
+  <img src="https://img.shields.io/badge/tests-383%20passing-22c55e?style=flat-square" alt="383 tests">
   <img src="https://img.shields.io/badge/runs-byte%20identical-22c55e?style=flat-square" alt="Reproducible">
   <img src="https://img.shields.io/badge/models-Ouro%201.4B%20%C2%B7%20llama3.2%3A3b-1e1e22?style=flat-square" alt="Models">
   <img src="https://img.shields.io/badge/GPU-optional-9a9a9a?style=flat-square" alt="GPU optional">
@@ -341,7 +341,7 @@ EMBR/
 │   └── bakeoff.py        #   same probes, different models
 ├── assets/               # hand-authored: branding, the diagram, every builder
 ├── docs/                 # findings, metrics, design, roadmap, related work, handoff
-├── tests/                # 367 tests
+├── tests/                # 383 tests
 └── data/                 # generated: runs, figures, tables, ratings, judgements
 ```
 
@@ -355,6 +355,7 @@ pipeline and rebuilds from one menu option, which is what the wipe option exists
 | [`docs/findings.md`](docs/findings.md) | **Start here.** Every result in RQ order, with its caveat attached |
 | [`docs/metrics.md`](docs/metrics.md) | Every metric: the formula as implemented, the paper it comes from, its known weakness |
 | [`docs/handoff.md`](docs/handoff.md) | The working record: setup, version constraints, and how each result was found and corrected |
+| [`docs/corpus.md`](docs/corpus.md) | The one thing the project needs and does not have: a state-conditioned label set, and why nobody here may write it |
 | [`docs/related-work.md`](docs/related-work.md) | Verified prior art, including the 2026 literature that reshaped the claims |
 | [`docs/design.md`](docs/design.md), [`docs/roadmap.md`](docs/roadmap.md) | The architecture, and the phase-by-phase plan |
 
@@ -368,7 +369,7 @@ pipeline and rebuilds from one menu option, which is what the wipe option exists
 | 3 | Paper assets: figures and tables straight from a run | done |
 | 4 | Real model runners, the playable walkthrough, the menu | done |
 | 5 | Defensible instruments, the content x tag grid, a real third-party system | done |
-| 6 | A larger ground-truth corpus, and the interactive demo | next |
+| 6 | State-conditioned labels (harness done, corpus outstanding), the interactive demo | **in progress** |
 
 **What is honestly missing.** There is no human evaluation, so no claim about believability is
 made anywhere. The label set is ten single-author queries, which is the ceiling on RQ3 and the
