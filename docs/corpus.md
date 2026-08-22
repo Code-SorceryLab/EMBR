@@ -83,15 +83,34 @@ current ten, and the content is external: EMBR never saw it, and its author neve
 
 ## 4. How to build it, when the game is available
 
-Stardew is **not installed on the development machine**, which is why this document exists
-instead of an extractor. Writing one against a file format nobody here can open would be
-guessing, and a confident wrong parser is worse than no parser.
+**The game is installed on this machine**, at
+`S:\Game Launchers\Steam\steamapps\common\Stardew Valley`, with SMAPI already present. What
+is missing is only the unpacking step, and it is one command.
 
-The order of work, for whoever has the game:
+Every one of the 3,550 files under `Content` is `.xnb`, and the header reads flags `0x81`:
+LZX-compressed, the XNA variant. There is no `Content (unpacked)` folder and none of the
+installed mods provides one. LZX is not something to reimplement on a hunch, so the extractor
+is still unwritten: a confident wrong parser is worse than no parser.
 
-1. **Verify the format first, against real files.** Content ships as `.xnb` and many installs
-   also carry an unpacked `Content (unpacked)` folder. Open one dialogue file and one gift
-   taste file and write down what is actually in them before writing any code.
+**Unpack with StardewXnbHack**, which is written by the author of SMAPI, is purpose-built for
+this game, and turns the whole `Content` folder into JSON:
+
+```
+# download the Windows zip from github.com/Pathoschild/StardewXnbHack/releases
+# unzip it into the Stardew Valley folder, beside Stardew Valley.dll, then:
+StardewXnbHack.exe            # writes Content (unpacked)/ next to Content/
+```
+
+It reads assets through a temporary game instance rather than parsing the files directly,
+which is why it handles Stardew's own formats. Expect the output to be large; it is generated
+data on the user's machine and nothing from it is ever committed here.
+
+The order of work once that folder exists:
+
+1. **Read the real files before writing any code.** Open
+   `Content (unpacked)/Characters/Dialogue/Abigail.json` and one gift-taste file and write
+   down what is actually in them. The key schema for heart-gated lines is the crux of the
+   whole corpus, and it should come from the files rather than from memory or from a wiki.
 2. **Extract, never commit.** The dialogue is ConcernedApe's copyrighted content. The
    extractor reads the user's own installation and writes a label file locally; the label
    file stays out of git, and only the derived metrics are ever published. Ship the extractor,
