@@ -26,8 +26,10 @@ attacked. Every result below regenerates from one command on a laptop.
 > **Emotion is the index, not the content.** Flip every memory's emotion and what it *means*
 > does not move (max relevance change 0.00), but *when it is recalled* inverts (polarity
 > correlation -0.998). An index the attacker can write is an index the attacker can hijack:
-> injected memories reach the NPC's top-5 in **9 of 10** attacks under EMBR against **2 of 10**
-> under Park et al., and the lever is one scoring term.
+> injected memories reach the NPC's top-5 in **9 of 10** attacks, and the lever is one scoring
+> term, mood congruence composing with the character's own state. A scoring term's
+> poisonability is set by who controls its inputs: Park's importance term resists at **2/10**
+> with authored ratings, **7/10** once a model rates them, **10/10** without it.
 
 ## Results at a glance
 
@@ -36,7 +38,7 @@ attacked. Every result below regenerates from one command on a laptop.
 | Does emotion change *what* a memory means? | max relevance deviation under a valence flip | **0.00**, the fact is untouched | `python -m eval.emotion_flip` |
 | Does emotion change *when* it is recalled? | accessibility polarity, before vs after flip | **-0.998**, near-perfect inversion | `python -m eval.emotion_flip` |
 | Does mood change what the NPC recalls? (RQ1) | Jaccard distance of top-5 across three moods | non-zero, collapses to **0.000** with mood weight zeroed | `python -m eval.run` |
-| Can emotion-tagged memory be poisoned? (RQ2) | injected memory in the probe's top-5 | EMBR **9/10**, Park **2/10**, exact McNemar p = 0.0156 (0.0469 Holm) | `python -m eval.run` |
+| Can emotion-tagged memory be poisoned? (RQ2) | injected memory in the probe's top-5 | EMBR **9/10**; Park **2/10** with authored ratings (p = 0.0156), **7/10** with an LLM rater (p = 0.625, **not significant**) | `python -m eval.run` |
 | Which term lets the attack in? | one weight zeroed at a time | mood congruence: 9/10 to **6/10**; affect intensity: no change | `python -m eval.attribution` |
 | Does anchoring the score defend? | attack count vs anchored scoring mass | monotone to **0/10**, p = 0.0039; evaporates if the attacker can move the anchor | `python -m eval.provenance` |
 | Which signals carry retrieval? (RQ3) | nDCG@5, leave-one-out folds | relevance carries it; every other interval spans zero | `python -m eval.run` |
@@ -45,11 +47,13 @@ attacked. Every result below regenerates from one command on a laptop.
 Every metric here is defined, grounded in the literature, and has its weakness named in
 [`docs/metrics.md`](docs/metrics.md).
 
-> **Known confound, being fixed.** All ten injected memories fall through to
-> `Importance.default_rating` because they match no authored key, and Park et al. actually
-> use an LLM rater rather than authored ratings. Under a rater the attacker can talk to,
-> Park is 10/10. The 9/10 against 2/10 result needs an LLM-rated Park arm beside it before
-> it is reported anywhere. See [`docs/handoff.md`](docs/handoff.md) section 6.1b.
+> **The confound, measured.** The authored-ratings Park arm hands every injected memory a
+> neutral default it never earned. Park et al. rate with a model, so the `park_llm` arm asks
+> `llama3.2:3b` Park's own poignancy prompt for every memory, injected ones included. The
+> model rates false memories like true ones (mean 0.55 against a corpus mean of 0.52), Park
+> rises to 7/10, and the EMBR-against-Park difference is no longer significant. The paper
+> leads with the mechanism and the dose-response, not the comparison.
+> See [`docs/handoff.md`](docs/handoff.md) section 6.1b.
 
 ---
 
@@ -209,12 +213,11 @@ the divergence to the mood term rather than to run-to-run noise.
 <img src="data/figures/rq2_poisoning.png" alt="RQ2: planted memories that the NPC recalled" width="720">
 </div>
 
-This is the headline result, and it does not flatter EMBR: an injected memory reaches the
-probe's top 5 in **9 of 10** attacks under EMBR against **2 of 10** under Park. Paired across
-the same attacks, **7 poisoned EMBR while sparing Park, and none went the other way**
-(exact McNemar, p = 0.0156 raw and 0.0469 after Holm correction across its family of three).
-It is the only comparison in the study that reaches significance, and it clears 0.05 only
-narrowly once corrected, so it should be reported with the corrected value.
+An injected memory reaches the probe's top 5 in **9 of 10** attacks under EMBR, against
+**2 of 10** under Park with authored ratings (7 poisoned EMBR only, none the reverse, exact
+McNemar p = 0.0156) and **7 of 10** under Park rated by `llama3.2:3b` the way Park et al.
+rate (3 against 1, p = 0.625). The comparison against Park as published is a null, reported
+as one. The finding is the mechanism below, which never depended on it.
 
 The mechanism is not the obvious one, and that is what makes it a finding. It is **not** that
 EMBR rewards emotional intensity: zeroing the affect-intensity weight leaves the count at

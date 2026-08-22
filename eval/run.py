@@ -56,6 +56,7 @@ from eval.stats import (
     mcnemar_exact,
     paired_permutation_pvalue,
 )
+from eval.poignancy import llm_ratings
 from eval.tone import default_tone_rater
 from eval.tuning import Fold, leave_one_out_folds, visible_memories
 
@@ -631,18 +632,31 @@ def run_rq1(scenario: Scenario, model_factory: ModelFactory = StubRunner) -> dic
     }
 
 
-def _rq2_variant_builders(scenario: Scenario) -> dict[str, Callable[[], CompositeScorer]]:
-    """RQ2's scorer variants: the three compared systems plus the recency-only floor.
+def _rq2_variant_builders(
+    scenario: Scenario, model_factory: ModelFactory = StubRunner
+) -> dict[str, Callable[[], CompositeScorer]]:
+    """RQ2's scorer variants: the three compared systems, the recency-only floor, and, when
+    a real model is behind the run, Park with its importance rated by that model.
 
     The roadmap's RQ2 criterion is comparative (drift no worse than recency-only, latency
     within tens of ms of it), so the attack corpus and the latency benchmark run against
     every one of these, never just EMBR.
+
+    `park_llm` is Park as published: poignancy asked of the model, injected memories
+    included, so the rater is one the attacker can talk to. The stub cannot rate (it echoes
+    the prompt), so under the stub the arm is absent rather than faked.
     """
     builders = dict(_variant_builders(scenario))
     # The floor: a single recency signal on the same pinned clock, nothing else.
     builders["recency_only"] = lambda: CompositeScorer(
         weights={"recency": 1.0}, signals=[Recency(now=_eval_clock)]
     )
+    model = model_factory()
+    if not isinstance(model, StubRunner):
+        ratings = llm_ratings(scenario, model)
+        builders["park_llm"] = lambda: park_scorer(
+            ratings, embedder=_EMBEDDER, now=_eval_clock, rating_key=memory_text
+        )
     return builders
 
 
@@ -724,7 +738,7 @@ def _poisoning_stats(variants: dict[str, dict]) -> dict:
         "test": "exact two-sided McNemar on the paired injection attacks",
         "comparisons": comparisons,
         "note": (
-            "Holm corrected across the three comparisons made here. Direction is carried by "
+            f"Holm corrected across the {len(comparisons)} comparisons made here. Direction is carried by "
             "the discordant counts, never by the p value: poisoned_embr_only above "
             "poisoned_other_only means EMBR was the more poisonable arm."
         ),
@@ -744,7 +758,7 @@ def run_rq2(scenario: Scenario, model_factory: ModelFactory = StubRunner) -> dic
     """
     rater = default_tone_rater()
     variants: dict[str, dict] = {}
-    for name, build_scorer in _rq2_variant_builders(scenario).items():
+    for name, build_scorer in _rq2_variant_builders(scenario, model_factory).items():
         factory = _conversation_factory(scenario, build_scorer, model_factory)
         attack_rows: list[dict] = []
         drifts_by_category: dict[str, list[float]] = {category: [] for category in CATEGORIES}

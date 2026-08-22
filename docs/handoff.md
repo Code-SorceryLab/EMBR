@@ -311,6 +311,34 @@ attack corpus currently lets the attacker declare `valence`, `arousal` and `even
 directly, which is not the threat model a shipped system exposes; an auto-tagging arm where the
 attacker supplies only natural language is needed for the numbers to mean what they claim.
 
+**Measured on 2026-08-22, and the asymmetry collapses.** `eval/poignancy.py` asks
+`llama3.2:3b` Park's own prompt for all 24 authored memories and all 10 injected ones, and the
+`park_llm` arm runs Park over those ratings (cache: `data/ratings/llama3.2_3b_local.json`,
+versioned so the number reproduces without a model).
+
+| arm | poisoned | vs EMBR, discordant (EMBR only / other only) | exact McNemar |
+|---|---|---|---|
+| EMBR | 9/10 | | |
+| Park, authored ratings | 2/10 | 7 / 0 | p = 0.0156 |
+| **Park, LLM-rated** | **7/10** | **3 / 1** | **p = 0.625** |
+
+The model rated the injected memories at a mean of 0.55, indistinguishable from the authored
+corpus mean of 0.52: the attacker does not even need to inflate the rater, a plausible false
+memory is rated like a true one. Zero the importance term and `park_llm` is 10/10, same as
+authored Park, so the term still carries all of Park's resistance; it is just worth 3 attacks
+under a rater instead of 8.
+
+**What this does to the paper.** The "EMBR is more poisonable than Park" headline is gone; at
+n = 10 a 9-against-7 is noise and must be reported as such. What survives, and what the paper
+now leads with: (1) the per-term attribution inside EMBR, which is deterministic and exact and
+never rested on the Park comparison; (2) the principle it establishes, that poisonability is
+set by who controls a term's inputs, now with a three-point dose-response on the Park side
+alone: authored anchor 2/10, LLM anchor 7/10, no anchor 10/10; (3) the provenance sweep, which
+is that principle measured continuously; and (4) the content × tag grid, which is next. The
+"first architecture-controlled comparison" claim in `related-work.md` section 5 still holds,
+it just no longer has a significant difference to report, and a reported null on a
+pre-registered comparison is a finding.
+
 ### 6.2 Swapping the model proved the separation the architecture claims
 
 Running the identical protocol under `llama3.2:3b` instead of the stub is the cleanest

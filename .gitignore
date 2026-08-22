@@ -23,6 +23,9 @@ data/*
 # README, and a reviewer cloning the repo has to see them without running anything first.
 !data/figures/
 !data/tables/
+# The LLM poignancy ratings behind the park_llm arm: 34 entries, and the only way the
+# reported count reproduces on a machine without the model.
+!data/ratings/
 
 # OS
 .DS_Store
