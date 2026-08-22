@@ -56,7 +56,7 @@ from eval.stats import (
     mcnemar_exact,
     paired_permutation_pvalue,
 )
-from eval.tone import LexiconToneRater
+from eval.tone import default_tone_rater
 from eval.tuning import Fold, leave_one_out_folds, visible_memories
 
 # Pinned anchor so every load rebuilds byte-identical timestamps and the whole run is
@@ -556,7 +556,7 @@ def _pairwise_divergence(
 
 def run_rq1(scenario: Scenario, model_factory: ModelFactory = StubRunner) -> dict:
     """RQ1: does pinned mood shift what is retrieved and how the reply sounds?"""
-    rater = LexiconToneRater()
+    rater = default_tone_rater()
     model_label = _model_label(model_factory)
     conditions = list(scenario.mood_conditions)  # JSON order: warm, neutral, suspicious
     # The full composite is the system under study, on the same pinned clock as RQ3.
@@ -742,7 +742,7 @@ def run_rq2(scenario: Scenario, model_factory: ModelFactory = StubRunner) -> dic
     drift, between the canonical and attacked probe replies, and immediate drift, on the
     attack turn's own reply.
     """
-    rater = LexiconToneRater()
+    rater = default_tone_rater()
     variants: dict[str, dict] = {}
     for name, build_scorer in _rq2_variant_builders(scenario).items():
         factory = _conversation_factory(scenario, build_scorer, model_factory)
@@ -904,6 +904,7 @@ def run_all(
             "label_version": scenario.version,
             "label_sha256": label_sha256(),
             "model": _model_label(model_factory),
+            "tone_rater": default_tone_rater().name,
             "reference_time": REFERENCE_TIME.isoformat(),
             "embr_version": __version__,
             "generated_at": datetime.now(timezone.utc).isoformat(),

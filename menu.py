@@ -83,6 +83,7 @@ _MENU_ITEMS = [
     ("10", "Generate Paper Assets", "rebuild figures and tables from a run"),
     ("11", "Latest Results", "summarise the newest run directory"),
     ("S", "Settings", "weights, top-k, backends, model runner"),
+    ("L", "Fetch Tone Lexicon", "NRC VAD v2.1, research use, stays out of git"),
     ("D", "Delete All Data", "wipe runs, figures and tables, requires DELETE"),
     ("C", "Clear Screen", "clear terminal output"),
     ("0", "Exit", "quit EMBR"),
@@ -93,7 +94,7 @@ _SECTIONS = [
     ("MEASURE", ("3", "4", "5", "6")),
     ("MECHANISM", ("7", "8", "9")),
     ("PAPER", ("10", "11")),
-    ("SYSTEM", ("S", "D", "C")),
+    ("SYSTEM", ("S", "L", "D", "C")),
 ]
 
 
@@ -137,6 +138,7 @@ def _print_header() -> None:
     """Logo, tagline, and a live stats bar: runs on disk, the model behind the newest one,
     figures built, and the configured model runner."""
     from embr.config import EmbrConfig
+    from eval.tone import default_tone_rater
 
     print()
     for line in _LOGO.splitlines():
@@ -148,12 +150,14 @@ def _print_header() -> None:
     runs = len(list(RUNS_DIR.glob("*/results.json")))
     figures = len(list(FIGURES_DIR.glob("*.png")))
     runner = EmbrConfig.load().model_runner
+    tone = default_tone_rater().name
     r_str = _GRN(str(runs)) if runs else _DIM("0")
     f_str = _GRN(str(figures)) if figures else _DIM("0")
+    t_str = _GRN(tone) if tone.startswith("nrc") else _YEL(tone)
     print()
     print(
         f"    Runs {r_str}  │  Latest {_WHT(_run_model(_latest_run()))}"
-        f"  │  Figures {f_str}  │  Runner {_WHT(runner)}"
+        f"  │  Figures {f_str}  │  Runner {_WHT(runner)}  │  Tone {t_str}"
     )
     print(_DIM(_RULE))
 
@@ -490,6 +494,19 @@ def _do_settings() -> None:
     print(_DIM(f"\n    Edit {DEFAULT_CONFIG_PATH} and reopen. Zero a weight to ablate it."))
 
 
+def _do_fetch_lexicon() -> None:
+    """Download the NRC VAD lexicon so the reported tone rater is the published one."""
+    from eval.tone import LEXICON_PATH, LEXICON_URL, fetch_lexicon
+
+    if LEXICON_PATH.exists():
+        print(_DIM(f"\n    Already on disk: {LEXICON_PATH}"))
+        return
+    print(_DIM(f"\n    Fetching {LEXICON_URL} (about 6 MB)..."))
+    path = fetch_lexicon()
+    print(f"    {_GRN('✓ Wrote')} {path}")
+    print(_DIM("    Free for research, cite Mohammad (2018, 2025), never redistribute: data/ is gitignored."))
+
+
 #: Everything the pipeline generates. Nothing hand written lives under any of these, which
 #: is what makes wiping them safe: the branding, the architecture diagram and the builders
 #: all live under assets/ and are never touched.
@@ -547,6 +564,7 @@ _ACTIONS: dict[str, Callable[[], None]] = {
     "10": _do_generate_assets,
     "11": _do_latest_results,
     "S": _do_settings,
+    "L": _do_fetch_lexicon,
     "D": _do_delete_run_data,
     "C": _clear,
 }

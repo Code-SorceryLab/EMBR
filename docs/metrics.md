@@ -58,17 +58,23 @@ Two automatic raters, no human rater. State this in the paper as a limitation, o
 
 | Rater | Formula | Grounding | Status |
 |---|---|---|---|
-| lexicon rater | mean valence and mean arousal of matched tokens, from a published VAD lexicon | NRC VAD Lexicon v2, Mohammad 2018 and 2025: 55k terms, human ratings, scores in [-1, 1] | **planned**, replaces the 35-word hand list in `eval/tone.py` |
+| lexicon rater | mean valence and mean arousal of the tokens the lexicon knows; arousal shifted from [-1, 1] to [0, 1]; no hits reads as undefined | NRC VAD Lexicon v2.1, Mohammad 2018 and 2025: 44k human-rated unigrams, scores in [-1, 1] | implemented, `VadLexiconToneRater`; the hand list survives only as the fallback on a clone that has not fetched the lexicon, and the run metadata records which rater produced the numbers |
 | blinded model judge | a second model, not the generator, rates each reply's valence and arousal on the same scale with the condition hidden | LLM-as-a-judge, Zheng et al. 2023; Emotional RAG (Huang et al. 2024) evaluates with a model judge | **planned** |
 | rater agreement | Spearman rho between the two raters across every reply in the run | standard rank correlation for two interval raters with no distributional assumption | **planned** |
 | tone shift | Spearman rho between the pinned mood valence and the rated reply valence across conditions | the proposal's pre-registered statistic | implemented with the hand lexicon, re-run under the two raters above |
 
-**Why this replaces the hand list.** `LexiconToneRater` currently scores from 35 positive and
+**Why this replaced the hand list.** The old `LexiconToneRater` scored from 35 positive and
 a similar number of negative words chosen by the author. Deterministic, but indefensible:
-the words were picked by the person who wants the effect. NRC VAD v2 is human-rated,
-published, and free for research, and swapping it in changes no harness code because the
-rater sits behind the `ToneRater` protocol. The lexicon is downloaded at setup and not
-committed; its terms allow research use and require a licence for commercial use.
+the words were picked by the person who wants the effect. NRC VAD v2.1 is human-rated,
+published, and free for research, and swapping it in changed no harness code because the
+rater sits behind the `ToneRater` protocol. The lexicon is fetched from the menu (option L)
+into `data/lexicons/`, which is gitignored; its terms forbid redistribution.
+
+**Known weakness of the lexicon rater.** It averages over every token the lexicon knows, and
+the lexicon knows most function words, which sit near neutral. A warm line therefore reads
+around +0.4, not +0.9, and calm prose sits near 0.4 arousal rather than 0. This compresses
+the scale without changing the ordering, which is what the Spearman statistics read. It
+also has no negation handling, the standard limit of any bag-of-words affect measure.
 
 **Why two raters and not one.** A tone shift that one automatic rater reports can be an
 artefact of that rater. Two raters built on different principles (a word lexicon, a model

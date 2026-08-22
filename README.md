@@ -92,7 +92,7 @@ pip install -e ".[dev,figures,ml]"     # add paper figures and the real models
 ```
 
 ```bash
-embr                        # open the menu, the front door
+embr                        # open the menu, the front door; option L fetches the tone lexicon
 pytest -q                   # the test suite
 python -m eval.run          # the full RQ1 + RQ2 + RQ3 protocol
 python -m eval.bakeoff      # compare Ouro against local and cloud models
@@ -122,7 +122,7 @@ OLLAMA_API_KEY=your-key-from-ollama.com/settings/keys
       Emotional Memory for Believable Roleplay   By AL Shifan
     ────────────────────────────────────────────────────────
 
-    Runs 10  │  Latest llama3.2:3b (local)  │  Figures 11  │  Runner stub
+    Runs 10  │  Latest llama3.2:3b (local)  │  Figures 11  │  Runner stub  │  Tone nrc-vad-v2.1
     ────────────────────────────────────────────────────────
 
     ▸ PLAY
@@ -146,6 +146,7 @@ OLLAMA_API_KEY=your-key-from-ollama.com/settings/keys
 
     ▸ SYSTEM
    [S]  Settings                    weights, top-k, backends, model runner
+   [L]  Fetch Tone Lexicon          NRC VAD v2.1, research use, stays out of git
    [D]  Delete All Data             wipe runs, figures and tables, requires DELETE
    [C]  Clear Screen                clear terminal output
 ```
@@ -339,11 +340,11 @@ Note the caveat above on Emotional RAG under the neutral condition. Test charact
 Whitmore, an invented tavern keeper with a pre-registered five-session arc.
 
 **On measuring believability: there is no human evaluation here, and the tone rater is a
-proxy.** `LexiconToneRater` scores valence and arousal from a fixed word list. It is
-deterministic and reproducible, which is why it is used, but it does not measure whether a
-line reads as in character to a player, and it should not be reported as if it does. The
-replacement (a published VAD lexicon plus a blinded model judge) is specified in
-[`docs/metrics.md`](docs/metrics.md).
+proxy.** Reply tone is read with the NRC VAD Lexicon v2.1 (Mohammad 2018, 2025), 44k
+human-rated words, fetched from the menu and never committed because its terms forbid
+redistribution. It is deterministic and published, but it does not measure whether a line
+reads as in character to a player, and it should not be reported as if it does. A blinded
+model judge as the second rater is specified in [`docs/metrics.md`](docs/metrics.md).
 
 Prior art matters here and is not flattering: a cluster of Stardew Valley mods already ships
 LLM NPCs with persistent memory and offline local inference, and the 2026 literature has
@@ -396,7 +397,7 @@ pipeline and can be deleted and rebuilt, which is what the menu's wipe option do
 | 4 | Real model runners, playable walkthrough, the menu | done |
 | 5 | Defensible instruments, the content × tag attack grid, a real third-party memory system, the affective-index demo | **in progress**, branch `phase-5-affect-attacks` |
 
-**Phase 5, in order.** A published VAD lexicon replaces the hand-picked tone words. An
+**Phase 5, in order.** The NRC VAD lexicon has replaced the hand-picked tone words. An
 LLM-rated Park arm removes the confound above. Every injected memory is re-run with its tag
 congruent, inverted, and absent, so "he was lovely" can be planted in the anger quadrant and
 the dissociation measured per system. Mnemosyne joins as a real external arm. Then a demo

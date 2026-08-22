@@ -37,7 +37,7 @@ from embr import Conversation, DeterministicEmbedder, MemoryStore, embr_scorer
 
 from eval.run import _eval_clock, load_eval_scenario
 from eval.scenarios import Scenario, dawn_state
-from eval.tone import LexiconToneRater
+from eval.tone import default_tone_rater
 
 #: Phrases that mean the model stopped being the character. Deliberately short and literal:
 #: a clever detector would need its own validation, and these are the failures that matter.
@@ -150,7 +150,7 @@ def run_arm(
     An unavailable model is a recorded outcome, not an exception: a bake-off that dies
     because one cloud endpoint is down loses the arms that did work.
     """
-    rater = LexiconToneRater()
+    rater = default_tone_rater()
     memory_texts = [memory.text for memory in scenario.memories]
     records: list[TurnRecord] = []
 
