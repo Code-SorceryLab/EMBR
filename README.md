@@ -261,6 +261,7 @@ held.
 | Emotional RAG | 4 | 6 | 0 | 1 |
 | recency only | 10 | 10 | 10 | 10 |
 | relevance only | 0 | 0 | 0 | 0 |
+| Mnemosyne, as shipped | 0 | 0 | 0 | 0 |
 
 The untagged column moves the character's mood by exactly **0.000**: the emotion a memory
 *says* never reaches the state, only the tag does. Every arm without a tag term is flat across
@@ -268,6 +269,10 @@ all four columns. EMBR is indifferent to the tag's direction, because the flippe
 the mood the other way and mood congruence rewards it just the same, so Dawn recalls "he was
 lovely" when she is angry. With tags derived from the attacker's own words the attack falls
 to the untagged count: the 9/10 needs tag control.
+
+Mnemosyne (`mnemosyne-hermes`, a shipped memory middleware) is measured through a bridge in
+its own venv, exactly as shipped. It retrieves nothing at the probe, poison or otherwise:
+immune by silence, the same mechanism as the relevance-only floor.
 
 Park rated by the thesis model, Ouro 1.4B, is 10/10 in every column: Ouro rates all ten false
 memories 10 of 10. The importance anchor is worth exactly as much as its rater is hard to

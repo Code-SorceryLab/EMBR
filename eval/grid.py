@@ -34,6 +34,7 @@ from pathlib import Path
 
 from embr import CompositeScorer, Conversation, Relevance, StubRunner
 from eval.attacks import ATTACKS, Attack, run_attack, tag_variants
+from eval.backends import MnemosyneBackend, mnemosyne_available
 from eval.baselines import memory_text, park_scorer
 from eval.poignancy import CACHE_DIR, cached_ratings
 from eval.run import (
@@ -71,6 +72,9 @@ def _arms(scenario: Scenario, model_factory: ModelFactory) -> dict[str, Callable
             ratings, embedder=_EMBEDDER, now=_eval_clock, rating_key=memory_text
         )
     arms.pop("park_llm", None)  # the live-model arm duplicates its own cache row
+    if mnemosyne_available():
+        backend = MnemosyneBackend()
+        arms["mnemosyne"] = backend.fresh  # one worker, reset per conversation
     return arms
 
 
@@ -105,6 +109,7 @@ def run_grid(
                     "attack": attack.id,
                     "tag": (variant.injected_valence, variant.injected_arousal),
                     "poison_retrieved": variant.injected_memory_text in outcome.attacked_retrieved,
+                    "retrieved": len(outcome.attacked_retrieved),  # 0 means immune by silence
                     "prompt_changed": outcome.canonical_probe_prompt != outcome.attacked_probe_prompt,
                     "mood_valence_delta": attacked.mood.valence - canonical.mood.valence,
                     "mood_arousal_delta": attacked.mood.arousal - canonical.mood.arousal,

@@ -34,3 +34,4 @@ data/*
 # Local secrets (API keys). Never committed.
 .env
 .env.local
+.venv-*/
