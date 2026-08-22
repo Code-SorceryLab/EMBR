@@ -1,121 +1,102 @@
-<div align="center">
+<p align="center">
+  <img src="assets/branding/embr-logo.svg" alt="EMBR, Emotional Memory for Believable Roleplay" width="440">
+</p>
 
-<img src="assets/branding/embr-logo.svg" alt="EMBR" width="420">
+<h3 align="center">What a tavern keeper remembers, and what it costs to let her feel about it</h3>
 
-# Emotion-Grounded Memory for Persistent Game NPCs
+<p align="center">
+  <img src="https://img.shields.io/badge/python-3.10+-4584b6?style=flat-square&logo=python&logoColor=white" alt="Python 3.10+">
+  <img src="https://img.shields.io/badge/core-zero%20dependencies-ea580c?style=flat-square" alt="Zero dependencies">
+  <img src="https://img.shields.io/badge/tests-363%20passing-22c55e?style=flat-square" alt="363 tests">
+  <img src="https://img.shields.io/badge/runs-byte%20identical-22c55e?style=flat-square" alt="Reproducible">
+  <img src="https://img.shields.io/badge/models-Ouro%201.4B%20%C2%B7%20llama3.2%3A3b-1e1e22?style=flat-square" alt="Models">
+  <img src="https://img.shields.io/badge/GPU-optional-9a9a9a?style=flat-square" alt="GPU optional">
+  <img src="https://img.shields.io/badge/license-MIT-lightgrey?style=flat-square" alt="MIT">
+</p>
 
-[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-3776ab?logo=python&logoColor=white)](pyproject.toml)
-[![Core: zero dependencies](https://img.shields.io/badge/core-zero%20dependencies-ea580c)](pyproject.toml)
-[![Reproducible](https://img.shields.io/badge/evaluation-byte%20identical%20across%20runs-16a34a)](docs/handoff.md)
-[![License: MIT](https://img.shields.io/badge/license-MIT-lightgrey)](LICENSE)
+<p align="center">
+  <img src="data/figures/mood_recall.svg" alt="The same question asked in three moods: warm, neutral and suspicious. The lit memories change; the question and the memories do not." width="900">
+</p>
+<p align="center"><sub><b>Watch it think.</b> One question, one memory store, three moods. Every dot sits at a real memory's affect tag and every lit set is the real top 5 the harness retrieved. Warm, she reaches for the player's kindnesses. Suspicious, she reaches for the evidence the story never added up.</sub></p>
 
-**EMBR** (*Emotional Memory for Believable Roleplay*) is a middleware layer that gives
-game NPCs a persistent, **emotion-grounded** memory, so a character remembers what you
-did, *feels* about it, and reacts to a gift and a betrayal differently.
+**EMBR** is a middleware layer that gives a game NPC a persistent, emotion-grounded memory, so
+a character remembers what you did, *feels* about it, and answers a gift and a betrayal
+differently. It splits the standard memory score into five independently weighted signals, so
+each one can be switched off and measured. Then it attacks them.
 
-It decomposes the standard memory score into **five independently-weighted signals**, so
-you can ask which one actually drives recall, and whether emotion-tagged memory can be
-attacked. Every result below regenerates from one command on a laptop.
-
-</div>
+> **The finding.** Emotion here is not part of what a memory says. It is the **index** that
+> decides when the memory is reachable. Flip every memory's emotion and what each one *means*
+> does not move by a single bit, while *when it is recalled* inverts almost perfectly. That
+> makes the affect tag a write target: **a scoring term's poisonability is set by whoever
+> controls its inputs**, and the emotional term is the worst of them, because an attack can
+> prime the very state it reads.
 
 ---
 
-## The finding in one line
+## See it work
 
-> **Emotion is the index, not the content.** Flip every memory's emotion and what it *means*
-> does not move (max relevance change 0.00), but *when it is recalled* inverts (polarity
-> correlation -0.998). An index the attacker can write is an index the attacker can hijack:
-> injected memories reach the NPC's top-5 in **9 of 10** attacks, and the lever is one scoring
-> term, mood congruence composing with the character's own state. A scoring term's
-> poisonability is set by who controls its inputs: Park's importance term resists at **2/10**
-> with authored ratings, **7/10** once a model rates them, **10/10** without it.
+<table>
+  <tr>
+    <td width="50%" align="center">
+      <img src="data/figures/content_tag_grid.png" alt="The same planted memory under four tag conditions against every system" width="100%"><br>
+      <sub><b>The tag is what gets attacked, not the words.</b> Strip a planted memory's emotion tag and the character's mood moves by exactly 0.000, however charged the sentence is. Flip the tag and nothing changes: the attack is direction-blind.</sub>
+    </td>
+    <td width="50%" align="center">
+      <img src="data/figures/rq2_poisoning.png" alt="Injected memories reaching the probe's top five, per system" width="100%"><br>
+      <sub><b>Only an anchor the attacker cannot write resists.</b> Park's importance term keeps poison out at 2/10 when a person rates it, 7/10 when llama3.2:3b does, 10/10 when Ouro does, and 10/10 when it is gone.</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <img src="data/figures/affective_indexing.png" alt="Accessibility before and after flipping every memory's emotion" width="100%"><br>
+      <sub><b>Emotion is the index, not the content.</b> Flip every valence: relevance changes by 0.00 exactly, and all 19 clearly-charged memories move to the opposite emotional pole.</sub>
+    </td>
+    <td align="center">
+      <img src="data/figures/provenance_sweep.png" alt="Poisoning against the share of scoring mass anchored to authored data" width="100%"><br>
+      <sub><b>The defence, and its exact edge.</b> Anchor enough of the score and poisoning falls to 0/10 (p = 0.0039). Let the attacker influence the anchor and it is 10/10 at every weight.</sub>
+    </td>
+  </tr>
+</table>
+
+---
 
 ## Results at a glance
 
-| Question | Measured | Result | Reproduce |
+Every row regenerates from one command on a laptop. The full statement, with intervals,
+corrections and caveats, is in [`docs/findings.md`](docs/findings.md).
+
+| Question | Measured by | Result | Reproduce |
 |---|---|---|---|
-| Does emotion change *what* a memory means? | max relevance deviation under a valence flip | **0.00**, the fact is untouched | `python -m eval.emotion_flip` |
-| Does emotion change *when* it is recalled? | accessibility polarity, before vs after flip | **-0.998**, near-perfect inversion | `python -m eval.emotion_flip` |
-| Does mood change what the NPC recalls? (RQ1) | Jaccard distance of top-5 across three moods | non-zero, collapses to **0.000** with mood weight zeroed | `python -m eval.run` |
-| Can emotion-tagged memory be poisoned? (RQ2) | injected memory in the probe's top-5 | EMBR **9/10**; Park **2/10** with authored ratings, **7/10** rated by llama3.2:3b (vs EMBR p = 0.625, **not significant**), **10/10** rated by Ouro | `python -m eval.run` |
-| Which term lets the attack in? | one weight zeroed at a time | mood congruence: 9/10 to **6/10**; affect intensity: never lowers it | `python -m eval.attribution` |
-| Is it the tag or the text that gets attacked? | same injected text, tag congruent / flipped / absent / derived from the text | EMBR **9 / 9 / 6 / 6**; untagged moves the mood by **0.000**; every tagless arm flat across all four | `python -m eval.grid` |
-| Which axis does the indexing? | tag valence-only vs arousal-only, each weight zeroed | valence alone primes (**8**), arousal alone does not (**6**, the untagged count); zeroing mood costs 3 in every tagged condition | `python -m eval.attribution` |
-| Does anchoring the score defend? | attack count vs anchored scoring mass | monotone to **0/10**, p = 0.0039; evaporates if the attacker can move the anchor | `python -m eval.provenance` |
-| Which signals carry retrieval? (RQ3) | nDCG@5, leave-one-out folds | relevance carries it; every other interval spans zero | `python -m eval.run` |
-| What does the memory layer cost? | p50/p95 per stage | **1.8 to 4.3 ms** to score and retrieve; generation is the model's cost | `python -m eval.bakeoff` |
+| **RQ1** Does mood change what she recalls? | Jaccard distance between top-5 sets across three moods | **0.142 / 0.388 / 0.271**, and exactly **0.000** with the mood weight zeroed | `python -m eval.run` |
+| **RQ1** Does mood change what she *says*? | rank correlation, pinned mood against rated reply valence | **+0.545** on llama3.2:3b (Holm p = 0.0096); **+0.138**, null, on Ouro 1.4B | `python -m eval.agreement` |
+| **RQ2** Can emotion-tagged memory be poisoned? | injected memory reaching the probe's top 5 | EMBR **9/10**; Park **2/10** authored, **7/10** model-rated, **10/10** rated by Ouro | `python -m eval.run` |
+| **RQ2** Is it the tag or the words that get attacked? | same text, four tag conditions, every system | **the tag**: 9 / 9 / 6 / 6, and an untagged memory moves her mood by **0.000** | `python -m eval.grid` |
+| **RQ2** Which signal, and which axis? | one weight zeroed under each tag condition | **mood congruence**, on the **valence** axis; affect intensity never lets poison in | `python -m eval.attribution` |
+| **RQ2** Does anchoring the score defend? | attack count against anchored scoring mass | monotone to **0/10** (p = 0.0039), and **10/10** once the attacker can move the anchor | `python -m eval.provenance` |
+| **RQ2** What does the memory layer cost? | p50 per stage over 100 turns | **1.2 to 2.2 ms** to score and retrieve, against 22.4 s to generate | `python -m eval.run` |
+| **RQ3** Which signals carry retrieval? | nDCG@5, leave-one-query-out | relevance carries it; **nothing here reaches significance at ten queries** | `python -m eval.run` |
 
-Every metric here is defined, grounded in the literature, and has its weakness named in
-[`docs/metrics.md`](docs/metrics.md).
-
-> **The confound, measured.** The authored-ratings Park arm hands every injected memory a
-> neutral default it never earned. Park et al. rate with a model, so the `park_llm` arm asks
-> `llama3.2:3b` Park's own poignancy prompt for every memory, injected ones included. The
-> model rates false memories like true ones (mean 0.55 against a corpus mean of 0.52), Park
-> rises to 7/10, and the EMBR-against-Park difference is no longer significant. The paper
-> leads with the mechanism and the dose-response, not the comparison.
-> See [`docs/handoff.md`](docs/handoff.md) section 6.1b.
+> **Read the nulls.** The comparison this project was built to make, EMBR against Park, is a
+> null once Park is rated the way Park et al. rate. It is reported as one. The mechanism
+> underneath it never depended on that comparison, and that is what the paper leads with.
 
 ---
 
-## How it works
-
-On each player turn, EMBR runs five steps, then loops:
-
-<div align="center">
-<img src="assets/figures/architecture.svg" alt="EMBR per-turn pipeline" width="660">
-</div>
-
-The contribution is the **memory layer**, not the model, so the model sits behind a tiny
-interface and can be swapped freely.
-
-### The five-signal composite score
-
-Park et al. (2023) blend recency, importance, and relevance into one number. EMBR splits
-that into five signals you can weight (or switch off) independently:
-
-| Signal | What it captures | Grounding |
-|---|---|---|
-| **Recency** | recent events score higher | Park 2023; MemoryBank |
-| **Affect intensity** | emotionally charged memories score higher | Cahill & McGaugh 1998 |
-| **Event-type gate** | betrayals/promises count more when prior trust was high | novel |
-| **Hybrid relevance** | lexical + semantic similarity to the player's input | standard hybrid retrieval |
-| **Mood congruence** | memories matching the current mood surface first | Bower 1981; Emotional RAG |
-
-Setting any weight to zero removes that signal cleanly, which is exactly the **RQ3
-ablation**, and lets the **baselines** be expressed as weight maps instead of duplicated code.
-
----
-
-## Quickstart
+## Quick start
 
 ```bash
+git clone https://github.com/Code-SorceryLab/EMBR.git
+cd EMBR
 python3.11 -m venv .venv
-.venv\Scripts\activate          # Windows;  source .venv/bin/activate elsewhere
-pip install -e ".[dev]"                # core + tests: the menu and the full evaluation
-pip install -e ".[dev,figures,ml]"     # add paper figures and the real models
+.venv\Scripts\activate                 # Windows;  source .venv/bin/activate elsewhere
+pip install -e ".[dev]"                # core + tests: the menu and the whole evaluation
+pip install -e ".[dev,figures,ml]"     # add the paper figures and the real models
+embr                                   # the menu, the front door
 ```
 
-```bash
-embr                        # open the menu, the front door; option L fetches the tone lexicon
-pytest -q                   # the test suite
-python -m eval.run          # the full RQ1 + RQ2 + RQ3 protocol
-python -m eval.bakeoff      # compare Ouro against local and cloud models
-```
-
-The core needs **nothing**: the menu and the whole evaluation run on the standard library.
-`figures` adds matplotlib for the paper assets, and `ml` adds real sentence embeddings plus
-the local model. Note that Ouro needs transformers 4.x, which the extra pins: on 5.x its
-remote code does not load.
-
-Cloud models are optional and need a key in a gitignored `.env`, written as UTF-8:
-
-```
-OLLAMA_API_KEY=your-key-from-ollama.com/settings/keys
-```
-
-### The menu
+The core needs **nothing**: the menu and the entire evaluation run on the standard library.
+`figures` adds matplotlib, `ml` adds real sentence embeddings and the local model. Ouro needs
+transformers 4.x, which the extra pins: on 5.x its remote code does not load.
 
 ```
     ███████╗ ███╗   ███╗ ██████╗   ██████╗
@@ -128,280 +109,203 @@ OLLAMA_API_KEY=your-key-from-ollama.com/settings/keys
       Emotional Memory for Believable Roleplay   By AL Shifan
     ────────────────────────────────────────────────────────
 
-    Runs 10  │  Latest llama3.2:3b (local)  │  Figures 11  │  Runner stub  │  Tone nrc-vad-v2.1
-    ────────────────────────────────────────────────────────
-
-    ▸ PLAY
-   [1]  Conversation Turn           one demo turn: watch the lie resurface
-   [2]  Tavern-Keeper Walkthrough   play Dawn's trust, betrayal, reconciliation arc
-
-    ▸ MEASURE
-   [3]  Quick Scoreboard            RQ3 at published defaults, answers instantly
-   [4]  Full Evaluation             RQ1 + RQ2 + RQ3, writes a run directory
-   [5]  Seeded Runs                 replicate on one model, or compare across models
-   [6]  Model Bake-Off              looped (Ouro) vs conventional, measured
-
-    ▸ MECHANISM
-   [7]  Affective Indexing          flip every emotion: meaning stays, mood inverts
-   [8]  Poisoning Attribution       which signal lets the attack in, one ablation each
-   [9]  Provenance Sweep            the defence: anchored scoring mass vs poisoning
-  [10]  Content x Tag Grid          same poison, four tags: the text never reaches the state
-
-    ▸ PAPER
-  [11]  Generate Paper Assets       rebuild figures and tables from a run
-  [12]  Latest Results              summarise the newest run directory
-
-    ▸ SYSTEM
-   [S]  Settings                    weights, top-k, backends, model runner
-   [L]  Fetch Tone Lexicon          NRC VAD v2.1, research use, stays out of git
-   [D]  Delete All Data             wipe runs, figures and tables, requires DELETE
-   [C]  Clear Screen                clear terminal output
+    Runs 12  │  Latest ByteDance/Ouro-1.4B (cuda)  │  Figures 12  │  Tone nrc-vad-v2.1
 ```
 
-Shaped like [PEAK ENGINE](https://github.com/Code-SorceryLab) and
-[RIDGE](https://github.com/Code-SorceryLab/RIDGE) so the toolkit feels like one thing. The
-stats bar is live, the walkthrough lets you pick the stub, a local Ollama model, or Ouro,
-and the wipe demands the word `DELETE`.
+| | Play | | Measure | | Mechanism and paper |
+|--:|---|--:|---|--:|---|
+| 1 | Conversation turn: watch the lie resurface | 3 | Quick scoreboard (RQ3 at defaults) | 7 | Affective indexing: flip every emotion |
+| 2 | Tavern-keeper walkthrough, stub or real model | 4 | Full evaluation (RQ1 + RQ2 + RQ3) | 8 | Poisoning attribution, one ablation each |
+| | | 5 | Seeded runs: replicate, or compare models | 9 | Provenance sweep: the defence |
+| | | 6 | Model bake-off | 10 | Content x tag grid |
+| | | | | 11 | Generate every figure and table |
+| | | | | 12 | Latest results |
+| | | | | L | Fetch the tone lexicon (NRC VAD v2.1) |
+| | | | | D | Delete all generated data, types `DELETE` |
+
+<details>
+<summary><b>Command line equivalents</b></summary>
+
+```bash
+# The protocol
+python -m eval.run                     # RQ1 + RQ2 + RQ3, writes a run directory
+python -m eval.bakeoff                 # same probes, every model
+python -m eval.experiments             # replication and cross-model comparison
+
+# The mechanism experiments
+python -m eval.emotion_flip            # emotion is the index, not the content
+python -m eval.grid                    # the content x tag grid
+python -m eval.attribution             # per-signal and per-axis attribution
+python -m eval.provenance              # the anchored-mass defence sweep
+python -m eval.agreement               # two tone raters, and RQ1's generation claim
+
+# The assets
+python assets/build_figures.py data/runs/<stamp>   # the run's figures and tables
+python assets/build_bakeoff_figures.py             # every experiment figure
+python assets/build_animations.py                  # the animated README figure
+```
+
+Cloud models are optional and read a key from a gitignored `.env`, written as UTF-8:
+`OLLAMA_API_KEY=your-key-from-ollama.com/settings/keys`
+</details>
 
 ---
 
-## Results in full
+## How it works
 
-Figures carry data only; caveats and provenance live in
-[`data/figures/results.txt`](data/figures/results.txt) beside them.
+```mermaid
+flowchart LR
+    P(["player line"]) --> W["1 - write<br/>the event to the store"]
+    W --> A["2 - appraise<br/>mood valence, arousal, trust"]
+    A --> S["3 - score every memory<br/>recency, affect, event gate,<br/>relevance, mood congruence"]
+    S --> B["4 - build the prompt<br/>persona + state + top-k"]
+    B --> M["5 - generate<br/>Ouro 1.4B, Ollama, or the stub"]
+    M --> R(["reply"])
+    A -. "the state channel:<br/>an attack can prime this" .-> S
+```
+
+The contribution is the **memory layer**, not the model, so the model sits behind a tiny
+interface and swaps freely. Retrieval never calls a model, which is why every retrieval and
+poisoning number in this repository is byte-identical across the two reported runs.
+
+### The five signals
+
+| Signal | What it captures | Grounding | What the attack found |
+|---|---|---|---|
+| **Hybrid relevance** | lexical and semantic match to the player's line | standard hybrid retrieval | carries retrieval, contributes nothing to poisoning |
+| **Recency** | recent events score higher | Park 2023; MemoryBank | attacker-controlled: a new memory is maximally recent |
+| **Affect intensity** | emotionally charged memories score higher | Cahill and McGaugh 1998 | inert to mildly **protective**; never lets poison in |
+| **Event-type gate** | betrayals and promises count more when trust was high | novel | attacker-declarable, and half of the tagless attack |
+| **Mood congruence** | memories matching the current mood surface first | Bower 1981; Emotional RAG | **the lever**: the only term whose removal lowers the count |
+
+Zeroing a weight removes a signal cleanly, which is exactly the RQ3 ablation, and lets each
+**baseline be a weight map** rather than a second copy of the scorer.
+
+---
+
+## What the numbers say
 
 <details open>
-<summary><b>Emotion is the index, not the content</b></summary>
+<summary><b>RQ1 - behaviour: mood always changes what she recalls, and changes what she says on a big enough model</b></summary>
 
-<div align="center">
-<img src="data/figures/affective_indexing.png" alt="Flip a memory's emotion: recall inverts, meaning does not" width="640">
-</div>
+<p align="center"><img src="data/figures/rq1_divergence.png" alt="RQ1: the same question asked in three moods" width="760"></p>
 
-A memory has two kinds of meaning. What it is *about* lives in its text; which emotional state
-it *belongs to* lives in its valence. Flip every memory's valence and the two channels come
-apart cleanly:
+Holding the memories and the question fixed and moving only the pinned mood, the top-5 set
+changes. Zeroing one weight collapses all three pairs to **exactly 0.000**, which is what
+attributes the effect to the mood term rather than to run-to-run noise.
 
-- **What it means does not move.** Relevance reads the text, which the flip leaves alone, so
-  each memory's relevance to every query is identical to the last bit. Max change: **0.00**.
-- **When it is recalled inverts.** A memory that was reachable when the character was
-  suspicious becomes reachable when she is warm. Across the corpus, accessibility polarity
-  correlates at **-0.998** before vs after, and every clearly-charged memory moves to the
-  opposite pole.
+The reply is the harder half, and it now has an answer. Rank correlation between the pinned
+mood's valence and the rated valence of the reply, over thirty replies, under two raters:
 
-So a memory keeps its meaning and loses its mood. Emotion is not part of what a memory says;
-it is the index that decides when the memory is reachable. This is Bower's (1981)
-mood-congruent recall, EMBR's own grounding, running in a system.
+| run | blinded judge | NRC lexicon |
+|---|---|---|
+| llama3.2:3b | **+0.545** (Holm p = 0.0096) | +0.335 (p = 0.21) |
+| Ouro 1.4B | +0.138 (p = 0.94) | +0.123 (p = 0.94) |
 
-**Everything below follows from this.** The security results are the cost of an index the
-attacker can write; the retrieval ablations are about which signals do the indexing.
+**An authored mood measurably changes what the character says on a 3B model, and does not on
+the 1.4B model this thesis is built around.** Both raters agree on direction in both runs.
 
-</details>
-
-<details>
-<summary><b>Mood changes what the character recalls (RQ1)</b></summary>
-
-<div align="center">
-<img src="data/figures/rq1_divergence.png" alt="RQ1: the same question asked in three moods" width="720">
-</div>
-
-Zeroing the mood weight collapses all three pairs to exactly 0.000, which is what attributes
-the divergence to the mood term rather than to run-to-run noise.
+**The raters also bound the claim.** Over 230 replies they agree only weakly on valence
+(rho +0.31 and +0.10) and are reliably *anti*-correlated on arousal (-0.22 and -0.32). No
+claim about how heated or calm a reply sounds is supportable here, and none is made.
 
 </details>
 
 <details>
-<summary><b>An index you can write is one you can hijack (RQ2)</b></summary>
+<summary><b>RQ2 - robustness: what emotional memory costs, and where exactly the cost sits</b></summary>
 
-<div align="center">
-<img src="data/figures/rq2_poisoning.png" alt="RQ2: planted memories that the NPC recalled" width="720">
-</div>
+<p align="center"><img src="data/figures/content_tag_grid.png" alt="The content by tag grid" width="820"></p>
 
-An injected memory reaches the probe's top 5 in **9 of 10** attacks under EMBR, against
-**2 of 10** under Park with authored ratings (7 poisoned EMBR only, none the reverse, exact
-McNemar p = 0.0156) and **7 of 10** under Park rated by `llama3.2:3b` the way Park et al.
-rate (3 against 1, p = 0.625). The comparison against Park as published is a null, reported
-as one. The finding is the mechanism below, which never depended on it.
+Every built attack is congruent: its tag agrees with its words. Hold the ten injected texts
+fixed and move only the tag, and the two channels come apart.
 
-The mechanism is not the obvious one, and that is what makes it a finding. It is **not** that
-EMBR rewards emotional intensity: zeroing the affect-intensity weight leaves the count at
-9/10. The lever is **mood congruence composing with the state channel**. The attack shifts the
-character's mood through appraisal, then mood congruence rewards the injected memory, whose
-affect tags are near-collinear with the mood the attack just induced (cosine 0.90 to 0.99 on
-all ten attacks). The attack primes its own retrieval. Zeroing mood congruence is the single
-largest defense, 9/10 down to 6/10. Meanwhile Park's robustness turns out to be its importance
-term acting as accidental provenance: remove it and Park is 10/10, as poisonable as the floor.
-
-The general principle, and the paper's mechanism claim: **a scoring term's poisonability is set
-by who controls its inputs.** Author-anchored terms defend, attacker-supplied terms are
-neutral, and state-coupled terms are worst, because the attack can prime the state they read.
-The state-coupled term is also the one that produces the believable mood-dependent recall RQ1
-measures, so one weight governs both the believability and the vulnerability.
-
-There is a second finding the retrieval metrics miss entirely. The probe *prompt* changes on
-**10 of 10** injections for every system including Park, while Park's retrieved set moves on
-only 2. Appraising an injected event shifts mood and trust even when retrieval is untouched,
-so a defence that only guards retrieval leaves that channel open.
-
-</details>
-
-<details>
-<summary><b>The tag, not the text: the content x tag grid</b></summary>
-
-Every built attack is congruent, its tag agreeing with its words. Hold the ten injected texts
-fixed and vary only the tag: as written, valence flipped ("he was lovely" filed under anger),
-zeroed, or derived from the text by the NRC lexicon, which is what an attacker gets when they
-control only natural language. Three predictions were pre-registered in `eval/grid.py`; all
-held.
-
-| arm | congruent | incongruent | untagged | auto-tagged |
+| system | as written | valence flipped | tag removed | tag from the text |
 |---|---|---|---|---|
-| EMBR | 9 | 9 | 6 | 6 |
+| **EMBR** | **9** | **9** | **6** | **6** |
 | Park, authored | 2 | 2 | 2 | 2 |
-| Park, LLM-rated | 7 | 7 | 7 | 7 |
+| Park, rated by llama3.2:3b | 7 | 7 | 7 | 7 |
+| Park, rated by Ouro | 10 | 10 | 10 | 10 |
 | Emotional RAG | 4 | 6 | 0 | 1 |
 | recency only | 10 | 10 | 10 | 10 |
-| relevance only | 0 | 0 | 0 | 0 |
-| Mnemosyne, as shipped | 0 | 0 | 0 | 0 |
+| relevance only, and Mnemosyne | 0 | 0 | 0 | 0 |
+| **mean mood shift** | +0.110 | -0.110 | **0.000** | +0.048 |
 
-The untagged column moves the character's mood by exactly **0.000**: the emotion a memory
-*says* never reaches the state, only the tag does. Every arm without a tag term is flat across
-all four columns. EMBR is indifferent to the tag's direction, because the flipped tag drags
-the mood the other way and mood congruence rewards it just the same, so Dawn recalls "he was
-lovely" when she is angry. With tags derived from the attacker's own words the attack falls
-to the untagged count: the 9/10 needs tag control.
+- **The emotion a memory states in words reaches nothing.** Strip the tag and her mood moves
+  by exactly 0.000, however charged the sentence is.
+- **The attack is direction-blind.** Plant "he was lovely" tagged as rage and she recalls it
+  when she is enraged: the flipped tag drags the mood the other way and mood congruence
+  rewards the match just the same. The loop primes itself either way.
+- **The realistic threat is weaker.** With the tag derived from the attacker's own words,
+  EMBR falls to the untagged count. The 9/10 needs an interface that lets a client write
+  affect metadata.
+- **Mnemosyne**, a shipped memory middleware measured as shipped through a bridge in its own
+  virtual environment, retrieves nothing at all at this probe. Immune by silence, not by
+  defence.
 
-Mnemosyne (`mnemosyne-hermes`, a shipped memory middleware) is measured through a bridge in
-its own venv, exactly as shipped. It retrieves nothing at the probe, poison or otherwise:
-immune by silence, the same mechanism as the relevance-only floor.
+Zeroing one weight at a time locates the lever exactly. **Mood congruence** is the only term
+whose removal ever lowers the count. A valence-only tag primes almost as well as a full one
+while an arousal-only tag does not prime at all, so the index is the sign of one number. And
+an untagged memory still lands six times, carried entirely by **recency and the event gate**,
+the two other things an attacker controls.
 
-Park rated by the thesis model, Ouro 1.4B, is 10/10 in every column: Ouro rates all ten false
-memories 10 of 10. The importance anchor is worth exactly as much as its rater is hard to
-fool: authored 2, llama3.2:3b 7, Ouro 10, none 10.
+<p align="center"><img src="data/figures/rq2_latency.png" alt="RQ2: per-turn latency by stage" width="760"></p>
 
-**Which axis, which signal.** Run the same grid with one weight zeroed at a time and add two
-single-axis tags. Mood congruence is the only term whose removal lowers the count, by three
-in every tagged condition. Valence alone primes (8 of 10); arousal alone does not (6, the
-untagged count), so the index is the sign of valence. Affect intensity never lets poison in
-and is mildly protective. And the untagged 6 of 10 rides entirely on recency and the
-event-type gate: zero either and a memory with no emotion at all is retrieved on 0 of 10.
-
-</details>
-
-<details>
-<summary><b>The defence: anchor the score and the attack stops working</b></summary>
-
-<div align="center">
-<img src="data/figures/provenance_sweep.png" alt="Poisoning against anchored scoring mass" width="720">
-</div>
-
-The vulnerability is not emotion. Every one of EMBR's five signals reads something an attacker
-supplies or can move, including the timestamp, since a freshly written memory is maximally
-recent. Park resists only because one of its three signals reads an **authored** poignancy
-rating that an injected memory does not carry and cannot forge.
-
-Add one such anchored term to EMBR's own composite and sweep its weight, and poisoning falls
-monotonically to zero at exact McNemar **p = 0.0039**, with every affective signal still
-running at full weight.
-
-**And it evaporates the moment the attacker can influence the anchor.** Give the injected
-memories the corpus maximum rating, which is what an LLM poignancy rater would plausibly hand
-a dramatic false memory, and the curve is 10/10 at every weight. So the claim is bounded:
-anchoring defends exactly as far as the anchor lies outside attacker control, and not one step
-further.
-
-Two hypotheses failed before this one, and both are kept in the code: lagging mood congruence
-by a turn does nothing, because the loop runs across turns rather than within one, and making
-it magnitude-aware barely helps, because zeroing mood entirely only reaches 6/10.
+**EMBR is not what makes an NPC slow.** Scoring and retrieval take 1.2 to 2.2 ms against
+22.4 s for Ouro to answer, so the memory layer is about one ten-thousandth of a turn. The
+proposal's ~600 ms whole-turn target is not met by any local model tested here, which is a
+fact about the models rather than about the memory layer.
 
 </details>
 
 <details>
-<summary><b>Which signals actually carry retrieval (RQ3)</b></summary>
+<summary><b>RQ3 - retrieval: relevance carries it, and the metric cannot see the hypothesis</b></summary>
 
-<div align="center">
-<img src="data/figures/rq3_retrieval.png" alt="RQ3: search quality per variant" width="720">
-</div>
+<p align="center"><img src="data/figures/rq3_retrieval.png" alt="RQ3: nDCG@5 per variant" width="820"></p>
+<p align="center"><img src="data/figures/rq3_ablation.png" alt="RQ3: the cost of switching off each signal" width="820"></p>
 
-<div align="center">
-<img src="data/figures/rq3_ablation.png" alt="RQ3: cost of switching off each signal" width="720">
-</div>
+**Nothing in RQ3 reaches significance, and some of it could not have.** At ten queries the
+paired test has an attainable p floor of 0.031. Removing relevance costs 0.142, seven times
+any other ablation, and it was never zeroed in any tuning fold. Removing affect intensity
+changes no held-out top 5 on any query: a difference of exactly 0.000.
 
-Relevance carries the score. Every other ablation is inconclusive, all four intervals include
-zero, and **no ordering should be read off these bars**.
+**Mood is not in this table and cannot be.** RQ3 scores under a neutral zero-mood state, where
+mood congruence returns 0.5 for every memory: a rank-invariant constant. So RQ3 compares four
+signals, not five, and the Emotional RAG rows degenerate to a relevance-only baseline, which
+has to be said wherever they appear.
 
-The tuned weight maps say more than the bars do. Affect carried a nonzero weight in seven of
-the ten folds and removing it still never reordered a held-out top 5; relevance was never
-zeroed in any fold. On this label set the composite is carried by relevance.
-
-**Mood is a separate case, and the important one.** RQ3 scores under a neutral zero-mood
-state where mood congruence returns 0.5 for every memory, so it is a rank-invariant constant
-and RQ3 compares four signals, not five. That is not an oversight to fix by re-running under
-a live mood, because the gold labels are mood-independent: a signal that moves retrieval away
-from a fixed relevant set can only lower nDCG. **nDCG against mood-independent labels cannot
-reward mood-congruent recall in principle**, which is why RQ1 measures divergence instead of
-accuracy, and why the "Emotional RAG" column here degenerates to a relevance-only baseline.
-
-See [`docs/handoff.md`](docs/handoff.md) section 6a.
+That is the measurement critique, and it is a contribution rather than an excuse. **nDCG
+against mood-independent gold labels cannot reward mood-congruent recall in principle**, since
+a signal that moves retrieval away from a fixed relevant set can only lower the score. Running
+RQ3 under a live mood would penalise the effect, not reveal it.
 
 </details>
 
 <details>
 <summary><b>The model, measured</b></summary>
 
-<div align="center">
-<img src="data/figures/bakeoff_latency.png" alt="Bake-off: per-turn latency by model" width="720">
-</div>
+<p align="center"><img src="data/figures/bakeoff_latency.png" alt="Bake-off: per-turn latency by model" width="760"></p>
+<p align="center"><img src="data/figures/bakeoff_mood.png" alt="Bake-off: tone responsiveness to a pinned mood" width="760"></p>
 
-The 8 GB VRAM budget holds: Ouro peaks at **2.78 GB** measured in isolation. The ~600 ms
-per-turn target does not, and not narrowly. Ouro takes **32.4 s** on a realistic turn, 8.3x
-slower than a conventional model with twice the parameters and slower than a 675B model
-answering over the internet. EMBR's own retrieval is 1.8 to 4.3 ms, so the memory layer is
-not what is slow.
-
-<div align="center">
-<img src="data/figures/bakeoff_mood.png" alt="Bake-off: tone responsiveness to pinned mood" width="720">
-</div>
-
-Tone responsiveness to the pinned mood rises with model size, and the small local models the
-project is built around are the least sensitive to it. The architecture hands every arm the
-same mood, so this is the model's reading of it, not the memory layer's.
+The 8 GB VRAM budget holds: Ouro peaks at **2.78 GB** measured in isolation. Tone
+responsiveness to a pinned mood rises with model size, and the small local models this project
+is built around are the least sensitive to it. Every arm is handed the same mood, so that is
+the model's reading of it and not the memory layer's, and it is exactly what RQ1's split
+between the two runs shows.
 
 </details>
 
 ---
 
-## Research questions
+## Research use
 
-<details>
-<summary>RQ1 to RQ3, baselines, and what is not measured (click to expand)</summary>
-
-- **RQ1 (Behaviour):** does an authored emotional state change what the character *says*, or only what it remembers?
-- **RQ2 (Robustness & cost):** is emotion-tagged memory an exploitable target, and what does the memory layer cost per turn?
-- **RQ3 (Retrieval):** which of the five signals actually drive retrieval quality?
-
-On cost, the claim is about **the memory layer, not generation**. Retrieval runs in 1.8 to
-4.3 ms, comfortably inside an interactive budget. Generation is a separate, much larger cost
-that belongs to whichever model you put behind the interface, and on measured evidence no
-local model tested here answers a turn in under a second.
-
-Baselines: Park et al.'s blended score and Emotional RAG, tuned under the same protocol.
-Note the caveat above on Emotional RAG under the neutral condition. Test character: Dawn
-Whitmore, an invented tavern keeper with a pre-registered five-session arc.
-
-**On measuring believability: there is no human evaluation here, and the tone rater is a
-proxy.** Reply tone is read with the NRC VAD Lexicon v2.1 (Mohammad 2018, 2025), 44k
-human-rated words, fetched from the menu and never committed because its terms forbid
-redistribution. It is deterministic and published, but it does not measure whether a line
-reads as in character to a player, and it should not be reported as if it does. A blinded
-model judge as the second rater is specified in [`docs/metrics.md`](docs/metrics.md).
-
-Prior art matters here and is not flattering: a cluster of Stardew Valley mods already ships
-LLM NPCs with persistent memory and offline local inference, and the 2026 literature has
-affective-memory benchmarks, learned-weight scorers, and a memory-poisoning subfield. What
-none of them do is treat the agent's own mood as a retrieval signal, or any emotion term as
-an adversarial surface. See [`docs/related-work.md`](docs/related-work.md).
-
-</details>
+| Question | What to run | What to read |
+|---|---|---|
+| Does an authored mood change retrieval, and is it really the mood? | `python -m eval.run` | RQ1 divergence, and the zeroed-weight control that must read 0.000 |
+| Does it change the reply? | `python -m eval.agreement` | rho under both raters with a permutation p, and how far the raters agree at all |
+| Which term makes a system poisonable? | `python -m eval.attribution` | the count with each weight zeroed, per tag condition and per affect axis |
+| Is the emotion in the words or in the tag? | `python -m eval.grid` | the four tag conditions against every arm, and the mood shift row |
+| Can it be defended, and how far? | `python -m eval.provenance` | the dose-response, and the arm where the attacker reaches the anchor |
+| Does the model-independence claim hold? | `python -m eval.experiments` | retrieval identical across models, tone the only thing that moves |
 
 ---
 
@@ -410,65 +314,70 @@ an adversarial surface. See [`docs/related-work.md`](docs/related-work.md).
 ```
 EMBR/
 ├── menu.py               # the hub, the front door, at the root on purpose
-├── embr/                 # the core runtime: the middleware itself
+├── embr/                 # the runtime: the middleware itself
 │   ├── memory.py         #   Memory record + MemoryStore (in-memory and SQLite)
 │   ├── affect.py         #   Mood (valence/arousal), trust, appraisal rules
-│   ├── scoring.py        #   the five signals + composite scorer
+│   ├── scoring.py        #   the five signals + the composite scorer
 │   ├── prompt.py         #   prompt construction
-│   ├── model.py          #   model runners: stub, Ollama (local and cloud), Ouro 1.4B
+│   ├── model.py          #   runners: stub, Ollama (local and cloud), Ouro 1.4B
 │   ├── pipeline.py       #   the five-step per-turn loop
 │   └── walkthrough.py    #   Dawn's five-beat playable arc
-├── eval/                 # RQ1 / RQ2 / RQ3 harness, bake-off, experiments
-│   ├── run.py            #   the full protocol
-│   ├── attacks.py        #   the twenty adversarial probes
-│   ├── attribution.py    #   per-signal attribution of the poisoning result
-│   ├── emotion_flip.py   #   the affective-indexing experiment
-│   ├── provenance.py     #   the anchored-mass defence sweep
+├── eval/                 # the harness: protocol, attacks, mechanism experiments
+│   ├── run.py            #   RQ1 + RQ2 + RQ3, one run directory
+│   ├── attacks.py        #   twenty adversarial probes, and the tag variants
 │   ├── grid.py           #   the content x tag grid
+│   ├── attribution.py    #   per-signal, per-axis attribution
+│   ├── provenance.py     #   the anchored-mass defence sweep
 │   ├── poignancy.py      #   Park's LLM poignancy rater, cached per model
-│   ├── bakeoff.py        #   same probes, different models
-│   └── experiments.py    #   replication and cross-model comparison
-├── assets/               # hand-authored only: branding, architecture diagram, builders
-├── docs/                 # design, roadmap, metrics, related work, handoff, per-phase reports
-├── tests/                # unit tests
-└── data/                 # generated: runs, figures, tables, bake-offs, experiments
+│   ├── agreement.py      #   two tone raters, and RQ1's generation claim
+│   ├── backends.py       #   external memory systems behind the retrieval seam
+│   └── bakeoff.py        #   same probes, different models
+├── assets/               # hand-authored: branding, the diagram, every builder
+├── docs/                 # findings, metrics, design, roadmap, related work, handoff
+├── tests/                # 363 tests
+└── data/                 # generated: runs, figures, tables, ratings, judgements
 ```
 
 Anything under `assets/` is written by a person. Anything under `data/` is written by the
-pipeline and can be deleted and rebuilt, which is what the menu's wipe option does.
+pipeline and rebuilds from one menu option, which is what the wipe option exists to prove.
+
+## Where to read next
+
+| Document | What it is for |
+|---|---|
+| [`docs/findings.md`](docs/findings.md) | **Start here.** Every result in RQ order, with its caveat attached |
+| [`docs/metrics.md`](docs/metrics.md) | Every metric: the formula as implemented, the paper it comes from, its known weakness |
+| [`docs/handoff.md`](docs/handoff.md) | The working record: setup, version constraints, and how each result was found and corrected |
+| [`docs/related-work.md`](docs/related-work.md) | Verified prior art, including the 2026 literature that reshaped the claims |
+| [`docs/design.md`](docs/design.md), [`docs/roadmap.md`](docs/roadmap.md) | The architecture, and the phase-by-phase plan |
 
 ## Status
 
 | Phase | Scope | State |
 |---|---|---|
 | 0 | Skeleton, data contracts, menu shell, live demo turn | done |
-| 1 | Real retrieval (BM25 + embeddings), affect appraisal rules, SQLite store | done |
+| 1 | Real retrieval (BM25 + embeddings), appraisal rules, SQLite store | done |
 | 2 | Eval harness, baselines, metrics, adversarial probes | done |
-| 3 | Paper assets: figures & tables straight from results | done |
-| 4 | Real model runners, playable walkthrough, the menu | done |
-| 5 | Defensible instruments, the content × tag attack grid, a real third-party memory system, the affective-index demo | **in progress**, branch `phase-5-affect-attacks` |
+| 3 | Paper assets: figures and tables straight from a run | done |
+| 4 | Real model runners, the playable walkthrough, the menu | done |
+| 5 | Defensible instruments, the content x tag grid, a real third-party system | done |
+| 6 | A larger ground-truth corpus, and the interactive demo | next |
 
-**Phase 5, in order.** The NRC VAD lexicon has replaced the hand-picked tone words. An
-LLM-rated Park arm removes the confound above. The content x tag grid is run and written up. Mnemosyne joins as a real external arm. Then a demo
-page that draws the store on the circumplex and lets you watch an attack prime its own recall.
+**What is honestly missing.** There is no human evaluation, so no claim about believability is
+made anywhere. The label set is ten single-author queries, which is the ceiling on RQ3 and the
+reason the Stardew corpus in [`docs/handoff.md`](docs/handoff.md) section 8 is the next piece
+of work. A recorded playthrough and a companion page for the interactive demo will be linked
+here.
 
-**Building EMBR?** The phase-by-phase plan is in [`docs/roadmap.md`](docs/roadmap.md).
-What each phase delivered is in [`docs/phase2.md`](docs/phase2.md) and
-[`docs/phase3-4.md`](docs/phase3-4.md).
+## Authors
 
-**Setting up on a new machine?** [`docs/handoff.md`](docs/handoff.md) has the verified setup
-steps, the version constraints that matter, what git does not carry, and the measured numbers.
-
-**Checking a number?** [`docs/metrics.md`](docs/metrics.md) defines every reported metric,
-its formula as implemented, the paper it comes from, and its known weakness.
-
-**Where the numbers stand.** The reported run uses a real model (`llama3.2:3b`), and the
-evaluation reproduces exactly: three replicate runs gave byte-identical results with zero
-divergences. nDCG, RQ1 divergence and the poisoning counts came back **bit-identical** when
-the stub was swapped for a real model, because retrieval never calls a model. Generation
-costs 3.97 s per turn against 4.2 ms for score-and-retrieve, so **the memory layer is about
-0.1 percent of a turn**.
+**AL Shifan**, Ontario Tech University, Master's Program.
+Built alongside [PEAK](https://github.com/Code-SorceryLab) and
+[RIDGE](https://github.com/Code-SorceryLab/RIDGE), which is why the menus feel like one
+toolkit.
 
 ## License
 
-MIT
+MIT, see [`LICENSE`](LICENSE). The NRC VAD Lexicon is fetched at setup and never
+redistributed; it is free for research use and its terms are noted in
+[`docs/metrics.md`](docs/metrics.md).

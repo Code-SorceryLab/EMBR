@@ -73,21 +73,34 @@ def _phase_windows(count: int) -> list[tuple[float, float]]:
     return [(index * span, (index + 1) * span) for index in range(count)]
 
 
-def _keyframes(name: str, pattern: Sequence[bool]) -> str:
-    """One CSS rule holding an element visible exactly during the phases it belongs to.
+def opacity_track(pattern: Sequence[bool]) -> tuple[int, str]:
+    """(starting opacity, an SMIL element) holding a group visible exactly during its phases.
 
-    Written as explicit stops rather than steps() so the crossfade is visible: a memory
-    surfacing should look like it surfaced.
+    SMIL rather than CSS keyframes, and the reason is measured rather than assumed: an SVG
+    loaded through an `<img>` tag, which is how GitHub embeds one, does not run CSS
+    animations in Blink, and freezes on the first frame. It does run SMIL. The starting
+    opacity is the first phase's value, so the still a frozen renderer shows is a real
+    state rather than a blank plane.
+
+    Values are held flat across each phase and crossfade over `FADE` at every boundary,
+    including the wrap back to the first, so a memory surfacing looks like it surfaced.
     """
-    stops: list[str] = []
-    for (start, end), on in zip(_phase_windows(len(pattern)), pattern):
-        value = 1 if on else 0
-        stops.append(f"{max(0.0, start) * 100:.2f}% {{ opacity: {value}; }}")
-        stops.append(f"{max(0.0, min(1.0, start + FADE)) * 100:.2f}% {{ opacity: {value}; }}")
-        stops.append(f"{max(0.0, end - FADE) * 100:.2f}% {{ opacity: {value}; }}")
-    first = 1 if pattern[0] else 0
-    stops.append(f"100% {{ opacity: {first}; }}")
-    return f"@keyframes {name} {{ {' '.join(stops)} }}"
+    values = [1 if on else 0 for on in pattern]
+    times: list[float] = [0.0]
+    track: list[int] = [values[0]]
+    for index, (start, _end) in enumerate(_phase_windows(len(pattern))):
+        if index == 0:
+            continue
+        times += [start - FADE, start]
+        track += [values[index - 1], values[index]]
+    times += [1.0 - FADE, 1.0]
+    track += [values[-1], values[0]]
+    return values[0], (
+        f'<animate attributeName="opacity" '
+        f'values="{";".join(str(value) for value in track)}" '
+        f'keyTimes="{";".join(f"{time:.4f}" for time in times)}" '
+        f'dur="{LOOP_SECONDS}s" repeatCount="indefinite"/>'
+    )
 
 
 def build_recall_animation(
@@ -106,21 +119,10 @@ def build_recall_animation(
     query = next(q for q in scenario.queries if q.id == QUERY_ID)
     by_id = {memory.id: memory for memory in scenario.memories}
 
-    # A memory needs one animation per distinct "which moods recall me" pattern, not one per
-    # memory: with 24 memories and 3 moods there are at most eight, and in practice four.
-    patterns: dict[tuple[bool, ...], str] = {}
-    rules: list[str] = []
-
-    def class_for(pattern: tuple[bool, ...]) -> str:
-        if pattern not in patterns:
-            name = f"p{len(patterns)}"
-            patterns[pattern] = name
-            rules.append(_keyframes(name, pattern))
-            rules.append(
-                f".{name} {{ animation: {name} {LOOP_SECONDS}s infinite; "
-                f"opacity: {1 if pattern[0] else 0}; }}"
-            )
-        return patterns[pattern]
+    def group(pattern: tuple[bool, ...], body: str) -> str:
+        """Wrap `body` in a group that is visible exactly during `pattern`'s phases."""
+        base, animate = opacity_track(pattern)
+        return f'<g opacity="{base}">{animate}{body}</g>'
 
     parts: list[str] = []
 
@@ -157,13 +159,27 @@ def build_recall_animation(
             f'stroke="{NEAR_BLACK}" stroke-opacity="0.35" stroke-width="0.8"/>'
         )
         if any(pattern):
-            name = class_for(pattern)
-            parts.append(
-                f'<g class="{name}"><circle cx="{cx:.1f}" cy="{cy:.1f}" r="12" '
+            parts.append(group(
+                pattern,
+                f'<circle cx="{cx:.1f}" cy="{cy:.1f}" r="12" '
                 f'fill="{EMBER_ORANGE}" fill-opacity="0.18"/>'
                 f'<circle cx="{cx:.1f}" cy="{cy:.1f}" r="6.4" fill="{EMBER_ORANGE}" '
-                f'stroke="{NEAR_BLACK}" stroke-width="1"/></g>'
-            )
+                f'stroke="{NEAR_BLACK}" stroke-width="1"/>',
+            ))
+
+    # All three moods are marked, dim and labelled, and stay marked. The cursor then travels
+    # between known places rather than wandering, and a reader whose browser refuses to
+    # animate images still learns the setup from the still frame.
+    for name in conditions:
+        mood = moods[name]
+        mx, my = _x(mood.valence), _y(mood.arousal)
+        parts.append(
+            f'<circle cx="{mx:.1f}" cy="{my:.1f}" r="15" fill="none" stroke="{DEEP_BROWN}" '
+            f'stroke-width="1" stroke-opacity="0.35"/>'
+            # A halo, because these labels sit over the memory cloud and the cloud is data.
+            f'<text x="{mx:.1f}" y="{my - 21:.1f}" class="axis" text-anchor="middle" '
+            f'stroke="{CREAM}" stroke-width="3.2" paint-order="stroke">{escape(name)}</text>'
+        )
 
     # The mood cursor: one element, moved by a transform track, so the reader sees a single
     # state travelling rather than three states blinking.
@@ -197,9 +213,8 @@ def build_recall_animation(
         f"{escape(query.query)}</text>"
     )
 
-    for index, name in enumerate(conditions):
+    for name in conditions:
         pattern = tuple(other == name for other in conditions)
-        css = class_for(pattern)
         rows = [
             f'<text x="{panel_x}" y="{top + 62 + row * 30}" class="mem">'
             f'<tspan class="rank">{row + 1}</tspan>  {escape(_shorten(by_id[mid].text))}</text>'
@@ -210,14 +225,15 @@ def build_recall_animation(
             f'<text x="{panel_x}" y="{bottom + 4}" class="mood">'
             f"her mood is {escape(name)}   (valence {mood.valence:+.1f}, arousal {mood.arousal:.1f})</text>"
         )
-        parts.append(f'<g class="{css}">{"".join(rows)}</g>')
+        parts.append(group(pattern, "".join(rows)))
         # The same label under the plane, so the two panels never disagree about the phase.
-        parts.append(
-            f'<g class="{css}"><rect x="{left - 2}" y="{bottom + 36}" width="112" height="24" '
+        parts.append(group(
+            pattern,
+            f'<rect x="{left - 2}" y="{bottom + 36}" width="112" height="24" '
             f'rx="12" fill="{EMBER_ORANGE}" fill-opacity="0.16" stroke="{EMBER_ORANGE}"/>'
             f'<text x="{left + 54}" y="{bottom + 52}" class="pill" text-anchor="middle">'
-            f"{escape(name)}</text></g>"
-        )
+            f"{escape(name)}</text>",
+        ))
 
     legend = (
         f"Each dot is one of Dawn's {len(scenario.memories)} memories, at its own valence and "
@@ -240,8 +256,6 @@ def build_recall_animation(
         f".mood {{ font-size: 11.5px; fill: {DEEP_BROWN}; }}"
         f".pill {{ font-size: 11.5px; font-weight: 700; fill: {NEAR_BLACK}; }}"
         f".caption {{ font-size: 11px; fill: {DEEP_BROWN}; opacity: 0.9; }}"
-        + " ".join(rules)
-        + "@media (prefers-reduced-motion: reduce) { * { animation: none !important; } }"
     )
 
     svg = (

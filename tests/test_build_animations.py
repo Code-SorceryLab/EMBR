@@ -51,18 +51,45 @@ def test_every_recalled_memory_is_drawn_and_animated(run_dir: Path, tmp_path: Pa
     svg = path.read_text(encoding="utf-8")
     scenario = load_eval_scenario()
 
-    # Every memory has a dot, and every animation class the markup uses is defined.
+    # Every memory has a dot, and every phase-dependent group carries its own SMIL track.
     assert svg.count('r="4.2"') == len(scenario.memories)
-    used = set(re.findall(r'class="(p\d+)"', svg))
-    assert used, "nothing was animated, so the figure claims a still image is the finding"
-    for name in used:
-        assert f"@keyframes {name}" in svg
-        assert f".{name} {{ animation:" in svg
+    tracks = re.findall(r'<animate attributeName="opacity"[^/]*/>', svg)
+    assert len(tracks) >= 3, "the three recall lists must each be animated"
+    for track in tracks:
+        assert 'repeatCount="indefinite"' in track
 
 
-def test_a_reader_who_asked_for_less_motion_gets_a_still(run_dir: Path, tmp_path: Path) -> None:
+def test_the_animation_uses_smil_because_css_freezes_inside_an_img_tag(
+    run_dir: Path, tmp_path: Path
+) -> None:
+    """Measured, not assumed: Blink does not run CSS animations in an SVG loaded through an
+    `<img>` tag, which is how GitHub embeds one. A regression to CSS keyframes would look
+    fine locally and ship a still image to every reader."""
     (path,) = build_recall_animation(run_dir, tmp_path / "out")
     svg = path.read_text(encoding="utf-8")
-    assert "prefers-reduced-motion: reduce" in svg
-    # The still they get is the first condition, so it is a real state and not a blank plane.
-    assert ".p0 { animation: p0 15.0s infinite; opacity: 1; }" in svg
+    assert "@keyframes" not in svg
+    assert "animation:" not in svg
+    assert '<animate attributeName="opacity"' in svg
+
+
+def test_a_frozen_renderer_still_shows_a_real_state(run_dir: Path, tmp_path: Path) -> None:
+    from assets.build_animations import opacity_track
+
+    (path,) = build_recall_animation(run_dir, tmp_path / "out")
+    # Every group starts at its first phase's value, so a still is one honest condition
+    # rather than a blank plane or every condition drawn on top of itself.
+    assert opacity_track((True, False, False))[0] == 1
+    assert opacity_track((False, True, False))[0] == 0
+    assert '<g opacity="1">' in path.read_text(encoding="utf-8")
+
+
+def test_the_track_holds_each_phase_flat_and_crossfades_the_wrap(tmp_path: Path) -> None:
+    from assets.build_animations import opacity_track
+
+    base, track = opacity_track((True, False, True))
+    assert base == 1
+    values = track.split('values="')[1].split('"')[0].split(";")
+    times = [float(t) for t in track.split('keyTimes="')[1].split('"')[0].split(";")]
+    assert values[0] == "1" and values[-1] == "1"  # the loop closes on the state it opened in
+    assert times[0] == 0.0 and times[-1] == 1.0
+    assert times == sorted(times)  # SMIL rejects a keyTimes list that is not increasing
