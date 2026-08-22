@@ -22,7 +22,6 @@ from __future__ import annotations
 
 import json
 import subprocess
-import sys
 from collections.abc import Sequence
 from pathlib import Path
 
@@ -94,10 +93,3 @@ class MnemosyneBackend:
             self.close()
         except Exception:  # noqa: BLE001
             pass
-
-
-if __name__ == "__main__":  # a smoke test: one memory in, one query out
-    backend = MnemosyneBackend()
-    memory = Memory(text="The player saved the tavern from a fire last winter.")
-    print(backend.top_k([memory], "fire last winter", CharacterState(persona=""), 5))
-    sys.exit(0)

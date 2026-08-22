@@ -50,10 +50,6 @@ def parse_rating(reply: str) -> float | None:
     return int(match.group(1)) / 10.0
 
 
-def rate_poignancy(text: str, model: ModelRunner) -> float | None:
-    return parse_rating(model.generate(PARK_PROMPT.format(memory=text)))
-
-
 def _cache_path(model: ModelRunner, cache_dir: Path) -> Path:
     label = str(getattr(model, "label", type(model).__name__))
     return cache_dir / (re.sub(r"[^A-Za-z0-9._-]+", "_", label).strip("_") + ".json")

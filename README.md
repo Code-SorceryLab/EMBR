@@ -7,7 +7,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/python-3.10+-4584b6?style=flat-square&logo=python&logoColor=white" alt="Python 3.10+">
   <img src="https://img.shields.io/badge/core-zero%20dependencies-ea580c?style=flat-square" alt="Zero dependencies">
-  <img src="https://img.shields.io/badge/tests-363%20passing-22c55e?style=flat-square" alt="363 tests">
+  <img src="https://img.shields.io/badge/tests-365%20passing-22c55e?style=flat-square" alt="365 tests">
   <img src="https://img.shields.io/badge/runs-byte%20identical-22c55e?style=flat-square" alt="Reproducible">
   <img src="https://img.shields.io/badge/models-Ouro%201.4B%20%C2%B7%20llama3.2%3A3b-1e1e22?style=flat-square" alt="Models">
   <img src="https://img.shields.io/badge/GPU-optional-9a9a9a?style=flat-square" alt="GPU optional">
@@ -109,7 +109,7 @@ transformers 4.x, which the extra pins: on 5.x its remote code does not load.
       Emotional Memory for Believable Roleplay   By AL Shifan
     ────────────────────────────────────────────────────────
 
-    Runs 12  │  Latest ByteDance/Ouro-1.4B (cuda)  │  Figures 12  │  Tone nrc-vad-v2.1
+    Runs 12  │  Latest ByteDance/Ouro-1.4B (cuda)  │  Figures 12  │  Runner stub  │  Tone nrc-vad-v2.1
 ```
 
 | | Play | | Measure | | Mechanism and paper |
@@ -334,7 +334,7 @@ EMBR/
 │   └── bakeoff.py        #   same probes, different models
 ├── assets/               # hand-authored: branding, the diagram, every builder
 ├── docs/                 # findings, metrics, design, roadmap, related work, handoff
-├── tests/                # 363 tests
+├── tests/                # 365 tests
 └── data/                 # generated: runs, figures, tables, ratings, judgements
 ```
 

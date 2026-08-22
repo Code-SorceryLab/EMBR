@@ -20,7 +20,7 @@ was expected and did not appear, it is written down as a null, not omitted.
 | Tone raters | NRC VAD Lexicon v2.1 (44k human-rated unigrams) and a blinded judge, llama3.1:8b at temperature 0 |
 | Poignancy raters | Park's own prompt asked of Ouro 1.4B and of llama3.2:3b, cached in `data/ratings/` |
 | Labels | Dawn Whitmore v1: 24 memories, 10 queries, single author, pre-registered |
-| Suite | 360 tests passing |
+| Suite | 365 tests passing |
 
 Retrieval, appraisal and every poisoning count are model-independent by construction: they
 never call a model. The two runs agree on them to the last digit, which is the architecture's

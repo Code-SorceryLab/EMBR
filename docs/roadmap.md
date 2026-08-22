@@ -52,6 +52,8 @@ git switch -c phase-5-yourwork     # your own phase branch
 | 2 | Evaluation harness (RQ1 / RQ2 / RQ3) | | ✅ done |
 | 3 | Paper assets (figures & tables from results) | | ✅ done |
 | 4 | Real models, playable walkthrough, the menu | | ✅ done |
+| 5 | Defensible instruments, the content x tag grid, a real third-party system | | ✅ done |
+| 6 | A larger ground-truth corpus, and the interactive demo | | next |
 
 ---
 
@@ -213,6 +215,43 @@ stub. Details and the measured looped-versus-conventional latency gap are in
 the measured model comparison the menu already has an option for.
 
 ---
+
+## Phase 5: make every instrument defensible, then attack the emotion itself ✅
+
+Branch `phase-5-affect-attacks`. What it delivered, and why each piece exists:
+
+| Built | Because |
+|---|---|
+| NRC VAD Lexicon v2.1 behind `ToneRater` | the previous rater scored from 35 words the author picked, which is not a measurement |
+| A blinded model judge, plus `eval/agreement.py` | one automatic rater cannot tell a real tone shift from its own artefact |
+| Affective drift as a distance on the circumplex | cosine ignored magnitude and was undefined at the origin |
+| `eval/poignancy.py` and the `park_llm` arm | Park et al. rate with a model; the authored-ratings baseline was a handicap this harness invented |
+| `tag_variants` and `eval/grid.py` | every built attack was congruent, so nothing separated the emotion in a memory's words from the emotion in its tag |
+| `signal_by_tag` in `eval/attribution.py` | "which emotional signal is strongest" needed an answer per condition and per affect axis |
+| `eval/backends.py` and the Mnemosyne arm | a baseline that is a weight map over our own scorer is not a comparison against a real system |
+| `assets/build_animations.py` | the RQ1 result is a change over time, and no static figure shows a change |
+
+**Two results changed what the paper claims**, and both are in [`findings.md`](findings.md):
+the EMBR-against-Park headline is a null once Park is rated the way Park et al. rate, and RQ1
+gained its first generation result (significant on llama3.2:3b, null on Ouro 1.4B).
+
+**The rule this phase was run under, worth keeping:** when an instrument and a result
+disagree, fix the instrument first and re-measure, even when the existing number is the more
+flattering one. Every headline in this project that survived that treatment is now worth
+defending; the one that did not is reported as a null.
+
+## Phase 6: the ground truth, and the demo
+
+Not started. Two pieces, in order:
+
+1. **A larger, state-conditioned label set.** Ten single-author queries is the ceiling on
+   everything in RQ3, and the reason no ablation reaches significance. The plan is the
+   Stardew corpus in [`handoff.md`](handoff.md) section 8.1: authored dialogue where the
+   writers already encoded which line fires at which relationship state, extracted from the
+   user's own installed game and never committed.
+2. **The interactive demo.** `eval/grid.py` and the animation already produce everything a
+   page needs; what is missing is the page, and a recorded walkthrough to link from the
+   README.
 
 ## Out of scope (future work, not these phases)
 - A full-budget **Ouro 1.4B** run on the eval hardware (8 GB VRAM). The runner itself landed in

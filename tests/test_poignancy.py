@@ -10,7 +10,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from eval.attacks import ATTACKS
-from eval.poignancy import PARK_PROMPT, llm_ratings, parse_rating, rate_poignancy
+from eval.poignancy import PARK_PROMPT, llm_ratings, parse_rating
 from eval.run import load_eval_scenario
 
 
@@ -42,11 +42,14 @@ def test_parse_rejects_out_of_scale_and_empty_replies() -> None:
     assert parse_rating("42") is None  # 42 is not on a 1..10 scale, not "a 4 then a 2"
 
 
-def test_rate_sends_parks_prompt_with_the_memory_in_it() -> None:
+def test_the_rater_asks_parks_own_question_about_the_memory(tmp_path: Path) -> None:
+    # Park as published, or the arm measures something else: the prompt is the method.
     runner = ScriptedRunner("6")
-    assert rate_poignancy("The player lied about the king.", runner) == 0.6
+    ratings = llm_ratings(load_eval_scenario(), runner, cache_dir=tmp_path)
+
+    assert set(ratings.values()) == {0.6}
     assert runner.prompts[0].startswith(PARK_PROMPT.split("{memory}")[0])
-    assert "The player lied about the king." in runner.prompts[0]
+    assert any(memory.text in prompt for memory, prompt in zip(load_eval_scenario().memories, runner.prompts))
 
 
 def test_llm_ratings_cover_every_authored_memory_and_every_injection(tmp_path: Path) -> None:
