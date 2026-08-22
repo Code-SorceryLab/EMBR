@@ -82,7 +82,8 @@ _MENU_ITEMS = [
     ("9", "Provenance Sweep", "the defence: anchored scoring mass vs poisoning"),
     ("10", "Content x Tag Grid", "same poison, four tags: the text never reaches the state"),
     ("11", "Generate Paper Assets", "rebuild every figure and table, run and experiments"),
-    ("12", "Latest Results", "summarise the newest run directory"),
+    ("12", "Interactive Demo", "build and open the page: drag a weight, watch it stop"),
+    ("13", "Latest Results", "summarise the newest run directory"),
     ("S", "Settings", "weights, top-k, backends, model runner"),
     ("L", "Fetch Tone Lexicon", "NRC VAD v2.1, research use, stays out of git"),
     ("D", "Delete All Data", "wipe runs, figures and tables, requires DELETE"),
@@ -94,7 +95,7 @@ _SECTIONS = [
     ("PLAY", ("1", "2")),
     ("MEASURE", ("3", "4", "5", "6")),
     ("MECHANISM", ("7", "8", "9", "10")),
-    ("PAPER", ("11", "12")),
+    ("PAPER", ("11", "12", "13")),
     ("SYSTEM", ("S", "L", "D", "C")),
 ]
 
@@ -473,6 +474,20 @@ def _do_generate_assets() -> None:
         print(_DIM(f"      {path}"))
 
 
+def _do_demo() -> None:
+    """Build the self-contained demo page and open it in a browser."""
+    import webbrowser
+
+    from assets.build_demo import build_demo
+
+    print(_DIM("\n    Building from the newest run..."))
+    (path,) = build_demo()
+    size = path.stat().st_size / 1024
+    print(f"    {_GRN('✓ Wrote')} {path}  {_DIM(f'({size:.0f} KB, opens with no server)')}")
+    if input(_DIM("    Open it now? [Y/n]: ")).strip().lower() not in ("n", "no"):
+        webbrowser.open(path.resolve().as_uri())
+
+
 def _do_latest_results() -> None:
     """Summarise the newest run without rerunning anything."""
     run_dir = _latest_run()
@@ -579,7 +594,8 @@ _ACTIONS: dict[str, Callable[[], None]] = {
     "9": _do_provenance_sweep,
     "10": _do_grid,
     "11": _do_generate_assets,
-    "12": _do_latest_results,
+    "12": _do_demo,
+    "13": _do_latest_results,
     "S": _do_settings,
     "L": _do_fetch_lexicon,
     "D": _do_delete_run_data,

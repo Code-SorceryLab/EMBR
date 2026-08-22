@@ -26,6 +26,8 @@ data/*
 # The LLM poignancy ratings behind the park_llm arm: 34 entries, and the only way the
 # reported count reproduces on a machine without the model.
 !data/ratings/
+# The interactive demo is self-contained and is what the paper links to.
+!data/demo/
 
 # OS
 .DS_Store

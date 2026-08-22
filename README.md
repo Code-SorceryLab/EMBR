@@ -17,6 +17,11 @@
 <p align="center">
   <img src="data/figures/mood_recall.svg" alt="The same question asked in three moods: warm, neutral and suspicious. The lit memories change; the question and the memories do not." width="900">
 </p>
+<p align="center">
+  <a href="data/demo/index.html"><b>Open the interactive demo</b></a>
+  &nbsp;·&nbsp; drag a weight to zero and watch the finding stop happening
+</p>
+
 <p align="center"><sub><b>Watch it think.</b> One question, one memory store, three moods. Every dot sits at a real memory's affect tag and every lit set is the real top 5 the harness retrieved. Warm, she reaches for the player's kindnesses. Suspicious, she reaches for the evidence the story never added up.</sub></p>
 
 **EMBR** is a middleware layer that gives a game NPC a persistent, emotion-grounded memory, so
@@ -119,7 +124,8 @@ transformers 4.x, which the extra pins: on 5.x its remote code does not load.
 | | | 5 | Seeded runs: replicate, or compare models | 9 | Provenance sweep: the defence |
 | | | 6 | Model bake-off | 10 | Content x tag grid |
 | | | | | 11 | Generate every figure and table |
-| | | | | 12 | Latest results |
+| | | | | 12 | **Interactive demo**: drag a weight, watch the finding stop |
+| | | | | 13 | Latest results |
 | | | | | L | Fetch the tone lexicon (NRC VAD v2.1) |
 | | | | | D | Delete all generated data, types `DELETE` |
 
@@ -143,6 +149,7 @@ python -m eval.agreement               # two tone raters, and RQ1's generation c
 python assets/build_figures.py data/runs/<stamp>   # the run's figures and tables
 python assets/build_bakeoff_figures.py             # every experiment figure
 python assets/build_animations.py                  # the animated README figure
+python assets/build_demo.py                        # the interactive demo page
 ```
 
 Cloud models are optional and read a key from a gitignored `.env`, written as UTF-8:

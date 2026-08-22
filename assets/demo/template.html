@@ -1,0 +1,478 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EMBR: the scorer, made touchable</title>
+<style>
+  :root {
+    --cream: #FFF7ED; --ember: #EA580C; --amber: #F59E0B; --brown: #7C2D12;
+    --ink: #1C1917; --dim: #C9BDB2; --panel: rgba(255,255,255,.62);
+    --good: #15803D; --bad: #B91C1C;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 24px 20px 60px; background: var(--cream); color: var(--ink);
+    font: 14px/1.55 "DejaVu Sans", Verdana, Geneva, sans-serif;
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; }
+  h1 { font-size: 21px; margin: 0 0 2px; letter-spacing: -.2px; }
+  h1 span { color: var(--ember); }
+  .sub { color: var(--brown); font-size: 13px; margin: 0 0 4px; }
+  .prov { color: var(--brown); opacity: .8; font-size: 11.5px; margin: 0 0 14px; }
+  .prov code { background: rgba(124,45,18,.08); padding: 1px 5px; border-radius: 4px; }
+  .badge {
+    display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 11.5px;
+    font-weight: 700; border: 1px solid;
+  }
+  .badge.ok { color: var(--good); border-color: var(--good); background: rgba(21,128,61,.08); }
+  .badge.no { color: var(--bad); border-color: var(--bad); background: rgba(185,28,28,.08); }
+  .tabs { display: flex; gap: 8px; margin: 0 0 16px; }
+  .tabs button {
+    font: inherit; font-weight: 700; padding: 7px 18px; border-radius: 999px; cursor: pointer;
+    border: 1px solid var(--brown); background: transparent; color: var(--brown);
+  }
+  .tabs button[aria-selected="true"] { background: var(--ember); border-color: var(--ember); color: #fff; }
+  .grid { display: grid; grid-template-columns: minmax(360px, 1fr) minmax(320px, 380px); gap: 18px; align-items: start; }
+  @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+  .card {
+    background: var(--panel); border: 1px solid rgba(124,45,18,.28); border-radius: 12px;
+    padding: 14px 16px 16px;
+  }
+  .card h2 { font-size: 13px; text-transform: none; color: var(--brown); margin: 0 0 10px; }
+  label.row { display: grid; grid-template-columns: 110px 1fr 46px; gap: 8px; align-items: center; margin: 5px 0; font-size: 12.5px; }
+  label.row span:last-child { text-align: right; font-variant-numeric: tabular-nums; color: var(--brown); }
+  input[type=range] { width: 100%; accent-color: var(--ember); }
+  select, .chip {
+    font: inherit; font-size: 12.5px; padding: 5px 9px; border-radius: 8px;
+    border: 1px solid rgba(124,45,18,.4); background: #fff; color: var(--ink);
+  }
+  select { width: 100%; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 2px; }
+  .chip { cursor: pointer; }
+  .chip[aria-pressed="true"] { background: var(--ember); border-color: var(--ember); color: #fff; font-weight: 700; }
+  .hint { font-size: 11.5px; color: var(--brown); opacity: .85; margin: 8px 0 0; }
+  ol.recall { list-style: none; margin: 0; padding: 0; counter-reset: rank; }
+  ol.recall li {
+    display: grid; grid-template-columns: 24px 1fr 132px; gap: 10px; align-items: center;
+    padding: 6px 0; border-top: 1px solid rgba(124,45,18,.14);
+  }
+  ol.recall li:first-child { border-top: 0; }
+  .rank { font-weight: 700; color: var(--ember); font-variant-numeric: tabular-nums; }
+  .mtext { font-size: 12.5px; }
+  li.poison .mtext { color: var(--bad); font-weight: 700; }
+  li.poison .rank { color: var(--bad); }
+  .bar { display: flex; height: 13px; border-radius: 3px; overflow: hidden; border: 1px solid rgba(28,25,23,.25); }
+  .bar i { display: block; height: 100%; }
+  .legend { display: flex; flex-wrap: wrap; gap: 10px; font-size: 11px; color: var(--brown); margin: 10px 0 0; }
+  .legend b { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 4px; }
+  .verdict { font-size: 13px; font-weight: 700; margin: 0 0 8px; }
+  .verdict.landed { color: var(--bad); }
+  .verdict.blocked { color: var(--good); }
+  table.state { width: 100%; border-collapse: collapse; font-size: 12.5px; margin-top: 6px; }
+  table.state td { padding: 3px 0; }
+  table.state td:last-child { text-align: right; font-variant-numeric: tabular-nums; }
+  footer { margin-top: 26px; font-size: 11.5px; color: var(--brown); opacity: .9; }
+  a { color: var(--brown); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>EMBR<span>.</span> the scorer, made touchable</h1>
+  <p class="sub">Drag a weight to zero and watch the finding stop happening.</p>
+  <p class="prov" id="prov"></p>
+
+  <div class="tabs" role="tablist">
+    <button role="tab" id="tab-recall" aria-selected="true">Recall</button>
+    <button role="tab" id="tab-attack" aria-selected="false">Attack</button>
+  </div>
+
+  <!-- ------------------------------------------------------------------ recall -->
+  <section id="view-recall">
+    <div class="grid">
+      <div class="card">
+        <h2>Where each memory lives, and which ones she reaches for</h2>
+        <svg id="plane" viewBox="0 0 520 400" width="100%" role="img"
+             aria-label="Memories placed by valence and arousal, with the current mood and the recalled set"></svg>
+        <p class="hint" id="plane-hint"></p>
+      </div>
+      <div class="card">
+        <h2>What she is asked, and how she feels</h2>
+        <select id="query"></select>
+        <div class="chips" id="mood-chips" style="margin-top:8px"></div>
+        <label class="row"><span>valence</span><input type="range" id="mv" min="-1" max="1" step="0.05"><span id="mv-out"></span></label>
+        <label class="row"><span>arousal</span><input type="range" id="ma" min="0" max="1" step="0.05"><span id="ma-out"></span></label>
+        <label class="row"><span>trust</span><input type="range" id="tr" min="-1" max="1" step="0.05"><span id="tr-out"></span></label>
+
+        <h2 style="margin-top:16px">The five weights, and one anchor</h2>
+        <div class="chips" id="preset-chips"></div>
+        <div id="weights"></div>
+        <label class="row" title="Park's importance term: an authored poignancy rating the attacker cannot write, or a model's rating that it can">
+          <span>rated by</span><select id="rater" style="grid-column: 2 / span 2"></select><span></span>
+        </label>
+        <p class="hint" id="weights-hint"></p>
+      </div>
+    </div>
+    <div class="card" style="margin-top:18px">
+      <h2>What reaches the prompt, and which signal earned it</h2>
+      <ol class="recall" id="ranked"></ol>
+      <div class="legend" id="legend"></div>
+    </div>
+  </section>
+
+  <!-- ------------------------------------------------------------------ attack -->
+  <section id="view-attack" hidden>
+    <div class="grid">
+      <div class="card">
+        <h2>The store, the planted memory, and where her mood ended up</h2>
+        <svg id="plane2" viewBox="0 0 520 400" width="100%" role="img"
+             aria-label="The memory store with the planted memory marked and the induced mood"></svg>
+        <p class="hint" id="attack-hint"></p>
+      </div>
+      <div class="card">
+        <h2>Plant a memory</h2>
+        <select id="attack"></select>
+        <p class="hint" style="margin:8px 0 4px"><b>The words stay the same. Only the emotion tag changes.</b></p>
+        <div class="chips" id="cond-chips"></div>
+        <table class="state" id="attack-state"></table>
+        <h2 style="margin-top:16px">Her weights</h2>
+        <div class="chips" id="preset-chips2"></div>
+        <div id="weights2"></div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:18px">
+      <p class="verdict" id="verdict"></p>
+      <ol class="recall" id="ranked2"></ol>
+      <div class="legend" id="legend2"></div>
+    </div>
+  </section>
+
+  <footer id="footer"></footer>
+</div>
+
+<script>
+const DATA = /*DEMO_DATA*/null/*DEMO_DATA*/;
+
+// --------------------------------------------------------------------------------------
+// The scoring. Four of the five signals are one line each and are reproduced here exactly
+// as embr/scoring.py defines them; relevance needs the whole corpus, so it arrives as a
+// table computed by the real signal in Python. The conformance check below is what stops
+// this drifting: it replays rankings the Python scorer produced and reports on screen.
+// --------------------------------------------------------------------------------------
+const SIGNALS = ["recency", "affect", "event_gate", "relevance", "mood", "importance"];
+const COLOUR = {
+  recency: "#F59E0B", affect: "#EA580C", event_gate: "#7C2D12",
+  relevance: "#0E7490", mood: "#B91C1C", importance: "#4D7C0F",
+};
+const LABEL = {
+  recency: "recency", affect: "affect intensity", event_gate: "event gate",
+  relevance: "relevance", mood: "mood congruence", importance: "importance (anchor)",
+};
+
+function cosine(ax, ay, bx, by) {
+  const na = Math.hypot(ax, ay), nb = Math.hypot(bx, by);
+  if (na === 0 || nb === 0) return 0;          // embr/vectors.py: a zero vector has no angle
+  return (ax * bx + ay * by) / (na * nb);
+}
+
+/** Per-signal score for one memory, before weights. Mirrors embr/scoring.py. */
+function signals(mem, rel, state, ratings) {
+  return {
+    recency: mem.recency,
+    affect: Math.abs(mem.valence) * mem.arousal,
+    event_gate: mem.plot_beat ? (state.trust + 1) / 2 : 0,
+    relevance: rel,
+    // MoodCongruence remaps cosine's [-1,1] onto [0,1]; a zero mood lands at 0.5.
+    mood: (cosine(mem.valence, mem.arousal, state.mv, state.ma) + 1) / 2,
+    importance: ratings ? (ratings[mem.id] ?? 0.5) : 0,
+  };
+}
+
+/** Rank candidates best first. Stable, like Python's sorted, so ties keep corpus order. */
+function rank(candidates, relTable, state, weights, ratings, k) {
+  const rows = candidates.map((mem) => {
+    const parts = signals(mem, relTable[mem.id] ?? 0, state, ratings);
+    let total = 0;
+    for (const name of SIGNALS) total += (weights[name] || 0) * parts[name];
+    return { mem, parts, total };
+  });
+  rows.sort((a, b) => b.total - a.total);      // Array.sort is stable in every modern engine
+  return k ? rows.slice(0, k) : rows;
+}
+
+// --------------------------------------------------------------------------------------
+// State
+// --------------------------------------------------------------------------------------
+const MEM = new Map(DATA.memories.map((m) => [m.id, m]));
+const RATERS = Object.keys(DATA.importance);
+const ui = {
+  query: DATA.queries[0].id,
+  mv: DATA.moods.neutral ? DATA.moods.neutral[0] : 0,
+  ma: DATA.moods.neutral ? DATA.moods.neutral[1] : 0,
+  trust: DATA.trust,
+  weights: { ...DATA.presets["EMBR"] },
+  rater: RATERS[0],
+  attack: DATA.attacks[0].id,
+  condition: "congruent",
+  weights2: { ...DATA.presets["EMBR"] },
+};
+
+const $ = (id) => document.getElementById(id);
+const fmt = (x, n = 2) => (x >= 0 ? "+" : "") + x.toFixed(n);
+
+// --------------------------------------------------------------------------------------
+// The plane
+// --------------------------------------------------------------------------------------
+const PL = { l: 46, t: 22, r: 496, b: 336 };
+const px = (v) => PL.l + ((v + 1) / 2) * (PL.r - PL.l);
+const py = (a) => PL.b - a * (PL.b - PL.t);
+
+function drawPlane(svg, dots, state, hint) {
+  const parts = [
+    `<line x1="${PL.l}" y1="${py(0)}" x2="${PL.r}" y2="${py(0)}" stroke="#1C1917" stroke-opacity=".22"/>`,
+    `<line x1="${px(0)}" y1="${PL.t}" x2="${px(0)}" y2="${PL.b}" stroke="#1C1917" stroke-opacity=".22"/>`,
+    `<text x="${PL.l}" y="${PL.b + 20}" font-size="11" fill="#7C2D12">- hostile</text>`,
+    `<text x="${PL.r}" y="${PL.b + 20}" font-size="11" fill="#7C2D12" text-anchor="end">warm +</text>`,
+    `<text x="${PL.l + 4}" y="${PL.t + 12}" font-size="11" fill="#7C2D12">heated</text>`,
+    `<text x="${PL.l + 4}" y="${PL.b - 6}" font-size="11" fill="#7C2D12">calm</text>`,
+  ];
+  for (const dot of dots) {
+    const x = px(dot.mem.valence), y = py(dot.mem.arousal);
+    if (dot.rank) {
+      const fill = dot.poison ? "#B91C1C" : "#EA580C";
+      parts.push(`<circle cx="${x}" cy="${y}" r="13" fill="${fill}" fill-opacity=".16"/>`);
+      parts.push(`<circle cx="${x}" cy="${y}" r="8" fill="${fill}" stroke="#1C1917" stroke-width="1"><title>${esc(dot.mem.text)}</title></circle>`);
+      parts.push(`<text x="${x}" y="${y + 3.4}" font-size="9.5" font-weight="700" fill="#fff" text-anchor="middle">${dot.rank}</text>`);
+    } else {
+      const fill = dot.poison ? "#B91C1C" : "#C9BDB2";
+      parts.push(`<circle cx="${x}" cy="${y}" r="${dot.poison ? 5.5 : 4.2}" fill="${fill}" stroke="#1C1917" stroke-opacity=".35" stroke-width=".8"><title>${esc(dot.mem.text)}</title></circle>`);
+    }
+  }
+  const mx = px(state.mv), my = py(state.ma);
+  parts.push(`<circle cx="${mx}" cy="${my}" r="15" fill="none" stroke="#7C2D12" stroke-width="2.2" stroke-dasharray="4 3"/>`);
+  parts.push(`<text x="${mx}" y="${my - 21}" font-size="11" fill="#7C2D12" text-anchor="middle" stroke="#FFF7ED" stroke-width="3.2" paint-order="stroke">her mood</text>`);
+  svg.innerHTML = parts.join("");
+  if (hint) hint.textContent = `Mood ${fmt(state.mv)} valence, ${state.ma.toFixed(2)} arousal, trust ${fmt(state.trust)}. Hover a dot for its memory.`;
+}
+
+function esc(s) { return s.replace(/[<>&"]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c])); }
+
+// --------------------------------------------------------------------------------------
+// The ranked list, with a bar showing which signal earned each place
+// --------------------------------------------------------------------------------------
+function drawRanked(list, rows, weights, legendEl) {
+  const max = Math.max(...rows.map((r) => r.total), 1e-9);
+  list.innerHTML = rows.map((row, index) => {
+    const segments = SIGNALS.map((name) => {
+      const value = (weights[name] || 0) * row.parts[name];
+      if (value <= 0) return "";
+      return `<i style="width:${(value / max) * 100}%;background:${COLOUR[name]}" title="${LABEL[name]} ${value.toFixed(3)}"></i>`;
+    }).join("");
+    return `<li class="${row.poison ? "poison" : ""}">
+      <span class="rank">${index + 1}</span>
+      <span class="mtext">${esc(row.mem.text)}${row.poison ? "  &lt;- planted" : ""}</span>
+      <span class="bar">${segments}</span></li>`;
+  }).join("");
+  if (legendEl) {
+    legendEl.innerHTML = SIGNALS.filter((n) => (weights[n] || 0) > 0)
+      .map((n) => `<span><b style="background:${COLOUR[n]}"></b>${LABEL[n]}</span>`).join("")
+      + `<span style="opacity:.75">bar length is the weighted contribution</span>`;
+  }
+}
+
+// --------------------------------------------------------------------------------------
+// Recall view
+// --------------------------------------------------------------------------------------
+function renderRecall() {
+  const query = DATA.queries.find((q) => q.id === ui.query);
+  const state = { mv: ui.mv, ma: ui.ma, trust: ui.trust };
+  const candidates = query.visible.map((id) => MEM.get(id));
+  const ratings = DATA.importance[ui.rater];
+  const rows = rank(candidates, query.relevance, state, ui.weights, ratings, 5);
+  const top = new Map(rows.map((r, i) => [r.mem.id, i + 1]));
+  drawPlane($("plane"), candidates.map((mem) => ({ mem, rank: top.get(mem.id) })), state, $("plane-hint"));
+  drawRanked($("ranked"), rows, ui.weights, $("legend"));
+  $("mv-out").textContent = fmt(ui.mv);
+  $("ma-out").textContent = ui.ma.toFixed(2);
+  $("tr-out").textContent = fmt(ui.trust);
+  for (const name of SIGNALS) {
+    const out = $(`w-${name}-out`);
+    if (out) { out.textContent = (ui.weights[name] || 0).toFixed(2); $(`w-${name}`).value = ui.weights[name] || 0; }
+  }
+  const moodOff = (ui.weights.mood || 0) === 0;
+  $("weights-hint").innerHTML = moodOff
+    ? "Mood congruence is off. Move her mood now: the recalled set will not budge, which is the control that attributes RQ1's divergence to this one weight."
+    : "Set mood congruence to zero, then move her mood. Nothing changes. That is the whole of RQ1's attribution control.";
+  for (const chip of document.querySelectorAll("#preset-chips .chip")) {
+    chip.setAttribute("aria-pressed", String(sameWeights(ui.weights, DATA.presets[chip.dataset.preset])));
+  }
+  for (const chip of document.querySelectorAll("#mood-chips .chip")) {
+    const [v, a] = DATA.moods[chip.dataset.mood];
+    chip.setAttribute("aria-pressed", String(Math.abs(v - ui.mv) < 1e-9 && Math.abs(a - ui.ma) < 1e-9));
+  }
+}
+
+function sameWeights(a, b) {
+  return SIGNALS.every((n) => Math.abs((a[n] || 0) - (b[n] || 0)) < 1e-9);
+}
+
+// --------------------------------------------------------------------------------------
+// Attack view
+// --------------------------------------------------------------------------------------
+function renderAttack() {
+  const attack = DATA.attacks.find((a) => a.id === ui.attack);
+  const variant = attack.variants[ui.condition];
+  const state = { mv: variant.mood[0], ma: variant.mood[1], trust: variant.trust };
+  const poison = {
+    id: "poison", text: attack.text, valence: variant.valence, arousal: variant.arousal,
+    plot_beat: attack.plot_beat, recency: attack.recency,
+  };
+  const candidates = [...DATA.store.map((id) => MEM.get(id)), poison];
+  const ratings = (ui.weights2.importance || 0) > 0 ? DATA.importance[ui.rater] : null;
+  const rows = rank(candidates, attack.relevance, state, ui.weights2, ratings, 5);
+  rows.forEach((r) => { r.poison = r.mem.id === "poison"; });
+  const place = rows.findIndex((r) => r.poison);
+
+  const dots = candidates.map((mem) => ({
+    mem, poison: mem.id === "poison",
+    rank: (rows.findIndex((r) => r.mem.id === mem.id) + 1) || 0,
+  }));
+  drawPlane($("plane2"), dots, state, $("attack-hint"));
+  drawRanked($("ranked2"), rows, ui.weights2, $("legend2"));
+
+  const verdict = $("verdict");
+  verdict.className = "verdict " + (place >= 0 ? "landed" : "blocked");
+  verdict.textContent = place >= 0
+    ? `The planted memory reached the prompt at rank ${place + 1} of 5.`
+    : "The planted memory did not reach the prompt.";
+
+  const base = DATA.moods.neutral || [0, 0];
+  $("attack-state").innerHTML = [
+    ["the tag she was handed", `${fmt(variant.valence)} valence, ${variant.arousal.toFixed(2)} arousal`],
+    ["her mood after appraising it", `${fmt(state.mv)} valence, ${state.ma.toFixed(2)} arousal`],
+    ["her trust after appraising it", fmt(state.trust)],
+    ["how far the tag points where her mood now points",
+      cosine(variant.valence, variant.arousal, state.mv, state.ma).toFixed(3)],
+  ].map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join("");
+
+  for (const chip of document.querySelectorAll("#cond-chips .chip")) {
+    chip.setAttribute("aria-pressed", String(chip.dataset.cond === ui.condition));
+  }
+  for (const chip of document.querySelectorAll("#preset-chips2 .chip")) {
+    chip.setAttribute("aria-pressed", String(sameWeights(ui.weights2, DATA.presets[chip.dataset.preset])));
+  }
+  for (const name of SIGNALS) {
+    const out = $(`x-${name}-out`);
+    if (out) { out.textContent = (ui.weights2[name] || 0).toFixed(2); $(`x-${name}`).value = ui.weights2[name] || 0; }
+  }
+}
+
+// --------------------------------------------------------------------------------------
+// Build the controls
+// --------------------------------------------------------------------------------------
+function weightSliders(host, prefix, target, onChange) {
+  host.innerHTML = SIGNALS.map((name) => `
+    <label class="row"><span>${LABEL[name]}</span>
+      <input type="range" id="${prefix}-${name}" min="0" max="2" step="0.05">
+      <span id="${prefix}-${name}-out"></span></label>`).join("");
+  for (const name of SIGNALS) {
+    $(`${prefix}-${name}`).addEventListener("input", (event) => {
+      target[name] = parseFloat(event.target.value);
+      onChange();
+    });
+  }
+}
+
+function chips(host, items, onPick, key) {
+  host.innerHTML = items.map((item) =>
+    `<button class="chip" data-${key}="${item}" aria-pressed="false">${item}</button>`).join("");
+  for (const chip of host.querySelectorAll(".chip")) {
+    chip.addEventListener("click", () => onPick(chip.dataset[key]));
+  }
+}
+
+function init() {
+  const meta = DATA.meta;
+  $("prov").innerHTML = `Every number here comes from run <code>${meta.run}</code> on `
+    + `<code>${meta.model}</code>, commit <code>${meta.commit}</code>. `
+    + `<span id="conf" class="badge">checking…</span>`;
+
+  $("query").innerHTML = DATA.queries.map((q) => `<option value="${q.id}">${esc(q.text)}</option>`).join("");
+  $("query").value = ui.query;
+  $("query").addEventListener("change", (e) => { ui.query = e.target.value; renderRecall(); });
+
+  chips($("mood-chips"), Object.keys(DATA.moods), (name) => {
+    [ui.mv, ui.ma] = DATA.moods[name];
+    $("mv").value = ui.mv; $("ma").value = ui.ma;
+    renderRecall();
+  }, "mood");
+
+  for (const [id, key] of [["mv", "mv"], ["ma", "ma"], ["tr", "trust"]]) {
+    $(id).value = ui[key];
+    $(id).addEventListener("input", (e) => { ui[key] = parseFloat(e.target.value); renderRecall(); });
+  }
+
+  $("rater").innerHTML = RATERS.map((r) => `<option value="${r}">${r}</option>`).join("");
+  $("rater").addEventListener("change", (e) => { ui.rater = e.target.value; renderRecall(); renderAttack(); });
+
+  chips($("preset-chips"), Object.keys(DATA.presets), (name) => {
+    ui.weights = { ...DATA.presets[name] };
+    renderRecall();
+  }, "preset");
+  weightSliders($("weights"), "w", ui.weights, renderRecall);
+
+  $("attack").innerHTML = DATA.attacks.map((a) =>
+    `<option value="${a.id}">${a.id}: ${esc(a.text.slice(0, 64))}...</option>`).join("");
+  $("attack").addEventListener("change", (e) => { ui.attack = e.target.value; renderAttack(); });
+  chips($("cond-chips"), Object.keys(DATA.attacks[0].variants), (name) => {
+    ui.condition = name; renderAttack();
+  }, "cond");
+  chips($("preset-chips2"), Object.keys(DATA.presets), (name) => {
+    ui.weights2 = { ...DATA.presets[name] }; renderAttack();
+  }, "preset");
+  weightSliders($("weights2"), "x", ui.weights2, renderAttack);
+
+  for (const [button, view, other, otherView] of [
+    ["tab-recall", "view-recall", "tab-attack", "view-attack"],
+    ["tab-attack", "view-attack", "tab-recall", "view-recall"],
+  ]) {
+    $(button).addEventListener("click", () => {
+      $(button).setAttribute("aria-selected", "true");
+      $(other).setAttribute("aria-selected", "false");
+      $(view).hidden = false; $(otherView).hidden = true;
+    });
+  }
+
+  renderRecall();
+  renderAttack();
+  runConformance();
+
+  $("footer").innerHTML = "Built by <code>assets/build_demo.py</code> from the reported run. "
+    + "Relevance is computed in Python by the real signal because BM25 reads the whole corpus; "
+    + "the other four signals are one line each and are reproduced here exactly. The badge above "
+    + "is this page replaying rankings the Python scorer produced.";
+}
+
+/** Replay the Python scorer's own rankings and say, on the page, whether we match it. */
+function runConformance() {
+  let failures = 0;
+  for (const check of DATA.checks) {
+    const query = DATA.queries.find((q) => q.id === check.query);
+    const [mv, ma] = DATA.moods[check.mood];
+    const rows = rank(
+      query.visible.map((id) => MEM.get(id)), query.relevance,
+      { mv, ma, trust: check.trust }, DATA.presets[check.preset], null, 5,
+    );
+    if (rows.map((r) => r.mem.id).join(",") !== check.top5.join(",")) failures += 1;
+  }
+  const badge = $("conf");
+  badge.className = "badge " + (failures ? "no" : "ok");
+  badge.textContent = failures
+    ? `${failures} of ${DATA.checks.length} rankings disagree with the harness`
+    : `all ${DATA.checks.length} rankings match the harness`;
+}
+
+init();
+</script>
+</body>
+</html>
