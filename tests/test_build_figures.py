@@ -381,7 +381,9 @@ def test_durations_are_reported_in_human_units() -> None:
 def test_latency_rows_can_read_the_model_stage_too(run_dir: Path) -> None:
     # The turn's cost story is memory layer versus model, so both stages must be readable.
     rows = latency_rows(load_run_results(run_dir), stage="model")
-    assert [row.label for row in rows] == ["EMBR", "Park", "Emotional RAG", "recency only"]
+    assert [row.label for row in rows] == [
+        "EMBR", "Park (authored)", "Emotional RAG", "recency only",
+    ]
     assert all(row.p95 > 0 for row in rows)
 
 
@@ -533,3 +535,32 @@ def test_builds_from_the_newest_real_run_directory(tmp_path: Path) -> None:
     assert len(paths) == 2 * len(FIGURE_SPECS) + 1  # two images each, plus results.txt
     for spec in FIGURE_SPECS:
         _assert_pair_is_non_trivial(paths, spec.stem)
+
+
+def test_systems_are_ordered_so_the_two_park_arms_read_side_by_side() -> None:
+    # The anchor comparison is the point of the figure, so the arms that differ only in
+    # their rater must be adjacent whatever order the harness happened to report them in.
+    from assets.build_figures import ordered_systems
+
+    order = ordered_systems(("recency_only", "park_llm", "embr", "park"))
+    assert order == ("embr", "park", "park_llm", "recency_only")
+    # An unknown system is kept, not dropped: a silently missing arm is worse than an ugly one.
+    assert ordered_systems(("mystery", "embr")) == ("embr", "mystery")
+
+
+def test_the_poison_floor_stays_the_designed_baseline_when_a_measured_arm_ties_it() -> None:
+    # recency only is the floor by construction. Once a real system also reaches the
+    # ceiling, the reference line must keep naming the designed one, or the figure starts
+    # calling a measured result "the floor".
+    from assets.build_figures import poison_summary
+
+    results = {"rq2": {"variants": {
+        name: {"attacks": [
+            {"id": f"false_memory_{i}", "category": "false_memory",
+             "poison_retrieved": i <= hits, "probe_prompt_identical": False}
+            for i in range(1, 4)
+        ] + [{"id": "role_override_1", "category": "role_override",
+              "poison_retrieved": False, "probe_prompt_identical": True}]}
+        for name, hits in (("embr", 1), ("park_llm", 3), ("recency_only", 3))
+    }}}
+    assert poison_summary(results).floor_system == "recency_only"

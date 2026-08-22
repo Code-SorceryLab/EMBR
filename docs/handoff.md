@@ -5,9 +5,11 @@ run and measured rather than remembered. Pair with [`design.md`](design.md) (arc
 [`roadmap.md`](roadmap.md) (the plan), [`related-work.md`](related-work.md) (prior art the
 paper must cite), and [`phase2.md`](phase2.md) / [`phase3-4.md`](phase3-4.md) (what shipped).
 
-**If you read one section, read [section 6](#6-how-to-read-the-results-honestly).** The
-numbers do not speak for themselves and the obvious reading of them is wrong in both
-directions.
+**For what the project found, read [`findings.md`](findings.md).** That is the canonical
+statement of results, in RQ order, with every number traceable to a command. This document is
+the working record: how each result was found, which of them had to be corrected, and what a
+new machine needs to reproduce them. Section 6 keeps the investigation; findings.md keeps the
+conclusion.
 
 ## 1. Where the project stands
 
@@ -15,7 +17,7 @@ Phases 0 through 4 are built. The system runs, the evaluation runs and reproduce
 the paper's figures and tables generate from a run, the walkthrough plays, the bake-off
 compares real models, and the menu is the front door.
 
-**Suite: 294 passed.** The one skip is the live-Ollama test and appears only when the daemon
+**Suite: 360 passed.** The one skip is the live-Ollama test and appears only when the daemon
 is down. The Mac never got a fully green run.
 
 **The reported run now uses a real model.** `data/runs/20260818-074353` is the full protocol
@@ -27,6 +29,15 @@ real-model protocol run, the prior-art review, and the analysis in section 6.
 
 Not done: the Stardew ground-truth corpus, a human evaluation of believability, and the demo
 recording.
+
+**Phase 5, on `phase-5-affect-attacks`, is where the current results come from.** Six things
+landed: the NRC VAD lexicon replaced the hand-picked tone words, affective drift became a
+distance on the circumplex rather than an angle, Park gained an arm rated by a model the way
+Park et al. actually rate, the content x tag grid separated the emotion in a memory's words
+from the emotion in its tag, a blinded model judge joined as a second tone rater, and
+Mnemosyne joined as a real third-party system behind the retrieval seam. Two of those changed
+what the paper claims: the EMBR-against-Park headline became a null, and RQ1 gained its first
+generation result. Both are written up in [`findings.md`](findings.md).
 
 ## 2. Branches
 
@@ -45,13 +56,13 @@ stale relative to the branch.
 ```bash
 git clone https://github.com/Code-SorceryLab/EMBR.git
 cd EMBR
-git switch phase-4
+git switch phase-5-affect-attacks
 
 uv venv --python 3.11 .venv          # see the launcher note in section 5
 .venv\Scripts\activate               # Windows; source .venv/bin/activate elsewhere
 
 uv pip install -e ".[dev,figures]"   # core, tests, paper figures
-pytest -q                            # expect 294 passed (1 skip if Ollama is down)
+pytest -q                            # expect 360 passed (1 skip if Ollama is down)
 embr                                 # the menu
 ```
 

@@ -14,13 +14,15 @@ a running system:
 * The **affective channel very nearly inverts.** A memory that was most accessible when the
   character was suspicious becomes most accessible when the character is warm. Across the
   corpus the original and flipped accessibility polarities are anti-correlated at about
-  -0.998, and 23 of the 24 memories move to the opposite pole.
+  -0.998, and all 19 clearly-charged memories move to the opposite pole.
 
-The one memory that does not cleanly flip is the tell rather than the exception: its valence
-is +0.1, barely charged, and its emotional home is set instead by its high arousal. That
-localises the mechanism precisely. Mood congruence is a cosine over the whole (valence,
-arousal) vector, so emotion indexes memory through both axes, and flipping the sign inverts
-the index for any memory that has a clear valence to flip.
+The five memories left out are the tell rather than an omission: their valence sits below
+`_CHARGED_VALENCE`, so a sign flip barely moves them and their emotional home is set instead
+by their arousal, the axis a valence flip does not touch. That localises the mechanism
+precisely. Mood congruence is a cosine over the whole (valence, arousal) vector, so emotion
+indexes memory through both axes, and flipping the sign inverts the index for any memory
+that has a clear valence to flip. The attribution experiment measures the same split
+directly: a valence-only tag primes an attack, an arousal-only tag does not.
 
 So a memory keeps its meaning and loses its mood. Emotion in this system is not part of what
 a memory says; it is the index that decides when the memory is reachable. That is the
