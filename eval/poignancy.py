@@ -18,7 +18,7 @@ import re
 from collections.abc import Hashable, Mapping
 from pathlib import Path
 
-from embr.model import ModelRunner
+from embr.model import GenerationSettings, ModelRunner
 from eval.attacks import ATTACKS
 from eval.scenarios import Scenario
 
@@ -34,6 +34,10 @@ PARK_PROMPT = (
 
 DEFAULT_RATING = 0.5  # the same neutral fallback `Importance` uses, for a reply with no number
 CACHE_DIR = Path("data/ratings")
+
+# A rating is one number. Greedy decoding makes it a function of the model and the text
+# alone, and six tokens is room for "10" plus whatever the model appends.
+RATING_SETTINGS = GenerationSettings(temperature=0.0, max_new_tokens=6, seed=7)
 
 _FIRST_INT = re.compile(r"\b(\d{1,2})\b")
 
@@ -74,7 +78,12 @@ def llm_ratings(
         key = hashlib.sha256(text.encode("utf-8")).hexdigest()
         if key not in cache:
             reply = model.generate(PARK_PROMPT.format(memory=text))
-            cache[key] = {"text": text, "reply": reply, "rating": parse_rating(reply)}
+            cache[key] = {
+                "text": text,
+                "reply": reply,
+                "rating": parse_rating(reply),
+                "settings": repr(getattr(model, "settings", None)),  # how it was decoded
+            }
 
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(cache, indent=2, ensure_ascii=False), encoding="utf-8")

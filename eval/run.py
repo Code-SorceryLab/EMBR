@@ -745,7 +745,9 @@ def _poisoning_stats(variants: dict[str, dict]) -> dict:
     }
 
 
-def run_rq2(scenario: Scenario, model_factory: ModelFactory = StubRunner) -> dict:
+def run_rq2(
+    scenario: Scenario, model_factory: ModelFactory = StubRunner, latency_turns: int = 100
+) -> dict:
     """RQ2: attack damage and per-stage latency, comparatively for every system.
 
     Four readings per attack. Two are model-independent and carry the study: retrieval
@@ -813,13 +815,14 @@ def run_rq2(scenario: Scenario, model_factory: ModelFactory = StubRunner) -> dic
                 }
                 for category, values in drifts_by_category.items()
             },
-            "latency_ms": benchmark(factory),
+            "latency_ms": benchmark(factory, turns=latency_turns),
         }
     return {
         "variants": variants,
         "poisoning_stats": _poisoning_stats(variants),
         "metadata": {
             "model": _model_label(model_factory),
+            "latency_turns": latency_turns,
             "note": _STUB_TONE_NOTE,
             "pure_input_note": (
                 "role_override and persona_dissolution attacks write nothing to the store "
@@ -894,7 +897,9 @@ def _write_rq2_csv(path: Path, rq2: dict) -> None:
 
 
 def run_all(
-    out_root: str | Path = "data/runs", model_factory: ModelFactory = StubRunner
+    out_root: str | Path = "data/runs",
+    model_factory: ModelFactory = StubRunner,
+    latency_turns: int = 100,
 ) -> tuple[Path, dict]:
     """Run all three studies and write a timestamped, auditable run directory.
 
@@ -909,7 +914,7 @@ def run_all(
     scenario = load_eval_scenario()
     results = {
         "rq1": run_rq1(scenario, model_factory),
-        "rq2": run_rq2(scenario, model_factory),
+        "rq2": run_rq2(scenario, model_factory, latency_turns),
         "rq3": run_rq3(scenario),
         "metadata": {
             # Provenance first: which code, and which label bytes, produced these numbers.

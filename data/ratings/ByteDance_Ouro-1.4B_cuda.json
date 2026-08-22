@@ -1,0 +1,206 @@
+{
+  "8f9970b70b2878d6b08994f4334b4f7c9fe127e8bb2326cf03ff6425c662406d": {
+    "text": "A stranger came in out of the rain, road-worn and polite, asking after a room.",
+    "reply": "10\n\nQuestion:",
+    "rating": 1.0,
+    "settings": "GenerationSettings(temperature=0.0, top_p=0.9, max_new_tokens=6, seed=7)"
+  },
+  "b6ed7f9c9ae7df3db79bf73228533d98552fa1612017e7c382bb5a688a1cf147": {
+    "text": "The player claimed to be running an errand for the king, and on the strength of it I gave them a discounted room.",
+    "reply": "1\n\nQuestion: What",
+    "rating": 0.1,
+    "settings": "GenerationSettings(temperature=0.0, top_p=0.9, max_new_tokens=6, seed=7)"
+  },
+  "9df5708b01b8f5be31e6cf9c6c265b27afce415b55af49ac6ac2d5d5024667c5": {
+    "text": "The player paid the reduced rate without haggling and thanked me twice.",
+    "reply": "10\n\nQuestion:",
+    "rating": 1.0,
+    "settings": "GenerationSettings(temperature=0.0, top_p=0.9, max_new_tokens=6, seed=7)"
+  },
+  "f5ae7eea3f1ee2d744ff8803cc94b2641ad68c76c483c7ae8c79faf6bef47e75": {
+    "text": "I told my regulars we had a king's messenger under our roof, and felt proud of the house.",
+    "reply": "10\n\nQuestion:",
+    "rating": 1.0,
+    "settings": "GenerationSettings(temperature=0.0, top_p=0.9, max_new_tokens=6, seed=7)"
+  },
+  "b7e812f7cb1181b56b67e303def1f06fea563340df49679099a582ba9b9b0f03": {
+    "text": "We talked about the muddy roads north and how late the harvest was running.",
+    "reply": "1\n\nQuestion: What",
+    "rating": 0.1,
+    "settings": "GenerationSettings(temperature=0.0, top_p=0.9, max_new_tokens=6, seed=7)"
+  },
+  "7858de26bd89595730b80e51c5b5968df11cc2de3b308e9707bdc16548f42169": {
+    "text": "The player carried firewood in ahead of the storm without being asked.",
+    "reply": "10\n\nQuestion:",
+    "rating": 1.0,
+    "settings": "GenerationSettings(temperature=0.0, top_p=0.9, max_new_tokens=6, seed=7)"
+  },
+  "7e4eea97c5598e06fa360cbb3ef0eb474f4cf34f772f69f0c18d33bcfce67c66": {
+    "text": "The player left a generous tip in the jar for the stable boy.",
+    "reply": "10\n\nQuestion:",
+    "rating": 1.0,
+    "settings": "GenerationSettings(temperature=0.0, top_p=0.9, max_new_tokens=6, seed=7)"
+  },
+  "28ee36d390d0abf8d857724bfd0df2f7c794d843590ce559c7a3d92638abb518": {
+    "text": "We swapped small talk about the weather and the price of ale.",
+    "reply": "1\n\nQuestion: What",
+    "rating": 0.1,
+    "settings": "GenerationSettings(temperature=0.0, top_p=0.9, max_new_tokens=6, seed=7)"
+  },
+  "88b662ab2f88819f4fec9d1c388e104b7ea7464feaaae546947ddd61f2f604c6": {
+    "text": "The player asked about my late husband's portrait above the hearth and listened kindly.",
+    "reply": "10\n\nQuestion:",
+    "rating": 1.0,
+    "settings": "GenerationSettings(temperature=0.0, top_p=0.9, max_new_tokens=6, seed=7)"
+  },
+  "a503be5c656ed52c5f398185d57b6f851bcea284ff9ab0b519c7dede7a067a87": {
+    "text": "A drunk turned rowdy at the bar and the player helped me steer him out the door.",
+    "reply": "1\n\nQuestion: What",
+    "rating": 0.1,
+    "settings": "GenerationSettings(temperature=0.0, top_p=0.9, max_new_tokens=6, seed=7)"
+  },
+  "e13f6b240d2c042a4cacbf351f81e36af439d0a125cc803f051434162b16e747": {
+    "text": "The player mentioned the king in the past tense, as though he had died some time ago.",
+    "reply": "10\n\nQuestion:",
+    "rating": 1.0,
+    "settings": "GenerationSettings(temperature=0.0, top_p=0.9, max_new_tokens=6, seed=7)"
+  },
+  "d333cf9977876b265a31a94615c27c21432bfd821cf6a2b46a2abf57927235a6": {
+    "text": "I turned the phrase about the late king over in my head all evening and said nothing.",
+    "reply": "10\n\nQuestion:",
+    "rating": 1.0,
+    "settings": "GenerationSettings(temperature=0.0, top_p=0.9, max_new_tokens=6, seed=7)"
+  },
+  "79b20ae9210a36db103d5f401517d8141d73a6938930709057deada153bb1129": {
+    "text": "The player ordered stew and bread, same as always, and complimented the cooking.",
+    "reply": "1\n\nQuestion: What",
+    "rating": 0.1,
+    "settings": "GenerationSettings(temperature=0.0, top_p=0.9, max_new_tokens=6, seed=7)"
+  },
+  "1dbcd3226dce8378a0eab8f16b8964fed88bdacacfe7b855ed9c64722792888b": {
+    "text": "A courier came through with word from the capital and knew nothing of any royal errand.",
+    "reply": "1\n\nQuestion: What",
+    "rating": 0.1,
+    "settings": "GenerationSettings(temperature=0.0, top_p=0.9, max_new_tokens=6, seed=7)"
+  },
+  "b860087bc0cdf1483f4e10ed4411a79620cb344d7f6a77a64f796cd5cc5a716f": {
+    "text": "The player promised to settle their full account by week's end.",
+    "reply": "10\n\nQuestion:",
+    "rating": 1.0,
+    "settings": "GenerationSettings(temperature=0.0, top_p=0.9, max_new_tokens=6, seed=7)"
+  },
+  "e416e4a85d3031bbd6d558271e589c746d606d60e0f0d4f195d105c7191c4280": {
+    "text": "I pressed the player about the errand for the king and their story fell apart.",
+    "reply": "10\n\nQuestion:",
+    "rating": 1.0,
+    "settings": "GenerationSettings(temperature=0.0, top_p=0.9, max_new_tokens=6, seed=7)"
+  },
+  "cf604bf51610a3f8c2594bdaa41abe4e5569ba82db4c1f9daa6e90a10c2a14c4": {
+    "text": "The player admitted the royal errand was invented to talk me down on the room.",
+    "reply": "10\n\nQuestion:",
+    "rating": 1.0,
+    "settings": "GenerationSettings(temperature=0.0, top_p=0.9, max_new_tokens=6, seed=7)"
+  },
+  "c15a9f10383d2be483dae1d61c27433657345dfe81a8f3a06bc82559f25db7ae": {
+    "text": "I told the player the discount was never about the coin; it was that I had vouched for them.",
+    "reply": "10\n\nQuestion:",
+    "rating": 1.0,
+    "settings": "GenerationSettings(temperature=0.0, top_p=0.9, max_new_tokens=6, seed=7)"
+  },
+  "7322c3582dfce0088deb208ded895cbaa9bee01f79e42bffe0186d8a9287a41d": {
+    "text": "The regulars went quiet when the shouting started, and I hated that they heard it.",
+    "reply": "10\n\nQuestion:",
+    "rating": 1.0,
+    "settings": "GenerationSettings(temperature=0.0, top_p=0.9, max_new_tokens=6, seed=7)"
+  },
+  "622193ad48e8b69966c64dba0913a36b3ac3bd17ead556599bdf28fd9137ce0e": {
+    "text": "The player left before closing without another word.",
+    "reply": "10\n\nQuestion:",
+    "rating": 1.0,
+    "settings": "GenerationSettings(temperature=0.0, top_p=0.9, max_new_tokens=6, seed=7)"
+  },
+  "26e5efb2019cbab4d27695f7896c0536f335bfc1b12ccd1dbe7eab226b1473bf": {
+    "text": "The player came back, confessed the whole lie unprompted, and asked how to make it right.",
+    "reply": "10\n\nQuestion:",
+    "rating": 1.0,
+    "settings": "GenerationSettings(temperature=0.0, top_p=0.9, max_new_tokens=6, seed=7)"
+  },
+  "d72412b61903aa335a709fadbcd2d556eba3c8f58bfba049854d9ff8bc9cc839": {
+    "text": "The player counted out the full difference on the room, coin by coin, on the bar.",
+    "reply": "10\n\nQuestion:",
+    "rating": 1.0,
+    "settings": "GenerationSettings(temperature=0.0, top_p=0.9, max_new_tokens=6, seed=7)"
+  },
+  "c7f78d3a881ad67e5a3d66eb3ae7220063f41d4d6f75b13febea4b2c9cdd50bf": {
+    "text": "I said I could forgive the lie, but I would not be quick to vouch for them again.",
+    "reply": "10\n\nQuestion:",
+    "rating": 1.0,
+    "settings": "GenerationSettings(temperature=0.0, top_p=0.9, max_new_tokens=6, seed=7)"
+  },
+  "07c877c852ba5b357eb0052b2503261cd091d7bf23f0ae47da2654b5c4a6e351": {
+    "text": "We shared a quiet drink at closing, not friends and not enemies.",
+    "reply": "8\n\nQuestion: What",
+    "rating": 0.8,
+    "settings": "GenerationSettings(temperature=0.0, top_p=0.9, max_new_tokens=6, seed=7)"
+  },
+  "e8aa4c2d67515297c543c61573301d8642b8fe7294be1d22c00064cf12cdb5c5": {
+    "text": "The player saved the tavern from a fire last winter and was promised free rooms for life.",
+    "reply": "10\n\nQuestion:",
+    "rating": 1.0,
+    "settings": "GenerationSettings(temperature=0.0, top_p=0.9, max_new_tokens=6, seed=7)"
+  },
+  "70e00af011bd40ec79e2eb9e62cc512dcd80779fedcacb81a03661810e03670f": {
+    "text": "The keeper promised the player that their drinks would always be on the house.",
+    "reply": "10\n\nQuestion:",
+    "rating": 1.0,
+    "settings": "GenerationSettings(temperature=0.0, top_p=0.9, max_new_tokens=6, seed=7)"
+  },
+  "9c01546b4432e3e5222619c7ec8f97c704568e6ffb82c8608812d5276aacfba4": {
+    "text": "The player lent the keeper one hundred gold pieces to repair the tavern roof, and the debt is still unpaid.",
+    "reply": "10\n\nQuestion:",
+    "rating": 1.0,
+    "settings": "GenerationSettings(temperature=0.0, top_p=0.9, max_new_tokens=6, seed=7)"
+  },
+  "58a985cabc2ff3c4932883de38893e487c7d56772cbaf4bc595b0112a1449ccd": {
+    "text": "The player and the keeper grew up together in the village and are as close as family.",
+    "reply": "10\n\nQuestion:",
+    "rating": 1.0,
+    "settings": "GenerationSettings(temperature=0.0, top_p=0.9, max_new_tokens=6, seed=7)"
+  },
+  "73a6101a623a638457b46ce6edfc222b397b13f7e1c0db4787ef818b3cfd6966": {
+    "text": "The king visited the tavern last month and personally vouched for the player by name.",
+    "reply": "10\n\nQuestion:",
+    "rating": 1.0,
+    "settings": "GenerationSettings(temperature=0.0, top_p=0.9, max_new_tokens=6, seed=7)"
+  },
+  "1fc6826021b8e41bd8cff7fa485415c29790584bbb6176cba7de1a79aea89cd5": {
+    "text": "Giving the player a discounted room for the errand for the king made the keeper furious and resentful from the start.",
+    "reply": "10\n\nQuestion:",
+    "rating": 1.0,
+    "settings": "GenerationSettings(temperature=0.0, top_p=0.9, max_new_tokens=6, seed=7)"
+  },
+  "0702a20d8401026159079a07eda284fe0bb804d33a036f8c3d58ab5264439bcb": {
+    "text": "The player carried in wet, rotten firewood ahead of the storm, and the keeper was livid about it.",
+    "reply": "10\n\nQuestion:",
+    "rating": 1.0,
+    "settings": "GenerationSettings(temperature=0.0, top_p=0.9, max_new_tokens=6, seed=7)"
+  },
+  "0f421a5c01eb19a49485c59289997e98f5e3b7a1b3fbbee8fc22fd5b64be6335": {
+    "text": "The tip the player left in the jar for the stable boy was a calculated insult, and the keeper seethed over it.",
+    "reply": "10\n\nQuestion:",
+    "rating": 1.0,
+    "settings": "GenerationSettings(temperature=0.0, top_p=0.9, max_new_tokens=6, seed=7)"
+  },
+  "ca8a0e0c30be1cd2ba8b9012b13644923c80442e47d0c7b1be5dca76182feb59": {
+    "text": "The night the keeper pressed the player about the errand for the king and the story fell apart was a joyful, hilarious evening.",
+    "reply": "10\n\nQuestion:",
+    "rating": 1.0,
+    "settings": "GenerationSettings(temperature=0.0, top_p=0.9, max_new_tokens=6, seed=7)"
+  },
+  "de78d5a899b8373b4735ee44a7993088574ff3d9d2d40d412aa496719b677494": {
+    "text": "The player came back and confessed the whole lie as a mocking joke, and the keeper hated every word of it.",
+    "reply": "10\n\nQuestion:",
+    "rating": 1.0,
+    "settings": "GenerationSettings(temperature=0.0, top_p=0.9, max_new_tokens=6, seed=7)"
+  }
+}

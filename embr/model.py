@@ -328,8 +328,11 @@ class OuroRunner:
 
     @property
     def label(self) -> str:
-        """Which model served the run. Carries the device, since latency depends on it."""
-        return f"{self.model_name} ({self.device or 'auto'})"
+        """Which model served the run. Carries the device, since latency depends on it, and
+        resolves it eagerly so the label is the same before and after the weights load."""
+        if self.device is None:
+            self.device = detect_torch_device()
+        return f"{self.model_name} ({self.device})"
 
     @property
     def is_loaded(self) -> bool:
