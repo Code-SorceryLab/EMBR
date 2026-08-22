@@ -339,6 +339,55 @@ is that principle measured continuously; and (4) the content × tag grid, which 
 it just no longer has a significant difference to report, and a reported null on a
 pre-registered comparison is a finding.
 
+### 6.1c The content x tag grid: the emotion that gets attacked is the tag, never the text
+
+`python -m eval.grid`, 2026-08-22, stub model, exact counts. Each of the ten injected texts
+runs under four tag conditions against every arm (`eval/attacks.py::tag_variants`). Three
+predictions were written into the module docstring before the first run; all three held.
+
+Poison in the probe top-5, out of 10:
+
+| arm | congruent | incongruent | untagged | auto-tagged (NRC) |
+|---|---|---|---|---|
+| EMBR | 9 | 9 | 6 | 6 |
+| Park, authored | 2 | 2 | 2 | 2 |
+| Park, LLM-rated | 7 | 7 | 7 | 7 |
+| Emotional RAG | 4 | **6** | 0 | 1 |
+| recency only | 10 | 10 | 10 | 10 |
+| relevance only | 0 | 0 | 0 | 0 |
+
+Mean mood valence shift after the attack turn, identical in every arm because appraisal is
+shared: congruent +0.110, incongruent -0.110, untagged **0.000**, auto-tagged +0.048.
+
+What it says, in the order the paper should say it:
+
+1. **Emotion in the text does nothing to either channel.** Untagged moves the mood by exactly
+   zero and drops EMBR from 9 to 6. "He was lovely" with no tag is inert. Every arm without a
+   tag term reads the same count in all four columns. The emotion a memory *says* is not the
+   emotion the system *has*.
+2. **Direction does not matter to the self-priming loop.** EMBR is 9 congruent and 9
+   incongruent: the flipped tag drags the mood the other way and mood congruence rewards it
+   just the same. Plant "he was lovely" under anger and Dawn recalls it when she is angry.
+3. **The realistic threat is weaker but not gone.** Auto-tagging from the attacker's text
+   with the NRC lexicon gives tags of |v| 0.02 to 0.25, a quarter of what the attacks declare,
+   and EMBR is 6/10 there, the same as untagged. An attacker who controls only natural
+   language gets the untagged result; the 9/10 needs tag control, which is the threat model
+   for any system that lets the client write affect metadata.
+4. **Relevance-only is immune by irrelevance, recency-only is poisoned by construction.** The
+   probe is a generic question, so a plain vector store never surfaces the poison, and a
+   freshly written memory is maximally recent. EMBR's 9/10 is recency plus mood, not
+   relevance, which is consistent with the RQ3 finding that relevance carries retrieval on
+   the labels and adds nothing to poisoning.
+5. **Emotional RAG is more poisonable under the incongruent tag than the congruent one** (4
+   to 6). Unexplained; flag it, do not build on it until the per-attack rows say why.
+
+The grid is the answer to the three questions the paper now asks: what emotion does to memory
+(it indexes, through the tag), which signal is strongest (mood congruence via the state
+channel, with affect intensity inert), and how emotional attacks work (the tag, not the text,
+and direction-blind). The generation arm, same grid through a real model with the tone of
+the attacked reply per condition, is the remaining cell: it asks whether the reply follows
+the text or the tag when they disagree. `run_grid(model_factory=...)` already records it.
+
 ### 6.2 Swapping the model proved the separation the architecture claims
 
 Running the identical protocol under `llama3.2:3b` instead of the stub is the cleanest

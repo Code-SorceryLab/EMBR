@@ -80,8 +80,9 @@ _MENU_ITEMS = [
     ("7", "Affective Indexing", "flip every emotion: meaning stays, mood inverts"),
     ("8", "Poisoning Attribution", "which signal lets the attack in, one ablation each"),
     ("9", "Provenance Sweep", "the defence: anchored scoring mass vs poisoning"),
-    ("10", "Generate Paper Assets", "rebuild figures and tables from a run"),
-    ("11", "Latest Results", "summarise the newest run directory"),
+    ("10", "Content x Tag Grid", "same poison, four tags: the text never reaches the state"),
+    ("11", "Generate Paper Assets", "rebuild figures and tables from a run"),
+    ("12", "Latest Results", "summarise the newest run directory"),
     ("S", "Settings", "weights, top-k, backends, model runner"),
     ("L", "Fetch Tone Lexicon", "NRC VAD v2.1, research use, stays out of git"),
     ("D", "Delete All Data", "wipe runs, figures and tables, requires DELETE"),
@@ -92,8 +93,8 @@ _MENU_ITEMS = [
 _SECTIONS = [
     ("PLAY", ("1", "2")),
     ("MEASURE", ("3", "4", "5", "6")),
-    ("MECHANISM", ("7", "8", "9")),
-    ("PAPER", ("10", "11")),
+    ("MECHANISM", ("7", "8", "9", "10")),
+    ("PAPER", ("11", "12")),
     ("SYSTEM", ("S", "L", "D", "C")),
 ]
 
@@ -358,7 +359,7 @@ def _do_full_evaluation() -> None:
     print(_DIM("\n    Running RQ1, RQ2 and RQ3. This takes a minute or two."))
     path, _summary = run_all()
     print(f"\n    {_GRN('✓ Done.')} Results in {_BOLD(str(path))}")
-    print(_DIM("    Option 10 turns this into the paper's figures and tables."))
+    print(_DIM("    Option 11 turns this into the paper's figures and tables."))
     _chime()
 
 
@@ -422,6 +423,14 @@ def _do_attribution() -> None:
 def _do_provenance_sweep() -> None:
     """Sweep anchored scoring mass and watch poisoning fall to zero."""
     from eval.provenance import main
+
+    print()
+    main()
+
+
+def _do_grid() -> None:
+    """Every injected text under four tag conditions against every arm."""
+    from eval.grid import main
 
     print()
     main()
@@ -540,7 +549,7 @@ def _do_delete_run_data() -> None:
     for directory in present:
         count = sum(1 for path in directory.rglob("*") if path.is_file())
         print(f"      {_YEL(str(directory))} {_DIM(f'({count} files)')}")
-    print(_DIM("\n    Runs, figures and tables all regenerate from option 4 then option 10."
+    print(_DIM("\n    Runs, figures and tables all regenerate from option 4 then option 11."
                " Nothing under assets/ is touched."))
     if input("\n    Type DELETE to confirm, anything else cancels: ").strip() != "DELETE":
         print(_DIM("    Cancelled."))
@@ -561,8 +570,9 @@ _ACTIONS: dict[str, Callable[[], None]] = {
     "7": _do_affective_indexing,
     "8": _do_attribution,
     "9": _do_provenance_sweep,
-    "10": _do_generate_assets,
-    "11": _do_latest_results,
+    "10": _do_grid,
+    "11": _do_generate_assets,
+    "12": _do_latest_results,
     "S": _do_settings,
     "L": _do_fetch_lexicon,
     "D": _do_delete_run_data,

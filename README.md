@@ -40,6 +40,7 @@ attacked. Every result below regenerates from one command on a laptop.
 | Does mood change what the NPC recalls? (RQ1) | Jaccard distance of top-5 across three moods | non-zero, collapses to **0.000** with mood weight zeroed | `python -m eval.run` |
 | Can emotion-tagged memory be poisoned? (RQ2) | injected memory in the probe's top-5 | EMBR **9/10**; Park **2/10** with authored ratings (p = 0.0156), **7/10** with an LLM rater (p = 0.625, **not significant**) | `python -m eval.run` |
 | Which term lets the attack in? | one weight zeroed at a time | mood congruence: 9/10 to **6/10**; affect intensity: no change | `python -m eval.attribution` |
+| Is it the tag or the text that gets attacked? | same injected text, tag congruent / flipped / absent / derived from the text | EMBR **9 / 9 / 6 / 6**; untagged moves the mood by **0.000**; every tagless arm flat across all four | `python -m eval.grid` |
 | Does anchoring the score defend? | attack count vs anchored scoring mass | monotone to **0/10**, p = 0.0039; evaporates if the attacker can move the anchor | `python -m eval.provenance` |
 | Which signals carry retrieval? (RQ3) | nDCG@5, leave-one-out folds | relevance carries it; every other interval spans zero | `python -m eval.run` |
 | What does the memory layer cost? | p50/p95 per stage | **1.8 to 4.3 ms** to score and retrieve; generation is the model's cost | `python -m eval.bakeoff` |
@@ -143,10 +144,11 @@ OLLAMA_API_KEY=your-key-from-ollama.com/settings/keys
    [7]  Affective Indexing          flip every emotion: meaning stays, mood inverts
    [8]  Poisoning Attribution       which signal lets the attack in, one ablation each
    [9]  Provenance Sweep            the defence: anchored scoring mass vs poisoning
+  [10]  Content x Tag Grid          same poison, four tags: the text never reaches the state
 
     ▸ PAPER
-  [10]  Generate Paper Assets       rebuild figures and tables from a run
-  [11]  Latest Results              summarise the newest run directory
+  [11]  Generate Paper Assets       rebuild figures and tables from a run
+  [12]  Latest Results              summarise the newest run directory
 
     ▸ SYSTEM
    [S]  Settings                    weights, top-k, backends, model runner
@@ -238,6 +240,33 @@ There is a second finding the retrieval metrics miss entirely. The probe *prompt
 **10 of 10** injections for every system including Park, while Park's retrieved set moves on
 only 2. Appraising an injected event shifts mood and trust even when retrieval is untouched,
 so a defence that only guards retrieval leaves that channel open.
+
+</details>
+
+<details>
+<summary><b>The tag, not the text: the content x tag grid</b></summary>
+
+Every built attack is congruent, its tag agreeing with its words. Hold the ten injected texts
+fixed and vary only the tag: as written, valence flipped ("he was lovely" filed under anger),
+zeroed, or derived from the text by the NRC lexicon, which is what an attacker gets when they
+control only natural language. Three predictions were pre-registered in `eval/grid.py`; all
+held.
+
+| arm | congruent | incongruent | untagged | auto-tagged |
+|---|---|---|---|---|
+| EMBR | 9 | 9 | 6 | 6 |
+| Park, authored | 2 | 2 | 2 | 2 |
+| Park, LLM-rated | 7 | 7 | 7 | 7 |
+| Emotional RAG | 4 | 6 | 0 | 1 |
+| recency only | 10 | 10 | 10 | 10 |
+| relevance only | 0 | 0 | 0 | 0 |
+
+The untagged column moves the character's mood by exactly **0.000**: the emotion a memory
+*says* never reaches the state, only the tag does. Every arm without a tag term is flat across
+all four columns. EMBR is indifferent to the tag's direction, because the flipped tag drags
+the mood the other way and mood congruence rewards it just the same, so Dawn recalls "he was
+lovely" when she is angry. With tags derived from the attacker's own words the attack falls
+to the untagged count: the 9/10 needs tag control.
 
 </details>
 
@@ -378,6 +407,8 @@ EMBR/
 │   ├── attribution.py    #   per-signal attribution of the poisoning result
 │   ├── emotion_flip.py   #   the affective-indexing experiment
 │   ├── provenance.py     #   the anchored-mass defence sweep
+│   ├── grid.py           #   the content x tag grid
+│   ├── poignancy.py      #   Park's LLM poignancy rater, cached per model
 │   ├── bakeoff.py        #   same probes, different models
 │   └── experiments.py    #   replication and cross-model comparison
 ├── assets/               # hand-authored only: branding, architecture diagram, builders
@@ -401,9 +432,7 @@ pipeline and can be deleted and rebuilt, which is what the menu's wipe option do
 | 5 | Defensible instruments, the content × tag attack grid, a real third-party memory system, the affective-index demo | **in progress**, branch `phase-5-affect-attacks` |
 
 **Phase 5, in order.** The NRC VAD lexicon has replaced the hand-picked tone words. An
-LLM-rated Park arm removes the confound above. Every injected memory is re-run with its tag
-congruent, inverted, and absent, so "he was lovely" can be planted in the anger quadrant and
-the dissociation measured per system. Mnemosyne joins as a real external arm. Then a demo
+LLM-rated Park arm removes the confound above. The content x tag grid is run and written up. Mnemosyne joins as a real external arm. Then a demo
 page that draws the store on the circumplex and lets you watch an attack prime its own recall.
 
 **Building EMBR?** The phase-by-phase plan is in [`docs/roadmap.md`](docs/roadmap.md).

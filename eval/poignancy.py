@@ -83,3 +83,13 @@ def llm_ratings(
         for entry in cache.values()
         if entry["text"] in texts
     }
+
+
+def cached_ratings(path: Path) -> Mapping[Hashable, float]:
+    """The ratings a previous run cached, keyed by text: the versioned reproducibility path,
+    so the park_llm arm can be rebuilt on a machine that has no model at all."""
+    cache = json.loads(Path(path).read_text(encoding="utf-8"))
+    return {
+        entry["text"]: DEFAULT_RATING if entry["rating"] is None else entry["rating"]
+        for entry in cache.values()
+    }
