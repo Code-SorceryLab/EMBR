@@ -182,6 +182,31 @@ def test_memory_text_cannot_break_out_of_the_script_block() -> None:
     assert json.loads(encoded) == hostile  # escaped, not mangled
 
 
+def test_the_line_separators_are_escaped_and_the_table_cannot_no_op() -> None:
+    """The half of the escaping that got silently deleted, and the way it came back wrong.
+
+    U+2028 and U+2029 end a line inside a JavaScript string literal but not inside a JSON
+    one, so an unescaped separator in a memory breaks the page. They lived here as literal
+    characters, which are invisible in an editor and in a diff, so a normaliser removed them
+    and left empty search strings: `str.replace("", x)` inserts between every character, and
+    the payload went from 35 KB to 1.2 MB. The repair then wrote the escapes with a single
+    backslash, so Python read them as the characters being escaped and every replacement
+    became an identity. Neither failure is loud, so both get a test.
+    """
+    from assets.build_demo import _inline_json
+
+    backslash, line_sep, para_sep = chr(92), chr(0x2028), chr(0x2029)
+    payload = {"text": f"a{line_sep}b{para_sep}c"}
+    encoded = _inline_json(payload)
+
+    assert line_sep not in encoded and para_sep not in encoded
+    assert backslash + "u2028" in encoded and backslash + "u2029" in encoded
+    assert json.loads(encoded) == payload
+    # An identity table would leave the value untouched; an empty search string would
+    # explode it. Both show up as a length that is not the escaped one.
+    assert len(encoded) == len(json.dumps(payload, ensure_ascii=False)) + 2 * 5
+
+
 def test_the_built_page_carries_no_raw_angle_bracket_from_the_corpus(demo) -> None:
     path, data = demo
     block = path.read_text(encoding="utf-8").split("const DATA = ", 1)[1].split(";\n", 1)[0]

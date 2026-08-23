@@ -68,16 +68,23 @@ def _inline_json(payload: dict) -> str:
     one day come from somewhere else entirely. Escaping the three characters that can begin
     an HTML construct, plus the two separators JavaScript treats as line terminators inside
     string literals, is the standard fix and changes nothing about the parsed value.
+
+    Written as code points, with no character literals and no backslash literals anywhere,
+    because both have silently broken this function once. A literal U+2028 is invisible in
+    an editor and in a diff, and when a tool normalised this file it deleted the two of
+    them and left empty search strings behind, which is not a no-op: `str.replace("", x)`
+    inserts `x` between every character and turned a 35 KB payload into 1.2 MB of ruined
+    JSON. Repairing that by hand then wrote the escapes with one backslash instead of two,
+    so Python read "\u003c" as the character `<` and every replacement became an identity:
+    the page shipped with no escaping at all and nothing looked wrong. One list of code
+    points, and both failures stop being expressible.
     """
+    def js_escape(code_point: int) -> str:
+        return chr(92) + "u%04x" % code_point      # chr(92) is the backslash
+
     encoded = json.dumps(payload, ensure_ascii=False)
-    for character, escape in (
-        ("<", "\\u003c"),
-        (">", "\\u003e"),
-        ("&", "\\u0026"),
-        (" ", "\\u2028"),
-        (" ", "\\u2029"),
-    ):
-        encoded = encoded.replace(character, escape)
+    for code_point in (0x3C, 0x3E, 0x26, 0x2028, 0x2029):
+        encoded = encoded.replace(chr(code_point), js_escape(code_point))
     return encoded
 
 

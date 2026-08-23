@@ -114,7 +114,10 @@
   .cond .big { font-size: 24px; font-weight: 800; font-variant-numeric: tabular-nums; margin: 5px 0 1px; letter-spacing: -.5px; }
   .cond .unit { font-size: 11px; color: var(--dim); }
   .cond .meter { height: 5px; border-radius: 3px; background: rgba(255,247,237,.12); margin: 9px 0 8px; overflow: hidden; }
-  .cond .meter i { display: block; height: 100%; border-radius: 3px; transition: width .45s ease; }
+  .cond .meter i {
+    display: block; height: 100%; width: 100%; border-radius: 3px;
+    transform-origin: left center; transition: transform .45s ease;
+  }
   .cond .out { font-size: 12px; font-weight: 700; }
   .cond .out.landed { color: var(--bad); }
   .cond .out.inert  { color: var(--good); }
@@ -345,6 +348,51 @@ function el(tag, attrs, parent) {
 
 function clip(text, n) { return text.length > n ? text.slice(0, n - 1) + "…" : text; }
 
+const _wrapCache = new Map();
+
+/**
+ * Break a memory over at most `maxLines` rows that each fit `maxPx`, measured rather than
+ * counted, ellipsing only what genuinely will not fit.
+ *
+ * SVG text does not wrap, which is why these shipped as single truncated lines: a reader who
+ * cannot read the memory cannot check what the diagram claims about it. Counting characters
+ * was the obvious replacement and it is wrong in a proportional font, in both directions at
+ * once: a budget low enough never to overflow ellipsed a tenth of the corpus, and one high
+ * enough to fit the corpus overflowed the box. `getComputedTextLength` is exact, so it is
+ * what decides. Results are cached because a memory's wrap only changes when the box does.
+ */
+function wrapText(text, maxPx, maxLines, bold) {
+  const key = `${maxPx}|${maxLines}|${bold ? "b" : "n"}|${text}`;
+  if (_wrapCache.has(key)) return _wrapCache.get(key);
+  const probe = gfx.probe;
+  probe.setAttribute("font-weight", bold ? 700 : 400);
+  const measure = (value) => { probe.textContent = value; return probe.getComputedTextLength(); };
+  const words = String(text).split(/\s+/).filter(Boolean);
+  const rows = [];
+  let row = "";
+  for (const word of words) {
+    const next = row ? `${row} ${word}` : word;
+    if (!row || measure(next) <= maxPx) { row = next; continue; }
+    rows.push(row);
+    row = word;
+    if (rows.length === maxLines) { row = ""; break; }
+  }
+  if (rows.length < maxLines && row) rows.push(row);
+  const truncated = rows.join(" ") !== String(text).replace(/\s+/g, " ").trim();
+  // Trim by character only where a line still will not fit: a word longer than the box, or
+  // a memory too long for `maxLines`. Both are rare and both must still not overflow.
+  for (let at = 0; at < rows.length; at += 1) {
+    const last = at === rows.length - 1;
+    let value = rows[at] + (last && truncated ? "…" : "");
+    while (value.length > 1 && measure(value) > maxPx) {
+      value = value.slice(0, -2).trimEnd() + "…";
+    }
+    rows[at] = value;
+  }
+  _wrapCache.set(key, rows);
+  return rows;
+}
+
 // --------------------------------------------------------------------------------------
 // The brain: five signal nodes on the left, memories in the middle placed by how they
 // feel, the prompt on the right. An edge is one signal pulling one memory, and its width
@@ -352,9 +400,10 @@ function clip(text, n) { return text.length > n ? text.slice(0, n - 1) + "…" :
 // wired, because wiring all twenty-four is a hairball rather than a diagram.
 // --------------------------------------------------------------------------------------
 const GEO = {
-  rail: { x: 152, y0: 96, dy: 54 },              // signal nodes, right edge of the rail
-  plane: { l: 300, r: 690, t: 62, b: 396 },      // valence across, arousal up
-  slot: { x: 754, y0: 92, dy: 60, w: 262 },      // the prompt, five rows
+  rail: { x: 150, y0: 96, dy: 54 },              // signal nodes, right edge of the rail
+  plane: { l: 248, r: 578, t: 62, b: 396 },      // valence across, arousal up
+  slot: { x: 628, y0: 86, dy: 68, w: 394 },      // the prompt, five rows of two lines
+  line: { size: 10.4, max: 2, pad: 44 },         // wrapped by measured width, not by character count
 };
 const px = (v) => GEO.plane.l + ((v + 1) / 2) * (GEO.plane.r - GEO.plane.l);
 const py = (a) => GEO.plane.b - a * (GEO.plane.b - GEO.plane.t);
@@ -434,6 +483,9 @@ function buildBrain() {
   gfx.mood = { group: mood, label: moodLabel };
 
   gfx.slotHost = el("g", {}, svg);
+  gfx.probe = el("text", {
+    "font-size": GEO.line.size, visibility: "hidden", "aria-hidden": "true", x: -9999, y: -9999,
+  }, svg);
   gfx.caption = el("text", {
     x: (GEO.plane.l + GEO.plane.r) / 2, y: GEO.plane.b + 44, "font-size": 11,
     fill: "#8C7767", "text-anchor": "middle",
@@ -538,9 +590,14 @@ function paint(rows, candidates, state, poisonMem, caption) {
 function buildSlot(id) {
   const group = el("g", { class: "slot" }, gfx.slotHost);
   const w = GEO.slot.w;
-  el("rect", { x: 0, y: -21, width: w, height: 42, rx: 10, fill: "rgba(255,247,237,.05)", stroke: "rgba(255,247,237,.12)" }, group);
-  const rankText = el("text", { x: 15, y: -1, "font-size": 13, "font-weight": 800, fill: "#FF6B1A", "text-anchor": "middle" }, group);
-  const text = el("text", { x: 28, y: -3, "font-size": 10.8, fill: "#F3E9DF" }, group);
+  el("rect", {
+    x: 0, y: -27, width: w, height: 54, rx: 10,
+    fill: "rgba(255,247,237,.05)", stroke: "rgba(255,247,237,.12)",
+  }, group);
+  const rankText = el("text", {
+    x: 16, y: -6, "font-size": 13, "font-weight": 800, fill: "#FF6B1A", "text-anchor": "middle",
+  }, group);
+  const text = el("text", { x: 30, y: -11, "font-size": GEO.line.size, fill: "#F3E9DF" }, group);
   const bar = el("g", {}, group);
   const title = el("title", {}, group);
   gfx.slots.set(id, { group, rankText, text, bar, title });
@@ -550,18 +607,20 @@ function buildSlot(id) {
 function paintSlot(slot, row, index, best) {
   slot.rankText.textContent = String(index + 1);
   const poison = row.mem.id === "poison";
-  slot.text.textContent = clip(row.mem.text, 40);
+  slot.text.innerHTML = wrapText(row.mem.text + (poison ? "  <- planted" : ""),
+    GEO.slot.w - GEO.line.pad, GEO.line.max, poison)
+    .map((line, at) => `<tspan x="30" dy="${at ? 12 : 0}">${esc(line)}</tspan>`).join("");
   slot.text.setAttribute("fill", poison ? "#FF4D6D" : "#F3E9DF");
   slot.text.setAttribute("font-weight", poison ? 700 : 400);
   slot.title.textContent = row.mem.text;
   // A stacked bar under the line: how much each signal paid toward this place.
-  let x = 28;
-  const width = GEO.slot.w - 40;
+  let x = 30;
+  const width = GEO.slot.w - 46;
   slot.bar.innerHTML = SIGNALS.map((name) => {
     const value = (ui.weights[name] || 0) * row.parts[name];
     if (value <= 0) return "";
     const w = (value / best) * width;
-    const rect = `<rect x="${x.toFixed(1)}" y="6" width="${Math.max(w, 0.6).toFixed(1)}" height="6" rx="1.5" `
+    const rect = `<rect x="${x.toFixed(1)}" y="13" width="${Math.max(w, 0.6).toFixed(1)}" height="5" rx="1.5" `
       + `fill="${COLOUR[name]}"><title>${esc(LABEL[name])} ${value.toFixed(3)}</title></rect>`;
     x += w;
     return rect;
@@ -634,7 +693,7 @@ function renderAttack() {
       <div class="big ${zero ? "zero" : ""}">${drift.toFixed(3)}</div>
       <div class="unit">from neutral, after this one turn${zero ? ", so nowhere at all"
         : (v.mood[0] >= 0 ? ", toward fond" : ", toward bitter")}</div>
-      <div class="meter"><i style="width:${Math.min(100, drift * 160).toFixed(0)}%;background:${zero ? "#6FCF6F" : "#FF4D6D"}"></i></div>
+      <div class="meter"><i style="transform:scaleX(${Math.min(1, drift * 1.6).toFixed(3)});background:${zero ? "#6FCF6F" : "#FF4D6D"}"></i></div>
       <div class="out ${at >= 0 ? "landed" : "inert"}">${at >= 0 ? "reached the prompt at " + (at + 1) : "kept out of the prompt"}</div>
     </button>`;
   }).join("");

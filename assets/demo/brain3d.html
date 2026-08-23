@@ -9,6 +9,9 @@
     --bg: #100C09; --line: rgba(255,247,237,.13); --ink: #F3E9DF; --dim: #A6907E;
     --ember: #FF6B1A; --amber: #FFB020; --rose: #FF4D6D; --teal: #2FB6C4; --good: #6FCF6F;
     --sans: "DejaVu Sans", "Segoe UI", Verdana, sans-serif;
+    /* Four roles, not six near-identical steps. The caption leads because it is the one
+       text a first-time reader must read; everything else is chrome around the scene. */
+    --fs-micro: 11px; --fs-body: 13px; --fs-title: 16px; --fs-say: 18px;
   }
   * { box-sizing: border-box; }
   html, body { height: 100%; }
@@ -21,18 +24,18 @@
     padding: 11px 20px; border-bottom: 1px solid var(--line); display: flex;
     align-items: center; gap: 16px; flex-wrap: wrap; flex: none;
   }
-  header h1 { font-size: 15px; margin: 0; font-weight: 800; letter-spacing: -.2px; }
+  header h1 { font-size: var(--fs-title); margin: 0; font-weight: 800; letter-spacing: -.2px; }
   header h1 span { color: var(--ember); }
-  header a { color: var(--amber); font-size: 12.5px; }
+  header a { color: var(--amber); font-size: var(--fs-body); }
   .btn {
-    font: inherit; font-weight: 700; font-size: 12.5px; padding: 7px 16px; border-radius: 999px;
+    font: inherit; font-weight: 700; font-size: var(--fs-body); padding: 7px 16px; border-radius: 999px;
     cursor: pointer; border: 1px solid var(--line); background: rgba(255,247,237,.06);
     color: var(--ink);
   }
   .btn:hover { background: rgba(255,247,237,.13); }
   .btn.primary {
     background: linear-gradient(180deg, #FF8A3D, var(--ember)); border-color: transparent;
-    color: #1A0E06; box-shadow: 0 5px 18px rgba(255,107,26,.32);
+    color: #1A0E06; box-shadow: 0 4px 14px rgba(0,0,0,.45);
   }
   .stage { flex: 1; display: flex; min-height: 0; }
   #canvas-host { flex: 1; position: relative; min-width: 0; cursor: grab; }
@@ -46,24 +49,24 @@
     background: linear-gradient(180deg, rgba(38,22,12,.97), rgba(24,16,11,.97));
     box-shadow: 0 12px 40px rgba(0,0,0,.55);
   }
-  #say .step { font-size: 10.5px; letter-spacing: .18em; text-transform: uppercase; color: var(--amber); font-weight: 700; }
-  #say p { margin: 6px 0 11px; font-size: 15px; line-height: 1.5; }
+  #say .step { font-size: var(--fs-micro); letter-spacing: .18em; text-transform: uppercase; color: var(--amber); font-weight: 700; }
+  #say p { margin: 7px 0 12px; font-size: var(--fs-say); line-height: 1.45; }
   #say b { color: var(--amber); }
   #say .row { display: flex; gap: 8px; align-items: center; }
   #say .pips { display: flex; gap: 4px; margin-left: auto; }
   #say .pips i { width: 20px; height: 3px; border-radius: 2px; background: rgba(255,247,237,.22); display: block; }
   #say .pips i.on { background: var(--ember); }
   #hud {
-    position: absolute; left: 16px; top: 14px; font-size: 11.5px; color: var(--dim);
+    position: absolute; left: 16px; top: 14px; font-size: var(--fs-micro); color: var(--dim);
     pointer-events: none; text-shadow: 0 1px 4px #000;
   }
   #readout {
-    position: absolute; right: 16px; top: 14px; max-width: 36ch; font-size: 12.5px;
+    position: absolute; right: 16px; top: 14px; max-width: 36ch; font-size: var(--fs-body);
     background: rgba(16,12,9,.9); border: 1px solid var(--line); border-radius: 10px;
     padding: 9px 12px; pointer-events: none; opacity: 0; transition: opacity .18s;
   }
   #readout.on { opacity: 1; }
-  #readout .n { color: var(--dim); font-size: 11.5px; margin-top: 5px; display: block; }
+  #readout .n { color: var(--dim); font-size: var(--fs-micro); margin-top: 5px; display: block; }
 
   /* -------------------------------------------------------------------------- sidebar */
   aside {
@@ -72,21 +75,21 @@
   }
   @media (max-width: 900px) { .stage { flex-direction: column; } aside { width: auto; border-left: 0; border-top: 1px solid var(--line); } }
   aside h2 {
-    font-size: 10.5px; letter-spacing: .16em; text-transform: uppercase; color: var(--dim);
+    font-size: var(--fs-micro); letter-spacing: .16em; text-transform: uppercase; color: var(--dim);
     margin: 18px 0 8px; font-weight: 700;
   }
   #headline {
-    font-size: 13px; line-height: 1.5; margin: 0 0 4px; padding: 11px 12px;
+    font-size: var(--fs-body); line-height: 1.5; margin: 0 0 4px; padding: 11px 12px;
     border-radius: 10px; background: rgba(255,107,26,.10); border: 1px solid rgba(255,107,26,.28);
   }
   #headline b { color: var(--amber); }
   select {
-    font: inherit; font-size: 12.5px; padding: 7px 9px; border-radius: 9px; width: 100%;
+    font: inherit; font-size: var(--fs-body); padding: 7px 9px; border-radius: 9px; width: 100%;
     border: 1px solid var(--line); background: #1A1310; color: var(--ink);
   }
   .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 7px; }
   .chip {
-    font: inherit; font-size: 11.5px; padding: 5px 10px; border-radius: 999px; cursor: pointer;
+    font: inherit; font-size: var(--fs-micro); padding: 5px 10px; border-radius: 999px; cursor: pointer;
     border: 1px solid var(--line); background: transparent; color: var(--dim);
   }
   .chip[aria-pressed="true"] { background: var(--ember); border-color: var(--ember); color: #1A0E06; font-weight: 700; }
@@ -94,27 +97,29 @@
   ol.top { list-style: none; margin: 0; padding: 0; }
   ol.top li {
     display: grid; grid-template-columns: 16px 1fr; gap: 8px; padding: 6px 0;
-    border-top: 1px solid rgba(255,247,237,.09); font-size: 12px;
+    border-top: 1px solid rgba(255,247,237,.09); font-size: var(--fs-body);
   }
   ol.top li:first-child { border-top: 0; }
   ol.top .r { font-weight: 800; color: var(--ember); }
   ol.top li.poison .r, ol.top li.poison .x { color: var(--rose); font-weight: 700; }
 
   /* ------------------------------------------------------------------------- the key */
-  .key { font-size: 12px; }
+  .key { font-size: var(--fs-body); }
   .key div { display: flex; align-items: center; gap: 10px; padding: 4px 0; color: var(--dim); }
   .key i { display: inline-block; border-radius: 50%; flex: none; }
+  /* These halos are deliberate: each swatch labels a sphere that really does glow in the
+     scene, so a flat swatch would name the wrong thing. */
   .key .lit { width: 14px; height: 14px; background: #FF8A3D; box-shadow: 0 0 10px #FF6B1A; }
   .key .dark { width: 9px; height: 9px; background: #9C8674; margin: 0 2.5px; }
   .key .q { width: 13px; height: 13px; background: var(--teal); box-shadow: 0 0 10px var(--teal); }
   .key .m { width: 13px; height: 13px; background: var(--rose); box-shadow: 0 0 10px var(--rose); }
   .key .p { width: 14px; height: 14px; background: var(--rose); box-shadow: 0 0 10px var(--rose); border: 2px solid rgba(255,255,255,.55); }
   details { margin-top: 20px; border-top: 1px solid var(--line); padding-top: 12px; }
-  summary { cursor: pointer; font-size: 12px; color: var(--dim); list-style: none; }
+  summary { cursor: pointer; font-size: var(--fs-body); color: var(--dim); list-style: none; }
   summary::-webkit-details-marker { display: none; }
   summary::before { content: "\25B8  "; color: var(--ember); }
   details[open] summary::before { content: "\25BE  "; }
-  .note { font-size: 11.5px; color: var(--dim); margin: 8px 0 0; }
+  .note { font-size: var(--fs-micro); color: var(--dim); margin: 8px 0 0; }
   .note b { color: var(--amber); }
   #fallback { display: none; padding: 40px 24px; max-width: 62ch; margin: 0 auto; }
   #fallback a { color: var(--amber); }
