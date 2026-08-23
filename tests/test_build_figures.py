@@ -1,7 +1,7 @@
 """Tests for the paper figure builder.
 
 Figures are the first thing a reader looks at, so these pin the properties a thesis
-actually depends on: both formats land, a rebuild from the same run directory is byte
+actually depends on: every format lands, a rebuild from the same run directory is byte
 identical (phase 2's determinism contract, docs/phase2.md section 6), the data shaping
 functions read the artifact the way the harness writes it, and every figure carries its
 own provenance plus the preliminary data warning so a figure pasted into a slide cannot
@@ -47,7 +47,7 @@ COMMIT = "55e6533452c0ee5a3bc9f54c6aee3d2b6b61a212"
 
 # A PNG at 200 dpi and a text-heavy PDF are both comfortably above these floors; the
 # thresholds only catch the failure mode that matters, an empty or truncated write.
-MINIMUM_BYTES = {".png": 10_000, ".pdf": 4_000}
+MINIMUM_BYTES = {".png": 10_000, ".pdf": 4_000, ".svg": 6_000}
 
 EVERY_FIGURE_BUILDER = (
     build_rq3_retrieval_figure,
@@ -282,7 +282,7 @@ def built_dir(run_dir: Path, tmp_path_factory: pytest.TempPathFactory) -> Path:
 def _assert_pair_is_non_trivial(paths: list[Path], stem: str) -> None:
     """Both formats exist for `stem` and neither is an empty or truncated write."""
     by_suffix = {path.suffix: path for path in paths if path.stem == stem}
-    assert set(by_suffix) == {".pdf", ".png"}, f"{stem} did not emit both formats"
+    assert set(by_suffix) == {".pdf", ".png", ".svg"}, f"{stem} did not emit every format"
     for suffix, path in by_suffix.items():
         assert path.exists(), f"{path} missing"
         assert path.stat().st_size > MINIMUM_BYTES[suffix], f"{path} is suspiciously small"
@@ -418,21 +418,21 @@ def test_load_run_results_explains_a_missing_run_directory(tmp_path: Path) -> No
 # --------------------------------------------------------------------------------------
 
 
-def test_build_all_figures_writes_both_formats_for_every_figure(built_dir: Path) -> None:
-    paths = sorted(built_dir.glob("*.p*"))
-    assert len(paths) == 2 * len(FIGURE_SPECS)
+def test_build_all_figures_writes_every_format_for_every_figure(built_dir: Path) -> None:
+    paths = sorted(path for suffix in (".pdf", ".png", ".svg") for path in built_dir.glob(f"*{suffix}"))
+    assert len(paths) == 3 * len(FIGURE_SPECS)
     for spec in FIGURE_SPECS:
         _assert_pair_is_non_trivial(paths, spec.stem)
     assert {path.parent for path in paths} == {built_dir}
 
 
 @pytest.mark.parametrize("builder", EVERY_FIGURE_BUILDER, ids=lambda fn: fn.__name__)
-def test_each_figure_builder_writes_its_own_pair(
+def test_each_figure_builder_writes_every_format(
     builder, run_dir: Path, tmp_path: Path
 ) -> None:
     out_dir = tmp_path / "one-figure"
     paths = builder(run_dir, out_dir)
-    assert len(paths) == 2
+    assert len(paths) == 3
     _assert_pair_is_non_trivial(paths, paths[0].stem)
 
 
@@ -532,7 +532,7 @@ def test_builds_from_the_newest_real_run_directory(tmp_path: Path) -> None:
     # the fixture above still passes. Run stamps sort chronologically, so max() is newest.
     newest = max((path for path in _REAL_RUNS.iterdir() if path.is_dir()), key=lambda p: p.name)
     paths = build_all_figures(newest, tmp_path / "real")
-    assert len(paths) == 2 * len(FIGURE_SPECS) + 1  # two images each, plus results.txt
+    assert len(paths) == 3 * len(FIGURE_SPECS) + 1  # three formats each, plus results.txt
     for spec in FIGURE_SPECS:
         _assert_pair_is_non_trivial(paths, spec.stem)
 

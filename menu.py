@@ -81,7 +81,7 @@ _MENU_ITEMS = [
     ("8", "Poisoning Attribution", "which signal lets the attack in, one ablation each"),
     ("9", "Provenance Sweep", "the defence: anchored scoring mass vs poisoning"),
     ("10", "Content x Tag Grid", "same poison, four tags: the text never reaches the state"),
-    ("11", "Generate Paper Assets", "rebuild every figure and table, run and experiments"),
+    ("11", "Generate Paper Assets", "figures, tables and the results page, from the run"),
     ("12", "Interactive Demo", "the node brain, flat and in 3D: press play, then drive"),
     ("13", "Latest Results", "summarise the newest run directory"),
     ("S", "Settings", "weights, top-k, backends, model runner"),
@@ -452,8 +452,13 @@ def _do_generate_assets() -> None:
         print(_DIM('    Install them with: pip install -e ".[figures]"'))
         return
 
-    options = ["tables (LaTeX + CSV)", "figures from the run", "figures from the experiments"]
-    chosen = toggle_select("ASSETS", options, default_indices=[0, 1, 2])
+    options = [
+        "tables (LaTeX + CSV)",
+        "figures from the run",
+        "figures from the experiments",
+        "results page (refuses to write if a number drifted)",
+    ]
+    chosen = toggle_select("ASSETS", options, default_indices=[0, 1, 2, 3])
     if not chosen:
         print(_DIM("    Cancelled."))
         return
@@ -469,6 +474,17 @@ def _do_generate_assets() -> None:
         from assets.build_bakeoff_figures import build_experiment_figures
 
         written += list(build_experiment_figures())
+    if options[3] in chosen:
+        # Last, because it embeds the figures the two steps above write, and it reads the
+        # run rather than trusting anything typed. A drift here is a real disagreement
+        # between the run and docs/findings.md, so it stops the build loudly.
+        from assets.build_results import DriftError, build_results
+
+        try:
+            written += list(build_results(run_dir))
+        except DriftError as error:
+            print(_RED("\n    Results page refused to build:"))
+            print(_DIM(f"    {error}"))
     print(f"    {_GRN(f'✓ Wrote {len(written)} files.')}")
     for path in written:
         print(_DIM(f"      {path}"))

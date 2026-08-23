@@ -2,7 +2,8 @@
 
 Phase 3 reads `data/runs/<stamp>/results.json` and nothing else (docs/phase2.md section
 6), so every figure here is a pure function of one run directory plus this file. Each
-figure emits two files: a `.pdf` for the paper and a `.png` for the README.
+figure emits three files: a `.pdf` for the paper, a `.png` for the README, and a
+`.svg` for the results page, which embeds them inline.
 
 Three house rules shape everything below, and they are worth stating because they explain
 choices that would otherwise look fussy.
@@ -1344,19 +1345,26 @@ FIGURE_SPECS: tuple[FigureSpec, ...] = (
 
 
 def _write_both_formats(figure: Figure, out_dir: Path, stem: str) -> list[Path]:
-    """Write `<stem>.pdf` for the paper and `<stem>.png` for the README, reproducibly.
+    """Write `<stem>.pdf` for the paper, `.png` for the README, and `.svg` for the web.
 
-    Both writes suppress the only non deterministic bytes matplotlib would add: the PDF
-    creation date, and the PNG software tag that otherwise carries the library version.
-    Nothing else in the directory is touched, so the hand written architecture.svg that
-    lives alongside these files survives every rebuild.
+    Every write suppresses the only non deterministic bytes matplotlib would add: the PDF
+    creation date, the PNG software tag that otherwise carries the library version, and the
+    SVG date. Element ids in the SVG are already stable because `svg.hashsalt` is pinned in
+    the style block above. Nothing else in the directory is touched, so the hand written
+    architecture.svg that lives alongside these files survives every rebuild.
+
+    The SVG exists because the results page embeds these figures inline. A raster figure on
+    a page a reviewer may zoom is a figure they cannot read, and re-rendering a PNG at
+    several densities is a worse answer than shipping the vector matplotlib already has.
     """
     out_dir.mkdir(parents=True, exist_ok=True)
     pdf_path = out_dir / f"{stem}.pdf"
     png_path = out_dir / f"{stem}.png"
+    svg_path = out_dir / f"{stem}.svg"
     figure.savefig(pdf_path, format="pdf", metadata={"CreationDate": None})
     figure.savefig(png_path, format="png", dpi=FIGURE_DPI, metadata={"Software": "EMBR"})
-    return [pdf_path, png_path]
+    figure.savefig(svg_path, format="svg", metadata={"Date": None})
+    return [pdf_path, png_path, svg_path]
 
 
 def _render(
@@ -1455,7 +1463,7 @@ def build_all_figures(
 ) -> list[Path]:
     """Build every paper figure from one run directory, plus the prose sidecar.
 
-    Returns the written paths in build order, two per figure (`.pdf` then `.png`), with
+    Returns the written paths in build order, three per figure (`.pdf`, `.png`, `.svg`), with
     `results.txt` last. The sidecar is written from the same render pass that made the
     images, so the notes can never describe a figure that is no longer there.
     """

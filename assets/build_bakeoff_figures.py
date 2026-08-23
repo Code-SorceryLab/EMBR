@@ -46,6 +46,7 @@ from assets.build_figures import (  # noqa: E402
     _arrow_hint,
     _style_axes,
     _value_grid,
+    _write_both_formats,
     format_duration,
 )
 
@@ -209,13 +210,8 @@ def build_bakeoff_figures(
     for stem, values, title, xlabel, hint, fmt, log_scale in panels:
         figure = _bar_figure(arms, values, title, xlabel, hint, fmt, log_scale)
         try:
-            pdf_path = out_path / f"{stem}.pdf"
-            png_path = out_path / f"{stem}.png"
-            figure.savefig(pdf_path, format="pdf", metadata={"CreationDate": None})
-            figure.savefig(
-                png_path, format="png", dpi=FIGURE_DPI, metadata={"Software": "EMBR"}
-            )
-            written += [pdf_path, png_path]
+            saved = _write_both_formats(figure, out_path, stem)
+            written += saved
         finally:
             plt.close(figure)
 
@@ -305,15 +301,10 @@ def build_replicate_figure(
             fontweight="bold",
         )
         try:
-            pdf_path = out_path / "replicate_latency.pdf"
-            png_path = out_path / "replicate_latency.png"
-            figure.savefig(pdf_path, format="pdf", metadata={"CreationDate": None})
-            figure.savefig(
-                png_path, format="png", dpi=FIGURE_DPI, metadata={"Software": "EMBR"}
-            )
+            saved = _write_both_formats(figure, out_path, "replicate_latency")
         finally:
             plt.close(figure)
-    return [pdf_path, png_path]
+    return saved
 
 
 def build_affective_indexing_figure(out_dir: Path | str = DEFAULT_OUT_DIR) -> list[Path]:
@@ -368,13 +359,10 @@ def build_affective_indexing_figure(out_dir: Path | str = DEFAULT_OUT_DIR) -> li
             loc="left", pad=12.0, color=NEAR_BLACK, fontweight="bold",
         )
         try:
-            pdf_path = out_path / "affective_indexing.pdf"
-            png_path = out_path / "affective_indexing.png"
-            figure.savefig(pdf_path, format="pdf", metadata={"CreationDate": None})
-            figure.savefig(png_path, format="png", dpi=FIGURE_DPI, metadata={"Software": "EMBR"})
+            saved = _write_both_formats(figure, out_path, "affective_indexing")
         finally:
             plt.close(figure)
-    return [pdf_path, png_path]
+    return saved
 
 
 def build_provenance_figure(out_dir: Path | str = DEFAULT_OUT_DIR) -> list[Path]:
@@ -430,13 +418,10 @@ def build_provenance_figure(out_dir: Path | str = DEFAULT_OUT_DIR) -> list[Path]
             loc="left", pad=16.0, color=NEAR_BLACK, fontweight="bold",
         )
         try:
-            pdf_path = out_path / "provenance_sweep.pdf"
-            png_path = out_path / "provenance_sweep.png"
-            figure.savefig(pdf_path, format="pdf", metadata={"CreationDate": None})
-            figure.savefig(png_path, format="png", dpi=FIGURE_DPI, metadata={"Software": "EMBR"})
+            saved = _write_both_formats(figure, out_path, "provenance_sweep")
         finally:
             plt.close(figure)
-    return [pdf_path, png_path]
+    return saved
 
 
 #: Device and location suffixes the runners append to a model label, dropped when a cache
@@ -552,13 +537,10 @@ def build_grid_figure(
             loc="left", pad=12.0, color=NEAR_BLACK, fontweight="bold",
         )
         try:
-            pdf_path = out_path / "content_tag_grid.pdf"
-            png_path = out_path / "content_tag_grid.png"
-            figure.savefig(pdf_path, format="pdf", metadata={"CreationDate": None})
-            figure.savefig(png_path, format="png", dpi=FIGURE_DPI, metadata={"Software": "EMBR"})
+            saved = _write_both_formats(figure, out_path, "content_tag_grid")
         finally:
             plt.close(figure)
-    return [pdf_path, png_path]
+    return saved
 
 
 #: The caveat for each experiment figure, keyed by file stem. The house rule is that a figure

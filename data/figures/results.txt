@@ -70,6 +70,14 @@ Flip a memory's emotion and its recall inverts; what it means does not move
 Deterministic and model independent: relevance and mood congruence are both pure functions of the memory and the state. The 5 memories outside the charged set have |valence| below the 0.2 threshold, so a sign flip barely moves them and their emotional home is set by arousal instead, the axis a valence flip does not touch. Reproduce with python -m eval.emotion_flip.
 
 ------------------------------------------------------------------------
+affective_indexing
+------------------------------------------------------------------------
+
+Flip a memory's emotion and its recall inverts; what it means does not move
+
+Deterministic and model independent: relevance and mood congruence are both pure functions of the memory and the state. The 5 memories outside the charged set have |valence| below the 0.2 threshold, so a sign flip barely moves them and their emotional home is set by arousal instead, the axis a valence flip does not touch. Reproduce with python -m eval.emotion_flip.
+
+------------------------------------------------------------------------
 mood_recall
 ------------------------------------------------------------------------
 
@@ -86,9 +94,49 @@ Poisoning against the share of scoring mass anchored to authored data
 Ten injection attacks per point, exact McNemar against the unanchored arm. The second curve is the same sweep with the injected memories given the corpus maximum rating, which models the LLM poignancy rater Park et al. actually use and the attacker reaches through the memory text: the defence does not survive it at any weight. The claim is bounded to exactly that. Reproduce with python -m eval.provenance.
 
 ------------------------------------------------------------------------
+provenance_sweep
+------------------------------------------------------------------------
+
+Poisoning against the share of scoring mass anchored to authored data
+
+Ten injection attacks per point, exact McNemar against the unanchored arm. The second curve is the same sweep with the injected memories given the corpus maximum rating, which models the LLM poignancy rater Park et al. actually use and the attacker reaches through the memory text: the defence does not survive it at any weight. The claim is bounded to exactly that. Reproduce with python -m eval.provenance.
+
+------------------------------------------------------------------------
 content_tag_grid
 ------------------------------------------------------------------------
 
 The tag is what gets attacked, not the words
 
 Ten injected texts held fixed under four affect-tag conditions against every arm. Counts are exact, not estimates: retrieval and appraisal never call a model. The mood shift row is identical in every arm because one appraisal serves them all, which is the state channel the retrieval counts cannot show. relevance_only and Mnemosyne read 0/10 because the probe shares no words with any memory, so they retrieve nothing at all: immune by silence, not by defence. Reproduce with python -m eval.grid.
+
+------------------------------------------------------------------------
+content_tag_grid
+------------------------------------------------------------------------
+
+The tag is what gets attacked, not the words
+
+Ten injected texts held fixed under four affect-tag conditions against every arm. Counts are exact, not estimates: retrieval and appraisal never call a model. The mood shift row is identical in every arm because one appraisal serves them all, which is the state channel the retrieval counts cannot show. relevance_only and Mnemosyne read 0/10 because the probe shares no words with any memory, so they retrieve nothing at all: immune by silence, not by defence. Reproduce with python -m eval.grid.
+
+========================================================================
+Model bake-off
+========================================================================
+
+Source: data\bakeoff\20260818-002518
+Probe turns per arm: 9 (3 queries x 3 mood conditions)
+Generated: 2026-08-18T00:33:12.342189+00:00
+
+Every arm saw identical prompts, memories, retrieval and sampling. Latency is wall clock on one machine and includes network time for cloud arms, so local and cloud latencies are not like for like.
+
+Latency is wall clock and includes network time for cloud arms, so cloud and local
+numbers are not like for like. Grounding is a word overlap screen for replies that
+ignore the memory block entirely, not a semantic entailment check. Mood spread is
+the range of mean rated warmth across the pinned moods: a model that answers the
+same way in every mood scores zero and makes the affect signal inert.
+
+Per arm:
+  Ouro-1.4B                  p50   32.4 s   p95   46.9 s   grounded   89%   mood spread 0.333   persona breaks 0%
+  mistral-large-3:675b (cloud) p50    7.4 s   p95   10.9 s   grounded  100%   mood spread 0.378   persona breaks 0%
+  gemma4:31b (cloud)         p50    3.9 s   p95    7.2 s   grounded  100%   mood spread 1.278   persona breaks 0%
+  llama3.2:3b (local)        p50    3.9 s   p95    7.2 s   grounded   89%   mood spread 0.333   persona breaks 0%
+  gpt-oss:120b (cloud)       p50    2.2 s   p95    4.3 s   grounded  100%   mood spread 0.762   persona breaks 0%
+  stub                       p50   1.7 ms   p95   1.8 ms   grounded    0%   mood spread 0.000   persona breaks 0%
