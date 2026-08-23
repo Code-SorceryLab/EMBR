@@ -193,6 +193,21 @@ EMBR's poison count with one weight zeroed, under each tag condition:
 - **The axis that indexes is valence.** A valence-only tag primes almost as well as the full
   tag (8 against 9); an arousal-only tag does not prime at all (6, the untagged floor).
   "He was lovely" filed under anger is an attack on the sign of one number.
+- **The lie wins without being on topic, in a field where most memories are off topic.**
+  Against the probe, the planted memory scores **0.000 relevance in 8 of the 10 attacks**, and
+  normalised BM25 divides by the top score, so a zero is genuinely no term overlap rather than
+  merely the lowest in the set. On its own that is not distinctive: **54 percent of the
+  authored memories also score exactly zero** against a given probe. The point is what follows
+  from the pair. Relevance is sparse, so for most of the corpus it is not separating anything,
+  and the ranking among everything it ties is settled entirely by the other four signals. That
+  tie is the space the attacker plays in, and it is why zeroing relevance barely moves the
+  count in the table above.
+
+  Read as a defence this cuts the other way from what it first looks like: **requiring topical
+  overlap with the probe would exclude the injection in 8 of 10 cases.** It would also exclude
+  half of what she genuinely remembers, which is the cost, and it is a different defence from
+  the provenance one in 2.5 rather than a replacement for it. Untested here; recorded as a
+  lead, not a result.
 - **Affect intensity never lets poison in.** Zeroing it never lowers the count and raises it
   in three cells, so at full weight it is mildly protective: it rewards the corpus's charged
   authored memories over a weakly tagged injection. This is the pre-empt for Chen and Cheng

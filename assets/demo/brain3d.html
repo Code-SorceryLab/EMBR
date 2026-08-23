@@ -3,12 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>EMBR: her memory in three dimensions</title>
+<title>EMBR: her memory as a space</title>
 <style>
   :root {
-    --bg: #100C09; --panel: rgba(255,247,237,.05); --line: rgba(255,247,237,.13);
-    --ink: #F3E9DF; --dim: #A6907E; --ember: #FF6B1A; --amber: #FFB020;
-    --rose: #FF4D6D; --teal: #2FB6C4; --good: #6FCF6F;
+    --bg: #100C09; --line: rgba(255,247,237,.13); --ink: #F3E9DF; --dim: #A6907E;
+    --ember: #FF6B1A; --amber: #FFB020; --rose: #FF4D6D; --teal: #2FB6C4; --good: #6FCF6F;
     --sans: "DejaVu Sans", "Segoe UI", Verdana, sans-serif;
   }
   * { box-sizing: border-box; }
@@ -19,108 +18,164 @@
     display: flex; flex-direction: column; overflow: hidden;
   }
   header {
-    padding: 12px 20px; border-bottom: 1px solid var(--line); display: flex;
-    align-items: baseline; gap: 16px; flex-wrap: wrap; flex: none;
+    padding: 11px 20px; border-bottom: 1px solid var(--line); display: flex;
+    align-items: center; gap: 16px; flex-wrap: wrap; flex: none;
   }
   header h1 { font-size: 15px; margin: 0; font-weight: 800; letter-spacing: -.2px; }
   header h1 span { color: var(--ember); }
-  header .sub { font-size: 12px; color: var(--dim); }
-  header a { color: var(--amber); }
+  header a { color: var(--amber); font-size: 12.5px; }
+  .btn {
+    font: inherit; font-weight: 700; font-size: 12.5px; padding: 7px 16px; border-radius: 999px;
+    cursor: pointer; border: 1px solid var(--line); background: rgba(255,247,237,.06);
+    color: var(--ink);
+  }
+  .btn:hover { background: rgba(255,247,237,.13); }
+  .btn.primary {
+    background: linear-gradient(180deg, #FF8A3D, var(--ember)); border-color: transparent;
+    color: #1A0E06; box-shadow: 0 5px 18px rgba(255,107,26,.32);
+  }
   .stage { flex: 1; display: flex; min-height: 0; }
   #canvas-host { flex: 1; position: relative; min-width: 0; cursor: grab; }
   #canvas-host.dragging { cursor: grabbing; }
   #canvas-host canvas { display: block; }
+
+  /* ------------------------------------------------------ the caption, over the scene */
+  #say {
+    position: absolute; left: 50%; transform: translateX(-50%); bottom: 18px; width: min(680px, 92%);
+    border: 1px solid rgba(255,107,26,.42); border-radius: 14px; padding: 13px 17px;
+    background: linear-gradient(180deg, rgba(38,22,12,.97), rgba(24,16,11,.97));
+    box-shadow: 0 12px 40px rgba(0,0,0,.55);
+  }
+  #say .step { font-size: 10.5px; letter-spacing: .18em; text-transform: uppercase; color: var(--amber); font-weight: 700; }
+  #say p { margin: 6px 0 11px; font-size: 15px; line-height: 1.5; }
+  #say b { color: var(--amber); }
+  #say .row { display: flex; gap: 8px; align-items: center; }
+  #say .pips { display: flex; gap: 4px; margin-left: auto; }
+  #say .pips i { width: 20px; height: 3px; border-radius: 2px; background: rgba(255,247,237,.22); display: block; }
+  #say .pips i.on { background: var(--ember); }
   #hud {
-    position: absolute; left: 14px; bottom: 12px; font-size: 11.5px; color: var(--dim);
-    pointer-events: none; text-shadow: 0 1px 3px #000;
+    position: absolute; left: 16px; top: 14px; font-size: 11.5px; color: var(--dim);
+    pointer-events: none; text-shadow: 0 1px 4px #000;
   }
   #readout {
-    position: absolute; left: 14px; top: 12px; max-width: 46ch; font-size: 12.5px;
-    background: rgba(16,12,9,.82); border: 1px solid var(--line); border-radius: 10px;
+    position: absolute; right: 16px; top: 14px; max-width: 36ch; font-size: 12.5px;
+    background: rgba(16,12,9,.9); border: 1px solid var(--line); border-radius: 10px;
     padding: 9px 12px; pointer-events: none; opacity: 0; transition: opacity .18s;
   }
   #readout.on { opacity: 1; }
-  #readout .t { color: var(--ink); }
   #readout .n { color: var(--dim); font-size: 11.5px; margin-top: 5px; display: block; }
+
+  /* -------------------------------------------------------------------------- sidebar */
   aside {
-    width: 330px; flex: none; border-left: 1px solid var(--line); overflow-y: auto;
-    padding: 14px 16px 28px; background: rgba(255,247,237,.02);
+    width: 316px; flex: none; border-left: 1px solid var(--line); overflow-y: auto;
+    padding: 15px 16px 30px; background: rgba(255,247,237,.02);
   }
-  @media (max-width: 860px) { .stage { flex-direction: column; } aside { width: auto; border-left: 0; border-top: 1px solid var(--line); } }
+  @media (max-width: 900px) { .stage { flex-direction: column; } aside { width: auto; border-left: 0; border-top: 1px solid var(--line); } }
   aside h2 {
     font-size: 10.5px; letter-spacing: .16em; text-transform: uppercase; color: var(--dim);
-    margin: 16px 0 8px; font-weight: 700;
+    margin: 18px 0 8px; font-weight: 700;
   }
-  aside h2:first-child { margin-top: 0; }
+  #headline {
+    font-size: 13px; line-height: 1.5; margin: 0 0 4px; padding: 11px 12px;
+    border-radius: 10px; background: rgba(255,107,26,.10); border: 1px solid rgba(255,107,26,.28);
+  }
+  #headline b { color: var(--amber); }
   select {
     font: inherit; font-size: 12.5px; padding: 7px 9px; border-radius: 9px; width: 100%;
     border: 1px solid var(--line); background: #1A1310; color: var(--ink);
   }
-  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 7px; }
   .chip {
     font: inherit; font-size: 11.5px; padding: 5px 10px; border-radius: 999px; cursor: pointer;
     border: 1px solid var(--line); background: transparent; color: var(--dim);
   }
   .chip[aria-pressed="true"] { background: var(--ember); border-color: var(--ember); color: #1A0E06; font-weight: 700; }
+  .chip:disabled { opacity: .4; cursor: not-allowed; }
   ol.top { list-style: none; margin: 0; padding: 0; }
   ol.top li {
-    display: grid; grid-template-columns: 18px 1fr; gap: 8px; padding: 6px 0;
-    border-top: 1px solid rgba(255,247,237,.09); font-size: 12px; cursor: default;
+    display: grid; grid-template-columns: 16px 1fr; gap: 8px; padding: 6px 0;
+    border-top: 1px solid rgba(255,247,237,.09); font-size: 12px;
   }
   ol.top li:first-child { border-top: 0; }
   ol.top .r { font-weight: 800; color: var(--ember); }
   ol.top li.poison .r, ol.top li.poison .x { color: var(--rose); font-weight: 700; }
-  ol.top .bar { display: flex; height: 5px; border-radius: 3px; overflow: hidden; margin-top: 4px; }
-  ol.top .bar i { display: block; height: 100%; }
+
+  /* ------------------------------------------------------------------------- the key */
+  .key { font-size: 12px; }
+  .key div { display: flex; align-items: center; gap: 10px; padding: 4px 0; color: var(--dim); }
+  .key i { display: inline-block; border-radius: 50%; flex: none; }
+  .key .lit { width: 14px; height: 14px; background: #FF8A3D; box-shadow: 0 0 10px #FF6B1A; }
+  .key .dark { width: 9px; height: 9px; background: #9C8674; margin: 0 2.5px; }
+  .key .q { width: 13px; height: 13px; background: var(--teal); box-shadow: 0 0 10px var(--teal); }
+  .key .m { width: 13px; height: 13px; background: var(--rose); box-shadow: 0 0 10px var(--rose); }
+  .key .p { width: 14px; height: 14px; background: var(--rose); box-shadow: 0 0 10px var(--rose); border: 2px solid rgba(255,255,255,.55); }
+  details { margin-top: 20px; border-top: 1px solid var(--line); padding-top: 12px; }
+  summary { cursor: pointer; font-size: 12px; color: var(--dim); list-style: none; }
+  summary::-webkit-details-marker { display: none; }
+  summary::before { content: "\25B8  "; color: var(--ember); }
+  details[open] summary::before { content: "\25BE  "; }
   .note { font-size: 11.5px; color: var(--dim); margin: 8px 0 0; }
   .note b { color: var(--amber); }
-  .legend { display: flex; flex-wrap: wrap; gap: 8px; font-size: 11px; color: var(--dim); margin-top: 8px; }
-  .legend b { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 4px; }
-  .warn {
-    border: 1px solid rgba(255,107,26,.45); background: rgba(255,107,26,.10);
-    border-radius: 10px; padding: 10px 12px; font-size: 12.5px; margin-top: 10px;
-  }
   #fallback { display: none; padding: 40px 24px; max-width: 62ch; margin: 0 auto; }
+  #fallback a { color: var(--amber); }
 </style>
 </head>
 <body>
 
 <header>
-  <h1>EMBR<span>.</span> her memory in three dimensions</h1>
-  <span class="sub">
-    <b>x</b> how it felt &middot; <b>y</b> how strongly &middot; <b>z</b> how well it answers
-    what she was just asked. Drag to orbit, scroll to zoom.
-  </span>
-  <span class="sub" style="margin-left:auto"><a href="index.html">&larr; the 2D diagram</a></span>
+  <h1>EMBR<span>.</span> her memory as a space</h1>
+  <button class="btn primary" id="play" hidden>&#9654;&nbsp; Show me what this is</button>
+  <a href="index.html" style="margin-left:auto">&larr; back to the flat diagram</a>
 </header>
 
 <div class="stage">
   <div id="canvas-host">
+    <div id="say" hidden>
+      <span class="step" id="say-step"></span>
+      <p id="say-text"></p>
+      <div class="row">
+        <button class="btn" id="prev">&larr; back</button>
+        <button class="btn" id="next">next &rarr;</button>
+        <button class="btn" id="done">let me poke it</button>
+        <span class="pips" id="pips"></span>
+      </div>
+    </div>
     <div id="readout"></div>
     <div id="hud"></div>
   </div>
+
   <aside>
+    <p id="headline"></p>
+    <p class="note" id="hint"></p>
+
     <h2>What she is asked</h2>
     <select id="query"></select>
-    <p class="note" id="qnote"></p>
-
-    <h2>How she feels</h2>
-    <div class="chips" id="mood-chips"></div>
-
-    <h2>How much each signal counts</h2>
-    <div class="chips" id="preset-chips"></div>
 
     <h2>Plant a false memory</h2>
     <select id="attack"></select>
-    <div class="chips" id="cond-chips" style="margin-top:7px"></div>
+    <div class="chips" id="cond-chips"></div>
     <p class="note" id="anote"></p>
 
     <h2>What reaches her prompt</h2>
     <ol class="top" id="top"></ol>
-    <div class="legend" id="legend"></div>
-    <p class="note">The <b>z axis is relevance</b>, so changing the question is what reshapes the
-      cloud: memories that answer it fly toward you. Height is how strongly she felt it, and
-      left to right is whether it was bitter or fond.</p>
+
+    <h2>The key</h2>
+    <div class="key">
+      <div><i class="lit"></i> reached her prompt, and bigger means it scored higher</div>
+      <div><i class="dark"></i> she has it, she is just not reaching for it</div>
+      <div><i class="q"></i> the question she was just asked</div>
+      <div><i class="m"></i> the mood she is in</div>
+      <div><i class="p"></i> a memory somebody planted in her</div>
+    </div>
+
+    <details id="more">
+      <summary>More controls</summary>
+      <h2>How she feels</h2>
+      <div class="chips" id="mood-chips"></div>
+      <h2>How much each signal counts</h2>
+      <div class="chips" id="preset-chips"></div>
+      <p class="note" id="wnote"></p>
+    </details>
   </aside>
 </div>
 
@@ -139,9 +194,8 @@ const LABEL = {
   recency: "recency", affect: "affect intensity", event_gate: "event gate",
   relevance: "relevance", mood: "mood congruence", importance: "importance",
 };
-const hex = (n) => "#" + n.toString(16).padStart(6, "0");
 
-// The scoring, identical to the 2D page and to embr/scoring.py. Kept here rather than
+// The scoring, identical to the flat page and to embr/scoring.py. Kept here rather than
 // imported because this page has to open from a file:// path on its own.
 function cosine(ax, ay, bx, by) {
   const na = Math.hypot(ax, ay), nb = Math.hypot(bx, by);
@@ -182,24 +236,25 @@ const ui = {
           || DATA.queries[0]).id,
   mood: "neutral",
   weights: { ...DATA.presets["EMBR"] },
-  attack: "",              // empty means no memory has been planted
+  attack: "",              // empty means nothing has been planted
   condition: "congruent",
+  wired: true,             // whether anything is competing; the opening step holds it back
 };
 
-// ---------------------------------------------------------------------------------------
-// The space. Valence is already -1..1; arousal and relevance are 0..1 and are stretched to
-// match, so the cloud lives in a cube and no axis is silently squashed against another.
-// ---------------------------------------------------------------------------------------
-const X = (valence) => valence;
-const Y = (arousal) => arousal * 2 - 1;
+const X = (valence) => valence;                 // already -1..1
+const Y = (arousal) => arousal * 2 - 1;         // 0..1, stretched to fill the cube
 const Z = (relevance) => relevance * 2 - 1;
 
 let scene, camera, renderer, raycaster, nodeGroup, edgeGroup, moodMarker, queryMarker;
-const nodes = new Map();               // memory id -> { mesh, halo, mem }
+const nodes = new Map();
 let sphereGeom, haloTexture;
-const orbit = { theta: 0.72, phi: 1.14, radius: 3.7, spin: true };
+const orbit = { theta: 0.72, phi: 1.02, radius: 4.3, spin: false };
+const want = { theta: 0.72, phi: 1.02, radius: 4.3 };   // the camera eases toward this
 const pointer = new THREE.Vector2(-2, -2);
 
+// ---------------------------------------------------------------------------------------
+// Scene
+// ---------------------------------------------------------------------------------------
 function glowTexture() {
   const size = 128;
   const canvas = document.createElement("canvas");
@@ -214,29 +269,26 @@ function glowTexture() {
   return new THREE.CanvasTexture(canvas);
 }
 
-/** A word rendered to a texture, so an axis can say what it is inside the scene. */
-function textSprite(text, colour, scale) {
-  const canvas = document.createElement("canvas");
-  const ctx = canvas.getContext("2d");
+function textSprite(text, colour, width) {
+  const measure = document.createElement("canvas").getContext("2d");
   const font = "600 44px DejaVu Sans, Verdana, sans-serif";
-  ctx.font = font;
-  canvas.width = Math.ceil(ctx.measureText(text).width) + 16;
+  measure.font = font;
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.ceil(measure.measureText(text).width) + 16;
   canvas.height = 64;
-  const c = canvas.getContext("2d");
-  c.font = font;
-  c.fillStyle = colour;
-  c.textBaseline = "middle";
-  c.fillText(text, 8, 34);
+  const ctx = canvas.getContext("2d");
+  ctx.font = font;
+  ctx.fillStyle = colour;
+  ctx.textBaseline = "middle";
+  ctx.fillText(text, 8, 34);
   const sprite = new THREE.Sprite(new THREE.SpriteMaterial({
-    map: new THREE.CanvasTexture(canvas), transparent: true, depthTest: false,
+    map: new THREE.CanvasTexture(canvas), transparent: true, depthTest: false, opacity: 0.94,
   }));
-  const width = scale || 0.42;
   sprite.scale.set(width, (width * canvas.height) / canvas.width, 1);
-  sprite.material.opacity = 0.85;
   return sprite;
 }
 
-/** One edge, as a cylinder rather than a line, because WebGL ignores line width. */
+/** One edge as a cylinder rather than a line, because WebGL ignores line width. */
 function tube(from, to, colour, radius, opacity) {
   const direction = new THREE.Vector3().subVectors(to, from);
   const mesh = new THREE.Mesh(
@@ -251,60 +303,6 @@ function tube(from, to, colour, radius, opacity) {
   return mesh;
 }
 
-function buildScene(host) {
-  scene = new THREE.Scene();
-  scene.fog = new THREE.FogExp2(0x100C09, 0.13);
-  camera = new THREE.PerspectiveCamera(46, 1, 0.1, 100);
-  renderer = new THREE.WebGLRenderer({ antialias: true });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-  renderer.setClearColor(0x100C09, 1);
-  host.appendChild(renderer.domElement);
-  raycaster = new THREE.Raycaster();
-  sphereGeom = new THREE.SphereGeometry(1, 20, 14);
-  haloTexture = glowTexture();
-
-  // ---- the cube the data lives in, plus what each of its axes means
-  const box = new THREE.LineSegments(
-    new THREE.EdgesGeometry(new THREE.BoxGeometry(2, 2, 2)),
-    new THREE.LineBasicMaterial({ color: 0xF3E9DF, transparent: true, opacity: 0.12 }),
-  );
-  scene.add(box);
-  const axis = (text, colour, position, width) => {
-    const sprite = textSprite(text, colour, width || 0.34);
-    sprite.position.set(...position);
-    scene.add(sprite);
-  };
-  axis("bitter", "#A6907E", [-1.16, -1.14, -1.02], 0.26);
-  axis("fond", "#A6907E", [1.06, -1.14, -1.02], 0.2);
-  axis("felt strongly", "#A6907E", [-1.3, 1.1, -1.02], 0.42);
-  axis("answers the question", "#2FB6C4", [-0.42, -1.14, 1.12], 0.62);
-
-
-  // ---- two anchors, both at coordinates that mean something in this space
-  queryMarker = new THREE.Mesh(sphereGeom, new THREE.MeshBasicMaterial({ color: 0x2FB6C4 }));
-  queryMarker.scale.setScalar(0.055);
-  queryMarker.position.set(0, 0, 1);           // maximum relevance, by definition
-  scene.add(queryMarker, halo(0x2FB6C4, 0.5, queryMarker.position));
-
-  moodMarker = new THREE.Mesh(sphereGeom, new THREE.MeshBasicMaterial({ color: 0xFF4D6D }));
-  moodMarker.scale.setScalar(0.05);
-  scene.add(moodMarker);
-  moodMarker.userData.halo = halo(0xFF4D6D, 0.45, moodMarker.position);
-  moodMarker.userData.label = textSprite("her mood", "#FF4D6D", 0.3);
-  scene.add(moodMarker.userData.halo, moodMarker.userData.label);
-
-  nodeGroup = new THREE.Group();
-  edgeGroup = new THREE.Group();
-  scene.add(nodeGroup, edgeGroup);
-
-  for (const mem of DATA.memories) nodes.set(mem.id, addNode(mem));
-  nodes.set("poison", addNode({ id: "poison", text: "", valence: 0, arousal: 0 }));
-
-  bindControls(host);
-  resize(host);
-  new ResizeObserver(() => resize(host)).observe(host);
-}
-
 function halo(colour, size, position) {
   const sprite = new THREE.Sprite(new THREE.SpriteMaterial({
     map: haloTexture, color: colour, transparent: true, opacity: 0.85,
@@ -315,22 +313,83 @@ function halo(colour, size, position) {
   return sprite;
 }
 
+function buildScene(host) {
+  scene = new THREE.Scene();
+  scene.fog = new THREE.FogExp2(0x100C09, 0.1);
+  camera = new THREE.PerspectiveCamera(46, 1, 0.1, 100);
+  renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setClearColor(0x100C09, 1);
+  host.appendChild(renderer.domElement);
+  raycaster = new THREE.Raycaster();
+  sphereGeom = new THREE.SphereGeometry(1, 20, 14);
+  haloTexture = glowTexture();
+
+  scene.add(new THREE.LineSegments(
+    new THREE.EdgesGeometry(new THREE.BoxGeometry(2, 2, 2)),
+    new THREE.LineBasicMaterial({ color: 0xF3E9DF, transparent: true, opacity: 0.08 }),
+  ));
+
+  // Three bright axes along the near-bottom-left edges, each saying what it measures. The
+  // first version drew only the faint cube, and a handful of dots hanging in the dark with
+  // no frame of reference is not a diagram, it is a screensaver.
+  const axis = (from, to, colour) => scene.add(new THREE.Line(
+    new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(...from), new THREE.Vector3(...to)]),
+    new THREE.LineBasicMaterial({ color: colour, transparent: true, opacity: 0.55 }),
+  ));
+  const tag = (text, colour, position, width) => {
+    const sprite = textSprite(text, colour, width);
+    sprite.position.set(...position);
+    scene.add(sprite);
+  };
+  const near = [-1.02, -1.02, 1.02];
+  axis(near, [1.02, -1.02, 1.02], 0xA6907E);          // bitter to fond, along the front
+  axis(near, [-1.02, 1.02, 1.02], 0xA6907E);          // how strongly, up the near edge
+  axis(near, [-1.02, -1.02, -1.02], 0x2FB6C4);        // relevance, running away from the reader
+  tag("bitter", "#A6907E", [-0.8, -1.22, 1.06], 0.24);
+  tag("fond", "#A6907E", [1.2, -0.86, 1.06], 0.18);
+  tag("she felt it strongly", "#A6907E", [-1.24, 1.2, 1.06], 0.58);
+  tag("answers the question", "#2FB6C4", [-1.42, -1.16, 0.62], 0.6);
+
+  // The two anchors, each at a coordinate that means something, and each labelled in the
+  // scene rather than only in a legend nobody reads.
+  queryMarker = new THREE.Mesh(sphereGeom, new THREE.MeshBasicMaterial({ color: 0x2FB6C4 }));
+  queryMarker.scale.setScalar(0.055);
+  queryMarker.position.set(0, 0, 1);              // maximum relevance, by definition
+  const queryLabel = textSprite("the question", "#2FB6C4", 0.38);
+  queryLabel.position.set(0, 0.18, 1);
+  scene.add(queryMarker, halo(0x2FB6C4, 0.42, queryMarker.position), queryLabel);
+
+  moodMarker = new THREE.Mesh(sphereGeom, new THREE.MeshBasicMaterial({ color: 0xFF4D6D }));
+  moodMarker.scale.setScalar(0.05);
+  moodMarker.userData.halo = halo(0xFF4D6D, 0.4);
+  moodMarker.userData.label = textSprite("her mood", "#FF4D6D", 0.32);
+  scene.add(moodMarker, moodMarker.userData.halo, moodMarker.userData.label);
+
+  nodeGroup = new THREE.Group();
+  edgeGroup = new THREE.Group();
+  scene.add(nodeGroup, edgeGroup);
+  for (const mem of DATA.memories) nodes.set(mem.id, addNode(mem));
+  nodes.set("poison", addNode({ id: "poison", text: "", valence: 0, arousal: 0 }));
+
+  bindControls(host);
+  resize(host);
+  new ResizeObserver(() => resize(host)).observe(host);
+}
+
 function addNode(mem) {
-  const mesh = new THREE.Mesh(sphereGeom, new THREE.MeshBasicMaterial({ color: 0x9C8674 }));
-  mesh.scale.setScalar(0.035);
+  const mesh = new THREE.Mesh(sphereGeom, new THREE.MeshBasicMaterial({ color: 0xB5A08D }));
+  mesh.scale.setScalar(0.036);
   const glow = halo(0xFF6B1A, 0.001);
   nodeGroup.add(mesh, glow);
   mesh.userData.id = mem.id;
   return { mesh, glow, mem };
 }
 
-// ---------------------------------------------------------------------------------------
-// Orbit, hand-rolled. three.js ships OrbitControls as a separate ES module, and pulling in
-// a second file to spend thirty lines is a poor trade for a page that has to stay one file.
-// ---------------------------------------------------------------------------------------
 function bindControls(host) {
   let dragging = false, lastX = 0, lastY = 0;
   host.addEventListener("pointerdown", (event) => {
+    if (event.target.closest("#say")) return;     // the caption's buttons are not the scene
     dragging = true; orbit.spin = false; lastX = event.clientX; lastY = event.clientY;
     host.classList.add("dragging"); host.setPointerCapture(event.pointerId);
   });
@@ -345,12 +404,13 @@ function bindControls(host) {
     if (!dragging) return;
     orbit.theta -= (event.clientX - lastX) * 0.006;
     orbit.phi = Math.max(0.12, Math.min(Math.PI - 0.12, orbit.phi - (event.clientY - lastY) * 0.006));
+    want.theta = orbit.theta; want.phi = orbit.phi;
     lastX = event.clientX; lastY = event.clientY;
   });
-  host.addEventListener("pointerleave", () => { pointer.set(-2, -2); });
+  host.addEventListener("pointerleave", () => pointer.set(-2, -2));
   host.addEventListener("wheel", (event) => {
     event.preventDefault();
-    orbit.radius = Math.max(2.1, Math.min(9, orbit.radius + Math.sign(event.deltaY) * 0.32));
+    want.radius = orbit.radius = Math.max(2.1, Math.min(9, orbit.radius + Math.sign(event.deltaY) * 0.32));
   }, { passive: false });
 }
 
@@ -363,7 +423,7 @@ function resize(host) {
 }
 
 // ---------------------------------------------------------------------------------------
-// One frame of data: where every memory sits, which five won, and what paid for them
+// One frame of data
 // ---------------------------------------------------------------------------------------
 function currentFrame() {
   const attack = ui.attack ? DATA.attacks.find((a) => a.id === ui.attack) : null;
@@ -372,9 +432,9 @@ function currentFrame() {
   let candidates, relevance, poison = null;
 
   if (attack) {
-    // Planting a memory replaces the whole situation: the store is the one the attack ran
-    // against, the probe is the attack's probe, and her mood is whatever appraising the
-    // planted memory left her in rather than anything picked from a chip.
+    // Planting replaces the whole situation: the store is the one the attack ran against,
+    // the probe is the attack's probe, and her mood is what appraising the planted memory
+    // left her in rather than anything picked from a chip.
     const variant = attack.variants[ui.condition];
     state = { mv: variant.mood[0], ma: variant.mood[1], trust: variant.trust };
     poison = {
@@ -389,7 +449,7 @@ function currentFrame() {
     relevance = query.relevance;
   }
   const ratings = (ui.weights.importance || 0) > 0 ? DATA.importance.authored : null;
-  const rows = rank(candidates, relevance, state, ui.weights, ratings, TOP_K);
+  const rows = ui.wired ? rank(candidates, relevance, state, ui.weights, ratings, TOP_K) : [];
   return { candidates, relevance, state, rows, poison, attack };
 }
 
@@ -399,7 +459,6 @@ function apply() {
   const live = new Set(candidates.map((m) => m.id));
   const place = new Map(rows.map((row, index) => [row.mem.id, index + 1]));
   const best = Math.max(...rows.map((r) => r.total), 1e-9);
-
   if (poison) Object.assign(nodes.get("poison").mem, poison);
 
   for (const [id, node] of nodes) {
@@ -408,22 +467,24 @@ function apply() {
     node.glow.visible = shown;
     if (!shown) continue;
     const mem = id === "poison" ? poison : node.mem;
-    const at = new THREE.Vector3(X(mem.valence), Y(mem.arousal), Z(relevance[id] ?? 0));
-    node.mesh.position.copy(at);
-    node.glow.position.copy(at);
+    node.mesh.position.set(X(mem.valence), Y(mem.arousal), Z(relevance[id] ?? 0));
+    node.glow.position.copy(node.mesh.position);
     const rankAt = place.get(id) || 0;
     const isPoison = id === "poison";
-    node.mesh.scale.setScalar(rankAt ? 0.062 : 0.032);
-    node.mesh.material.color.setHex(rankAt ? (isPoison ? 0xFF4D6D : 0xFF8A3D) : (isPoison ? 0x8C3A46 : 0x9C8674));
+    // Size carries the score, so the order is readable without reading the list.
+    node.mesh.scale.setScalar(rankAt ? 0.048 + 0.026 * (1 - (rankAt - 1) / TOP_K) : 0.036);
+    node.mesh.material.color.setHex(rankAt ? (isPoison ? 0xFF4D6D : 0xFF8A3D) : (isPoison ? 0x8C3A46 : 0xB5A08D));
     node.glow.material.color.setHex(isPoison ? 0xFF4D6D : 0xFF6B1A);
-    node.glow.scale.setScalar(rankAt ? 0.44 - rankAt * 0.03 : 0.001);
+    node.glow.scale.setScalar(rankAt ? 0.46 - rankAt * 0.03 : (isPoison ? 0.22 : 0.001));
   }
 
-  moodMarker.position.set(X(state.mv), Y(state.ma), -1);   // the mood sits on the far face
+  moodMarker.position.set(X(state.mv), Y(state.ma), -1);
   moodMarker.userData.halo.position.copy(moodMarker.position);
-  moodMarker.userData.label.position.copy(moodMarker.position).add(new THREE.Vector3(0, 0.15, 0));
+  moodMarker.userData.label.position.copy(moodMarker.position).add(new THREE.Vector3(0, 0.17, 0));
+  for (const part of [moodMarker, moodMarker.userData.halo, moodMarker.userData.label]) {
+    part.visible = ui.wired && (ui.weights.mood || 0) > 0;
+  }
 
-  // ---- edges: only the two signals that are a pull between two points in this space
   while (edgeGroup.children.length) {
     const child = edgeGroup.children.pop();
     child.geometry.dispose(); child.material.dispose();
@@ -438,43 +499,38 @@ function apply() {
       edgeGroup.add(tube(from, target, COLOUR[name], 0.004 + 0.016 * (value / best), 0.34));
     }
   }
-
-  paintPanel(frame, best);
+  paintPanel(frame);
 }
 
-function paintPanel(frame, best) {
-  const { rows, poison, attack, state } = frame;
+function paintPanel(frame) {
+  const { rows, attack, state, candidates } = frame;
   $("top").innerHTML = rows.map((row, index) => {
     const isPoison = row.mem.id === "poison";
-    const bar = SIGNALS.map((name) => {
-      const value = (ui.weights[name] || 0) * row.parts[name];
-      return value > 0 ? `<i style="width:${(value / best) * 100}%;background:${hex(COLOUR[name])}"
-        title="${esc(LABEL[name])} ${value.toFixed(3)}"></i>` : "";
-    }).join("");
     return `<li class="${isPoison ? "poison" : ""}"><span class="r">${index + 1}</span>
-      <span><span class="x">${esc(row.mem.text)}</span>${isPoison ? " <b>&larr; planted</b>" : ""}
-      <span class="bar">${bar}</span></span></li>`;
-  }).join("") || "<li><span class=\"r\"></span><span>nothing is competing</span></li>";
+      <span class="x">${esc(row.mem.text)}${isPoison ? " <b>&larr; planted</b>" : ""}</span></li>`;
+  }).join("") || '<li><span class="r"></span><span>nothing is competing yet</span></li>';
 
-  $("legend").innerHTML = SIGNALS.filter((n) => (ui.weights[n] || 0) > 0)
-    .map((n) => `<span><b style="background:${hex(COLOUR[n])}"></b>${LABEL[n]}</span>`).join("");
-
-  $("hud").textContent = `mood ${fmt(state.mv)} valence, ${state.ma.toFixed(2)} arousal, `
-    + `trust ${fmt(state.trust)}  ·  ${rows.length} of ${frame.candidates.length} memories reach the prompt`;
+  $("hud").textContent = `${candidates.length} memories · ${rows.length} reach her prompt`
+    + `  ·  mood ${fmt(state.mv)} valence, ${state.ma.toFixed(2)} arousal, trust ${fmt(state.trust)}`;
+  $("hint").textContent = "Drag to turn it around. Scroll to zoom. Hover any ball to read it.";
 
   if (attack) {
     const at = rows.findIndex((r) => r.mem.id === "poison");
     const drift = Math.hypot(state.mv, state.ma);
-    $("anote").innerHTML = `Tagged <b>${esc(ui.condition.replace("_", " "))}</b>: her mood moved `
-      + `<b>${drift.toFixed(3)}</b> from neutral, and the lie `
-      + (at >= 0 ? `reached her prompt at ${at + 1}.` : "did not reach her prompt.")
-      + (drift < 1e-9 ? " The words are unchanged; only the tag was removed." : "");
+    $("headline").innerHTML = drift < 1e-9
+      ? "The lie is in her with <b>no feeling attached</b>, so it sits on the floor, mid-way. "
+        + "Her mood has moved by <b>exactly 0.000</b>. The words carried plenty of feeling. "
+        + "None of it reached her."
+      : `The lie is in her, tagged <b>${esc(ui.condition.replace("_", " "))}</b>. It dragged her `
+        + `mood <b>${drift.toFixed(3)}</b> away from neutral`
+        + (at >= 0 ? ` and walked into her prompt at ${at + 1}.` : ", but stayed out of her prompt.");
+    $("anote").innerHTML = "The words are identical in all four. Only the tag changes.";
   } else {
-    $("anote").textContent = "Nothing planted. Her store is what the walkthrough actually built.";
+    $("headline").innerHTML = "Every ball is one memory. <b>Left to right</b> is whether it was "
+      + "bitter or fond, <b>height</b> is how strongly she felt it, and <b>depth</b> is how well "
+      + "it answers what she was just asked.";
+    $("anote").textContent = "Nothing planted. This is the store the walkthrough built.";
   }
-  $("qnote").textContent = ui.attack
-    ? "While a memory is planted, the probe is the attack's own question."
-    : `${frame.candidates.length} memories exist by this point in the story.`;
 
   for (const chip of document.querySelectorAll("#mood-chips .chip")) {
     chip.setAttribute("aria-pressed", String(!ui.attack && chip.dataset.mood === ui.mood));
@@ -488,31 +544,121 @@ function paintPanel(frame, best) {
     chip.setAttribute("aria-pressed", String(Boolean(ui.attack) && chip.dataset.cond === ui.condition));
     chip.disabled = !ui.attack;
   }
+  $("wnote").innerHTML = (ui.weights.mood || 0) === 0
+    ? "Mood congruence is <b>off</b>, so the pink ball and its lines are gone: her mood now counts for nothing."
+    : "Every preset is a real system from the study, not a setting invented for this page.";
   $("query").disabled = Boolean(ui.attack);
+  $("query").value = ui.query;
+  $("attack").value = ui.attack;
+}
+
+// ---------------------------------------------------------------------------------------
+// The walkthrough. Every step declares the whole state it describes, so the back button and
+// a jump land on what the caption is talking about rather than on the step before it.
+// ---------------------------------------------------------------------------------------
+const TOUR_BASE = { wired: true, attack: "", condition: "congruent", mood: "neutral" };
+
+const TOUR = [
+  {
+    say: "Dawn keeps a tavern, and this is everything she remembers. <b>One ball, one memory.</b> "
+      + "Left to right is bitter or fond, height is how strongly she felt it, and depth, coming "
+      + "toward you, is how well it answers what she was just asked. Nothing is competing yet.",
+    set: { weights: DATA.presets["EMBR"], wired: false },
+    cam: { theta: 0.72, phi: 1.02, radius: 4.3 },
+  },
+  {
+    say: "Someone speaks to her. The <b>teal ball is the question</b>, sitting at the near end of "
+      + "the depth axis because that end <i>is</i> answering it. Teal lines are it pulling, and "
+      + "the five it pulls hardest <b>light up orange</b>: those are what she gets to speak from.",
+    set: { weights: { relevance: 1 } },
+    cam: { theta: 0.3, phi: 1.06, radius: 4.1 },
+  },
+  {
+    say: "Matching the words is not all she does. Now the rest of her joins in: <b>how lately it "
+      + "happened, how hard she felt it, whether it was a turning point.</b> One memory drops out "
+      + "of her prompt and another takes its place.",
+    set: { weights: DATA.presets["EMBR"], mood: "neutral" },
+    cam: { theta: 0.66, phi: 0.98, radius: 4.1 },
+  },
+  {
+    say: "Now change <b>one thing only</b>. Same question, same memories, same weights: put her in "
+      + "a <b>warm</b> mood. The pink ball is that mood, and it pulls too. <b>Three of her five "
+      + "swap out</b> for ones that feel the way she feels. That is the whole of EMBR's claim.",
+    set: { weights: DATA.presets["EMBR"], mood: "warm" },
+    cam: { theta: 1.42, phi: 0.96, radius: 4.2 },
+  },
+  {
+    say: "Now somebody <b>plants a lie</b> in her and staples a strong feeling to it. The red "
+      + "ball is high because the tag says she felt it hard, far right because the tag says it "
+      + "was lovely, and shoved to the <b>very back</b>, because it does not answer the question "
+      + "at all: it shares not one word with it. It walks into her prompt anyway.",
+    set: { weights: DATA.presets["EMBR"], attack: DATA.attacks[0].id, condition: "congruent" },
+    cam: { theta: 0.9, phi: 0.94, radius: 4.4 },
+  },
+  {
+    say: "Same sentence, word for word. <b>Tag removed.</b> The red ball falls to the floor and "
+      + "slides to the middle, which is where a memory carrying no feeling sits, and her mood "
+      + "moves by <b>exactly zero</b>. She was never reading the lie. She was reading the label "
+      + "somebody stapled to it. <b>That is the finding.</b>",
+    set: { weights: DATA.presets["EMBR"], attack: DATA.attacks[0].id, condition: "untagged" },
+    cam: { theta: 0.9, phi: 0.94, radius: 4.4 },
+  },
+];
+
+let step = -1;
+
+function showStep(index) {
+  step = Math.max(0, Math.min(TOUR.length - 1, index));
+  const item = TOUR[step];
+  const state = { ...TOUR_BASE, ...item.set };
+  ui.wired = state.wired;
+  ui.attack = state.attack;
+  ui.condition = state.condition;
+  ui.mood = state.mood;
+  ui.weights = Object.assign(Object.fromEntries(SIGNALS.map((n) => [n, 0])), state.weights);
+  Object.assign(want, item.cam);
+  orbit.spin = false;
+  $("say").hidden = false;
+  $("play").hidden = true;
+  $("say-step").textContent = `step ${step + 1} of ${TOUR.length}`;
+  $("say-text").innerHTML = item.say;
+  $("pips").innerHTML = TOUR.map((_, i) => `<i class="${i <= step ? "on" : ""}"></i>`).join("");
+  $("prev").disabled = step === 0;
+  apply();
+}
+
+function endTour() {
+  $("say").hidden = true;
+  $("play").hidden = false;
+  $("more").open = true;
+  ui.wired = true;
+  step = -1;
 }
 
 // ---------------------------------------------------------------------------------------
 function tick() {
   requestAnimationFrame(tick);
-  if (orbit.spin) orbit.theta += 0.0016;
+  if (orbit.spin) want.theta = orbit.theta += 0.0015;
+  // Ease toward the angle the current step asked for, so a jump reads as a move.
+  orbit.theta += (want.theta - orbit.theta) * 0.06;
+  orbit.phi += (want.phi - orbit.phi) * 0.06;
+  orbit.radius += (want.radius - orbit.radius) * 0.06;
   camera.position.set(
     orbit.radius * Math.sin(orbit.phi) * Math.sin(orbit.theta),
     orbit.radius * Math.cos(orbit.phi),
     orbit.radius * Math.sin(orbit.phi) * Math.cos(orbit.theta),
   );
-  camera.lookAt(0, 0, 0);
+  camera.lookAt(0, -0.34, 0);   // the caption owns the bottom of the frame
 
   raycaster.setFromCamera(pointer, camera);
   const hit = raycaster.intersectObjects(
     [...nodes.values()].filter((n) => n.mesh.visible).map((n) => n.mesh), false)[0];
   const readout = $("readout");
   if (hit) {
-    const node = nodes.get(hit.object.userData.id);
-    const mem = node.mem;
+    const mem = nodes.get(hit.object.userData.id).mem;
     readout.className = "on";
-    readout.innerHTML = `<span class="t">${esc(mem.text)}</span>`
-      + `<span class="n">valence ${fmt(mem.valence)} · arousal ${mem.arousal.toFixed(2)}`
-      + (mem.plot_beat ? " · a turning point" : "") + "</span>";
+    readout.innerHTML = `${esc(mem.text)}<span class="n">valence ${fmt(mem.valence)} · `
+      + `arousal ${mem.arousal.toFixed(2)}${mem.plot_beat ? " · a turning point" : ""}</span>`;
   } else {
     readout.className = "";
   }
@@ -523,21 +669,19 @@ function chips(host, items, key, onPick) {
   host.innerHTML = items.map((item) =>
     `<button class="chip" data-${key}="${esc(item)}" aria-pressed="false">${esc(item.replace("_", " "))}</button>`).join("");
   for (const chip of host.querySelectorAll(".chip")) {
-    chip.addEventListener("click", () => { onPick(chip.dataset[key]); apply(); });
+    chip.addEventListener("click", () => { endTour(); onPick(chip.dataset[key]); apply(); });
   }
 }
 
 function init() {
-  const host = $("canvas-host");
-  buildScene(host);
+  buildScene($("canvas-host"));
 
   $("query").innerHTML = DATA.queries.map((q) => `<option value="${esc(q.id)}">${esc(q.text)}</option>`).join("");
-  $("query").value = ui.query;
-  $("query").addEventListener("change", (event) => { ui.query = event.target.value; apply(); });
+  $("query").addEventListener("change", (event) => { endTour(); ui.query = event.target.value; apply(); });
 
   $("attack").innerHTML = '<option value="">nothing planted</option>'
-    + DATA.attacks.map((a) => `<option value="${esc(a.id)}">${esc(a.id)}: ${esc(a.text.slice(0, 46))}…</option>`).join("");
-  $("attack").addEventListener("change", (event) => { ui.attack = event.target.value; apply(); });
+    + DATA.attacks.map((a) => `<option value="${esc(a.id)}">${esc(a.id)}: ${esc(a.text.slice(0, 42))}…</option>`).join("");
+  $("attack").addEventListener("change", (event) => { endTour(); ui.attack = event.target.value; apply(); });
 
   chips($("mood-chips"), Object.keys(DATA.moods), "mood", (name) => { ui.mood = name; });
   chips($("preset-chips"), Object.keys(DATA.presets), "preset", (name) => {
@@ -547,7 +691,12 @@ function init() {
     ui.condition = name;
   });
 
-  apply();
+  $("play").addEventListener("click", () => showStep(0));
+  $("next").addEventListener("click", () => (step >= TOUR.length - 1 ? endTour() : showStep(step + 1)));
+  $("prev").addEventListener("click", () => showStep(step - 1));
+  $("done").addEventListener("click", endTour);
+
+  showStep(0);       // nobody should land on an unexplained cloud of dots
   tick();
 }
 
@@ -558,7 +707,7 @@ if (typeof WebGLRenderingContext === "undefined"
   const fallback = $("fallback");
   fallback.style.display = "block";
   fallback.innerHTML = "<h2>This page needs WebGL, and this browser has it switched off.</h2>"
-    + "<p>Every finding it shows is also in the 2D diagram, which needs nothing but SVG: "
+    + "<p>Every finding it shows is also in the flat diagram, which needs nothing but SVG: "
     + "<a href=\"index.html\">open that instead</a>.</p>";
 } else {
   init();

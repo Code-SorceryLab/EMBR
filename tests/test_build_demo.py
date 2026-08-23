@@ -268,3 +268,22 @@ console.log(JSON.stringify({ checks: DATA.checks.length, failures }));
     assert result.returncode == 0, result.stderr
     report = json.loads(result.stdout.strip().splitlines()[-1])
     assert report["checks"] >= 12 and report["failures"] == [], report["failures"]
+
+
+def test_the_planted_memory_usually_scores_no_relevance_at_all(demo) -> None:
+    """The claim findings.md 2.4 makes, pinned to the data it was read off.
+
+    Both halves matter and the second is the one that keeps the first honest: the injection
+    scores a true zero against the probe in most attacks, and so does about half the corpus,
+    so the zero is not what makes the injection special. What makes it special is that the
+    tie relevance leaves behind is settled by the four signals the attacker can reach.
+    """
+    _, data = demo
+    poison = [attack["relevance"]["poison"] for attack in data["attacks"]]
+    assert sum(1 for value in poison if value == 0.0) >= 7, poison
+
+    store = set(data["store"])
+    genuine = [value for attack in data["attacks"]
+               for key, value in attack["relevance"].items() if key in store]
+    share = sum(1 for value in genuine if value == 0.0) / len(genuine)
+    assert 0.4 <= share <= 0.7, f"a zero is {share:.0%} of genuine memories, not about half"
