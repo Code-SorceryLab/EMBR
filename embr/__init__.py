@@ -14,6 +14,7 @@ from .memory import EventType, Memory, MemoryStore, PLOT_BEATS, SQLiteMemoryStor
 from .model import (
     GenerationSettings,
     ModelRunner,
+    ScoringRunner,
     ModelUnavailableError,
     OllamaRunner,
     OuroRunner,
@@ -58,6 +59,7 @@ __all__ = [
     "cosine",
     # model
     "ModelRunner",
+    "ScoringRunner",
     "StubRunner",
     "OllamaRunner",
     "OuroRunner",

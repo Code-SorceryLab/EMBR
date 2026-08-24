@@ -24,14 +24,30 @@ def _describe_mood(state: CharacterState) -> str:
 class PromptBuilder:
     """Assembles the persona, current state, retrieved memories, and player input."""
 
-    def build(self, state: CharacterState, memories: list[Memory], player_input: str) -> str:
-        """Compose the full prompt string handed to the model runner."""
+    def build(
+        self,
+        state: CharacterState,
+        memories: list[Memory],
+        player_input: str,
+        *,
+        include_mood: bool = True,
+    ) -> str:
+        """Compose the full prompt string handed to the model runner.
+
+        `include_mood=False` drops the mood sentence and nothing else. The prompt carries
+        the character's mood twice, once as this sentence and once as the mood-selected
+        memories, and the context-attribution study treats the sentence as one more
+        ablatable source so the two channels can be told apart. Removing it here rather
+        than by string surgery downstream keeps every wording the model can see in this
+        one auditable place, which is the whole point of this module.
+        """
         memory_lines = (
             "\n".join(f"  - {m.text}" for m in memories) if memories else "  (none recalled)"
         )
+        mood_block = f"Right now you feel {_describe_mood(state)}.\n\n" if include_mood else ""
         return (
             f"You are role-playing the following character:\n{state.persona}\n\n"
-            f"Right now you feel {_describe_mood(state)}.\n\n"
+            f"{mood_block}"
             f"Relevant memories, most important first:\n{memory_lines}\n\n"
             f'The player says: "{player_input}"\n\n'
             f"Reply in character, consistent with how you feel and what you remember:"

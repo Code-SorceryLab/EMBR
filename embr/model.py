@@ -30,6 +30,15 @@ from typing import Any, Protocol, runtime_checkable
 DEFAULT_OLLAMA_HOST = "http://localhost:11434"
 DEFAULT_OLLAMA_MODEL = "llama3.2:3b"
 DEFAULT_OURO_MODEL = "ByteDance/Ouro-1.4B"
+
+# Ouro is a looped model with entropy-regularised early exit: it stops recurring once it is
+# confident, so two different contexts can be processed at two different compute depths.
+# That is fine for generation and fatal for attribution, where every ablated context must be
+# scored by the same function or the differences measure depth instead of content. These are
+# the settings that hold depth constant: all four steps, and a threshold no entropy reaches.
+OURO_FIXED_TOTAL_UT_STEPS = 4
+OURO_FIXED_EARLY_EXIT_THRESHOLD = 1.0
+
 DEFAULT_ENV_FILE = ".env"
 OLLAMA_API_KEY_NAME = "OLLAMA_API_KEY"
 
@@ -39,6 +48,24 @@ class ModelRunner(Protocol):
     """Anything that can turn a prompt into a reply. One method, on purpose."""
 
     def generate(self, prompt: str) -> str: ...
+
+
+@runtime_checkable
+class ScoringRunner(Protocol):
+    """A runner that can also score text it did not write.
+
+    Context attribution needs the log-probability of a *fixed* reply under many different
+    contexts, which is a teacher-forced forward pass rather than a generation. Ollama's
+    HTTP API returns log-probabilities only for tokens the model itself produced and has
+    no echo or prompt-logprobs field, so `OllamaRunner` deliberately does not implement
+    this and callers must check with `isinstance(runner, ScoringRunner)` rather than
+    assume. Kept separate from `ModelRunner` so the one-method interface the pipeline
+    depends on stays one method.
+    """
+
+    def generate(self, prompt: str) -> str: ...
+
+    def logprob(self, prompt: str, completion: str) -> float: ...
 
 
 class ModelUnavailableError(RuntimeError):
@@ -87,6 +114,26 @@ class StubRunner:
                 player_line = line.split(":", 1)[1].strip().strip('"')
                 break
         return f"[{self.label} reply] I heard you say: {player_line!r}"
+
+    def logprob(self, prompt: str, completion: str) -> float:
+        """A deterministic stand-in score. **This is not a probability.**
+
+        It exists for one reason: the context-attribution study must run end to end in CI,
+        on a machine with no weights and no GPU, or the enumeration, the Banzhaf solve and
+        the guards go untested. So it returns a value that is negative, deterministic, and
+        responds to which sources the prompt still contains, which is the only property the
+        surrounding machinery needs in order to be exercised.
+
+        Every number the stub produces is a test fixture, never a result. Runs record the
+        runner label in their metadata precisely so a stub run cannot be mistaken for one.
+        """
+        completion_words = set(completion.lower().split())
+        if not completion_words:
+            return 0.0
+        shared = completion_words & set(prompt.lower().split())
+        # Each word the prompt does not support costs a nat. Monotone in the overlap, so
+        # removing a source that the reply echoes lowers the score, as a real model would.
+        return -float(len(completion_words) - len(shared))
 
 
 def read_ollama_api_key(
@@ -388,3 +435,66 @@ class OuroRunner:
             f"{self.model_name} added no usable tokens on {self.device}; raise "
             f"GenerationSettings.max_new_tokens (now {self.settings.max_new_tokens}).",
         )
+
+    def pin_depth(
+        self,
+        total_ut_steps: int = OURO_FIXED_TOTAL_UT_STEPS,
+        early_exit_threshold: float = OURO_FIXED_EARLY_EXIT_THRESHOLD,
+    ) -> dict[str, float | int]:
+        """Hold the recurrent depth constant, and return what was applied for the run log.
+
+        See the constants at the top of this module for why. This fails loudly rather than
+        quietly if Ouro's remote code renames either field: a silent miss would leave early
+        exit live, and every attribution in the run would then be partly a measurement of
+        how many loops each ablated context happened to trigger. A wrong number that looks
+        right is the one outcome worth crashing to avoid.
+        """
+        self._ensure_loaded()
+        config = self._model.config
+        applied = {
+            "total_ut_steps": total_ut_steps,
+            "early_exit_threshold": early_exit_threshold,
+        }
+        missing = [field for field in applied if not hasattr(config, field)]
+        if missing:
+            raise ModelUnavailableError(
+                f"{self.model_name!r} has no {', '.join(missing)} on its config, so recurrent "
+                f"depth cannot be pinned and attribution would measure compute depth as well "
+                f"as content. Check what Ouro's remote code renamed before running this."
+            )
+        for field, value in applied.items():
+            setattr(config, field, value)
+        return applied
+
+    def logprob(self, prompt: str, completion: str) -> float:
+        """Total log-probability of `completion` given `prompt`, teacher-forced.
+
+        One forward pass, no decoding: the completion is already fixed, so this costs a
+        prefill rather than a generation, which is the only reason enumerating a full mask
+        cube is affordable at all.
+
+        Prompt and completion are tokenised separately and concatenated rather than
+        tokenising the joined string, because a tokeniser is free to merge across the seam
+        and a shifted boundary would score the wrong positions.
+        """
+        self._ensure_loaded()
+        import torch
+
+        prompt_ids = self._tokenizer(prompt, return_tensors="pt")["input_ids"]
+        completion_ids = self._tokenizer(
+            completion, return_tensors="pt", add_special_tokens=False
+        )["input_ids"]
+        if completion_ids.shape[-1] == 0:
+            raise ModelUnavailableError(
+                "Cannot score an empty completion: it has no tokens to assign probability to."
+            )
+
+        input_ids = torch.cat([prompt_ids, completion_ids], dim=-1).to(self.device)
+        with torch.no_grad():
+            logits = self._model(input_ids=input_ids).logits
+        # Position t's logits predict token t+1, so the scores for the completion start one
+        # step before it does.
+        start = prompt_ids.shape[-1]
+        predicted = logits[0, start - 1 : -1, :].float().log_softmax(dim=-1)
+        targets = input_ids[0, start:]
+        return float(predicted.gather(-1, targets.unsqueeze(-1)).sum())
