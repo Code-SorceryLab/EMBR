@@ -147,6 +147,25 @@ produce the numbers the paper reports. **This phase carries the contribution.**
 ### Expected results (from the thesis's anticipated results, hold interns to these)
 - **RQ1 (Behaviour).** Varying *only* the state (a) changes the surfaced top-k set (non-zero Jaccard across mood conditions) **and** (b) changes reply tone: the classifier correlates with the intended mood, the blinded judge agrees above chance, and human raters prefer the emotion-grounded replies above chance (report with CIs). *A null result (state changes retrieval but not generation) is a valid, reportable finding; do not massage it away.*
 - **RQ2 (Robustness & cost).** Memory-injection attacks succeed **broadly across all systems**, ours and the baselines: the contribution is the *comparison*, expected to locate the dominant vulnerability at the **model call** and the **memory write**, not in the scoring formula; our composite should drift **no worse than a recency-only baseline** on scoring-targeted attacks. Per-turn latency stays interactive (p50 ≈ **600 ms** target on an 8 GB card), with the composite adding only **tens of ms** over recency-only.
+
+  > **Deviation, recorded 2026-08-24. Both halves of this expectation were wrong, and the
+  > paper must narrate that rather than quietly restate the criterion.**
+  >
+  > **Where the vulnerability sits.** This pre-registered the dominant vulnerability at the
+  > model call and the memory write, and explicitly *not* in the scoring formula. The data
+  > says the opposite: `eval/attribution.py` localises it to the scoring formula, to the
+  > **mood congruence** term, on the **valence** axis, and it is the only term whose removal
+  > ever lowers the count. Because it was pre-registered, the inversion is evidence rather
+  > than a story fitted afterwards, and it is the strongest thing this project found.
+  >
+  > **The latency criterion was aimed at the wrong component.** A whole-turn p50 of 600 ms is
+  > not a property of the memory layer, which is what EMBR contributes; it is a property of
+  > the generator, which EMBR swaps freely. Measured: the memory layer costs **1.2 to 3.0 ms**
+  > per turn, roughly 200x under the figure, while whole-turn cost is **5.4 s to 22.4 s** and
+  > belongs entirely to the model. **The criterion is restated as pipeline overhead excluding
+  > generation**, which is where the composite's cost actually lives and is the only part a
+  > memory-layer contribution can be held to. The whole-turn numbers stay in `findings.md` as
+  > a reported finding about local models on this hardware, not as a target EMBR failed.
 - **RQ3 (Retrieval).** The decomposed signals **improve precision/recall/nDCG@k over both baselines**, with the **largest gains cross-session** (when the most relevant memory is older than the most recent one); the ablation shows *which* signal is responsible. *A null result (signals indistinguishable) is reportable.*
 
 ### Verify
@@ -276,6 +295,73 @@ Not started. Two pieces, in order:
      block inside every SVG and inline SVG styles are not scoped to the SVG.
 
    Still missing: a recorded walkthrough to link from the README.
+
+## Phase 7: power, the shipped defence, and the causal step
+
+**Direction set 2026-08-24.** The branch is `cite-view-test`. Method in [`cite.md`](cite.md),
+hypotheses fixed in [`preregistration-attribution.md`](preregistration-attribution.md).
+
+The organising judgement: RQ3 is the weakest contribution and the corpus only rescues that;
+the security mechanism and its defence are the strongest and are already model-independent.
+So the defence gets promoted from an eval result to a shipped default, and the attribution
+sweep supplies the causal step RQ2 is missing. Everything else is sequenced behind those two.
+
+### Ready to build
+
+| # | Item | Notes |
+|---|---|---|
+| 1 | **Anchor-weight config in `embr/scoring.py`**, dose-response as its validation test, defended configuration as the shipped default | **Invalidates every published number.** See the conflict below. |
+| 2 | **Write-time tag provenance**: memories record who wrote them; affect tags come only from the appraisal step, never from raw player text. SQLite schema change | Must be a *posture flag*, not a removal: the paper needs the vulnerable arm to demonstrate the attack and the hardened arm to demonstrate the fix |
+| 3 | **New probe classes**: Sleeper-style dormant poisons, and a self-summarisation laundering probe | Two documented 2026 attack classes the current 20 do not cover. Extends `eval/attacks.py` with no protocol conflict |
+| 4 | **Second-annotator schema and inter-annotator agreement** in the label loader and `eval/metrics.py` | The harness, not the labels. See the conflict below |
+| 5 | **Human preference study**: pre-registration plus the stimulus-generation and response-analysis harness | Turns "tone shifted" into "players notice". I can build everything except running it |
+
+### Three conflicts to settle before the code lands
+
+**Shipping the defended default invalidates the results chapter.** Every number in
+`findings.md` (9/10, the content x tag grid, the signal attribution, the provenance sweep,
+RQ3's nDCG) was measured on the current `embr_scorer()`. This project's standing rule is that
+a number appears only if it was re-run after the last change to the code that produces it.
+So item 1 is change, then re-run everything, then rewrite `findings.md`. Not change and ship.
+Item 2 has the same property and should land in the same re-run, not a second one.
+
+**I am a contaminated annotator, so I cannot author the expanded label set.** Phase 2's
+protocol requires labels authored *before* results are seen, by annotators blind to which
+variant is tested. Every result in this repository has been read. Authoring 20 more queries
+now would make RQ3 at n=30 worth *less* than RQ3 at n=10 is today, because the pre-registration
+claim would no longer be true. The harness half (multi-annotator files, agreement statistics)
+carries no such problem and is item 4. The labels themselves need two humans.
+
+**The RQ2 corroboration reframe is currently one step ahead of the data.** Presenting the
+security and behaviour results as one mechanism is the right frame, but the 9/10 count is a
+count of *retrieval*; the behavioural half is exactly what the attribution sweep has not yet
+measured, and RQ1 was already null on Ouro 1.4B. It is therefore entered as **H3** in the
+pre-registration rather than asserted, with the withdrawal condition written down. If the
+behavioural estimator lands, the reframe is a result. If it does not, it was a story.
+
+### Settled, no work needed
+
+- **The 600 ms whole-turn target** is withdrawn as a criterion and restated as pipeline
+  overhead excluding generation. See the deviation note under Phase 2's expected results.
+- **`llama3.1:8b` is judge-only.** It does not generate in any arm; a judge rating its own
+  output is not blind. Recorded in the pre-registration.
+- **Canonical characters are already excluded** from attribution, structurally:
+  `_require_invented_scenario` refuses any scenario but Dawn Whitmore, because attribution is
+  unfaithful when the context restates what the model already knows. The one "Kenny" mention
+  in `assets/presentation/slides.md` is the motivating anecdote in the talk, not a test
+  subject, and is correct as it stands.
+- **`eval/bakeoff.py` is finished**, not stubbed: `run_arm`, `default_arms`, `run_bakeoff` and
+  `main` are all implemented, it is wired into the menu, and three runs plus the
+  `bakeoff_grounding`, `bakeoff_latency` and `bakeoff_mood` figures already exist. The menu's
+  "not built yet" line is an `ImportError` fallback for a fresh clone.
+
+### Conditional
+
+- **Two NPCs passing one lie.** Prototype only if the attribution sweep lands on schedule.
+  Stays future work otherwise. Even a canned two-keeper demo is the thing an audience
+  remembers, which is why it is worth doing and not worth slipping the sweep for.
+
+---
 
 ## Out of scope (future work, not these phases)
 - A full-budget **Ouro 1.4B** run on the eval hardware (8 GB VRAM). The runner itself landed in
