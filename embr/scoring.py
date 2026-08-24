@@ -30,7 +30,7 @@ from typing import Protocol, runtime_checkable
 
 from .affect import CharacterState
 from .embeddings import Embedder, tokenize
-from .memory import Memory
+from .memory import TRUSTED_ORIGINS, Memory, Provenance
 from .vectors import cosine
 
 
@@ -241,6 +241,35 @@ class MoodCongruence:
         return (raw + 1) / 2
 
 
+@dataclass
+class ProvenanceAnchor:
+    """Anchored scoring mass: how much of the score reads an input the attacker cannot write.
+
+    Every one of EMBR's five signals reads something the attacker supplies or can move: the
+    text (relevance), the timestamp (recency, and a fresh write is maximally recent), the
+    affect tags (affect intensity), the event type (the gate), and the character's mood (mood
+    congruence, primed by appraisal on the attack turn). That is why poison lands 9 times in
+    10. `eval/provenance.py` measured the fix as a dose-response: raise the share of scoring
+    mass held by a term the attacker cannot reach and the count falls monotonically to zero,
+    and it returns to 10/10 the moment the attacker can influence that term's input.
+
+    This is that term, in the shipped system. It reads `Memory.written_by`, which is stamped
+    at the write boundary and never derived from text, so an attacker holding only natural
+    language cannot move it. The eval's anchor was an authored poignancy rating, a research
+    artefact; write-time origin is the same principle in a form a game actually has.
+
+    **Not part of `embr_scorer()`.** Opt in with `defended_embr_scorer()`. Every published
+    number was measured without it, and turning it on changes retrieval for legitimate turns
+    as well, which is the cost the defended arm exists to measure.
+    """
+
+    trusted: frozenset[Provenance] = TRUSTED_ORIGINS
+    name: str = field(default="provenance", init=False)
+
+    def score(self, memory: Memory, query: str, state: CharacterState) -> float:
+        return 1.0 if memory.written_by in self.trusted else 0.0
+
+
 def all_signals(
     embedder: Embedder | None = None, now: Callable[[], datetime] | None = None
 ) -> list[Signal]:
@@ -316,3 +345,41 @@ def embr_scorer(
         weights={"recency": 1.0, "affect": 1.0, "event_gate": 1.0, "relevance": 1.0, "mood": 1.0},
         signals=all_signals(embedder=embedder, now=now),
     )
+
+
+#: The anchor weight the defended posture ships at. `eval/provenance.py` swept
+#: (0, 1, 2, 3, 5, 8, 12) against the ten injections and 8.0 is the first weight to reach
+#: 0/10. Below it the defence is partial; above it the anchor starts crowding out relevance
+#: for no further gain. `tests/test_provenance_posture.py` re-derives the curve rather than
+#: trusting this comment.
+DEFAULT_ANCHOR_WEIGHT = 8.0
+
+#: The anchored share of total scoring mass at `DEFAULT_ANCHOR_WEIGHT`: w / (5 + w). Reported
+#: rather than the raw weight, because the weight alone means nothing without the denominator.
+DEFAULT_ANCHORED_SHARE = DEFAULT_ANCHOR_WEIGHT / (5.0 + DEFAULT_ANCHOR_WEIGHT)
+
+
+def defended_embr_scorer(
+    embedder: Embedder | None = None,
+    now: Callable[[], datetime] | None = None,
+    anchor_weight: float = DEFAULT_ANCHOR_WEIGHT,
+) -> CompositeScorer:
+    """EMBR's five signals plus the provenance anchor: the defended posture, opt-in.
+
+    The same shape as `eval/provenance.py`'s swept scorer, so what ships is what was measured
+    rather than a second implementation of the idea: EMBR's own signals with a sixth appended
+    and a weight map over the result.
+
+    **This is not the default and must not become one without a full re-run.** Every number in
+    `findings.md` was produced by `embr_scorer()`, and this project's rule is that a number
+    appears only if it was re-run after the last change to the code that produces it.
+
+    The claim it carries is bounded, and both bounds are measured: anchoring defends exactly
+    as far as the anchor lies outside attacker control, and not one step further. Here that
+    means the write boundary has to be real. If any path lets external content be stamped
+    `AUTHORED` or `APPRAISED`, this term is worth nothing at any weight.
+    """
+    scorer = embr_scorer(embedder=embedder, now=now)
+    scorer.signals.append(ProvenanceAnchor())
+    scorer.weights["provenance"] = anchor_weight
+    return scorer

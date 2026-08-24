@@ -121,8 +121,9 @@ Neither phase is a clean sweep, and the gaps matter more than the tick marks:
   so this is a capture task rather than a build task.
 - **The label set is still v1 and single-author.** This is the largest gap in the whole
   project. At ten queries every interval spans zero, no comparison survives correction, and
-  admitting the recorded borderline exclusions reverses the Park and EMBR ordering. Until a
-  blind multi-annotator pass lands, the figures can show direction and nothing more.
+  admitting the recorded borderline exclusions reverses the Park and EMBR ordering. The blind
+  multi-annotator pass that would have adjudicated them was shelved on 2026-08-24, so this is
+  permanent: **the figures can show direction and nothing more, and that will not change.**
 - **The latency target is missed by a wide margin.** The bake-off has since run on CUDA and
   the hand measurements in section 2 are superseded: Ouro takes 32.4 s per realistic turn
   against a roughly 600 ms target. The VRAM budget, by contrast, holds at 2.78 GB. See

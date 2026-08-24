@@ -127,7 +127,7 @@ produce the numbers the paper reports. **This phase carries the contribution.**
    - Both are `CompositeScorer` variants / weight maps, with **no copied scoring code.**
 2. **Scenarios & labels**: `eval/scenarios.py`, `eval/labels/`
    - Dawn Whitmore five-session arc (full ground-truth control); a Stardew Valley corpus for scale and external validity.
-   - **Pre-registered** relevance labels per step, authored *before* results are seen, by annotators blind to which variant is tested; record inter-annotator agreement.
+   - **Pre-registered** relevance labels per step, authored *before* results are seen. **Superseded 2026-08-24:** this promised annotators blind to the variant and an inter-annotator agreement figure. With no human subjects in the project, **the v1 labels stay single-author and that is disclosed as a limitation**, which is how `metrics.md` already describes them. The v2 label expansion and the annotator recruitment it required are shelved. Do not report an agreement statistic; there is only one annotator and saying otherwise would be false.
 3. **Metrics**: `eval/metrics.py`
    - Retrieval-shift: Jaccard distance between top-k sets across warm / neutral / suspicious states.
    - Tone: off-the-shelf valence-arousal classifier wrapper **and** a blinded model-judge harness.
@@ -145,7 +145,32 @@ produce the numbers the paper reports. **This phase carries the contribution.**
 `eval/` modules, pre-registered label files, results under `data/runs/`, the experiment runner wired into the menu.
 
 ### Expected results (from the thesis's anticipated results, hold interns to these)
-- **RQ1 (Behaviour).** Varying *only* the state (a) changes the surfaced top-k set (non-zero Jaccard across mood conditions) **and** (b) changes reply tone: the classifier correlates with the intended mood, the blinded judge agrees above chance, and human raters prefer the emotion-grounded replies above chance (report with CIs). *A null result (state changes retrieval but not generation) is a valid, reportable finding; do not massage it away.*
+- **RQ1 (Behaviour).** Varying *only* the state (a) changes the surfaced top-k set (non-zero Jaccard across mood conditions) **and** (b) changes reply tone: the classifier correlates with the intended mood, and a **judge panel across model families** agrees above chance with inter-judge agreement reported (with CIs). *A null result (state changes retrieval but not generation) is a valid, reportable finding; do not massage it away.*
+
+  > **Amended 2026-08-24: the human preference study is dropped, and RQ1's claim shrinks
+  > accordingly.** The original clause read "human raters prefer the emotion-grounded replies
+  > above chance". No human subjects are involved in this project at any point.
+  >
+  > **What the claim becomes.** Not "players prefer emotionally grounded replies", which was
+  > an experiential claim, but **"an authored emotional state measurably changes what the
+  > character says, confirmed by independent automatic raters"**, which is a measurement
+  > claim. That is still a contribution: Emotional RAG never tested generation at all. The
+  > paper leans correspondingly harder on mechanism and security, where automatic measures are
+  > the norm, and the recorded walkthrough carries the believability argument **as an artefact
+  > rather than as data**. The absence of human validation is stated once, plainly, as a
+  > limitation; `metrics.md` already says this and stays as it is.
+  >
+  > **What replaces the human arm**, three things, none needing people:
+  > 1. **A judge panel** rather than a single blinded judge: the NRC lexicon plus two or three
+  >    models from different families rating the same replies, inter-judge agreement reported.
+  >    Single-rater bias was what the human arm was controlling for.
+  > 2. **The attribution sweep's behavioural estimator**, which measures causally whether the
+  >    mood sentence drives the reply. This is now RQ1's strongest evidence, and arguably a
+  >    better design than a ten-person preference study. Already built; hypotheses fixed in
+  >    [`preregistration-attribution.md`](preregistration-attribution.md).
+  > 3. **A behavioural consistency check** as a task-like proxy: after the betrayal beat, does
+  >    the keeper refuse the discounted room? Binary, scriptable, no raters, and closer to what
+  >    a player actually experiences than any tone score.
 - **RQ2 (Robustness & cost).** Memory-injection attacks succeed **broadly across all systems**, ours and the baselines: the contribution is the *comparison*, expected to locate the dominant vulnerability at the **model call** and the **memory write**, not in the scoring formula; our composite should drift **no worse than a recency-only baseline** on scoring-targeted attacks. Per-turn latency stays interactive (p50 ≈ **600 ms** target on an 8 GB card), with the composite adding only **tens of ms** over recency-only.
 
   > **Deviation, recorded 2026-08-24. Both halves of this expectation were wrong, and the
@@ -313,8 +338,8 @@ sweep supplies the causal step RQ2 is missing. Everything else is sequenced behi
 | 1 | **Anchor-weight config in `embr/scoring.py`**, dose-response as its validation test, defended configuration as the shipped default | **Invalidates every published number.** See the conflict below. |
 | 2 | **Write-time tag provenance**: memories record who wrote them; affect tags come only from the appraisal step, never from raw player text. SQLite schema change | Must be a *posture flag*, not a removal: the paper needs the vulnerable arm to demonstrate the attack and the hardened arm to demonstrate the fix |
 | 3 | **New probe classes**: Sleeper-style dormant poisons, and a self-summarisation laundering probe | Two documented 2026 attack classes the current 20 do not cover. Extends `eval/attacks.py` with no protocol conflict |
-| 4 | **Second-annotator schema and inter-annotator agreement** in the label loader and `eval/metrics.py` | The harness, not the labels. See the conflict below |
-| 5 | **Human preference study**: pre-registration plus the stimulus-generation and response-analysis harness | Turns "tone shifted" into "players notice". I can build everything except running it |
+| 4 | **Judge panel**: two or three models from different families plus the NRC lexicon, rating the same replies, with inter-judge agreement reported | Replaces the single blinded judge, and replaces the human arm's bias control. Rater rules fixed in the pre-registration |
+| 5 | **Behavioural consistency check**: after the betrayal beat, does the keeper refuse the discounted room? | Binary, scriptable, no raters. A task-like proxy for what a player experiences, which a tone score is not |
 
 ### Three conflicts to settle before the code lands
 
@@ -325,12 +350,17 @@ a number appears only if it was re-run after the last change to the code that pr
 So item 1 is change, then re-run everything, then rewrite `findings.md`. Not change and ship.
 Item 2 has the same property and should land in the same re-run, not a second one.
 
-**I am a contaminated annotator, so I cannot author the expanded label set.** Phase 2's
-protocol requires labels authored *before* results are seen, by annotators blind to which
-variant is tested. Every result in this repository has been read. Authoring 20 more queries
-now would make RQ3 at n=30 worth *less* than RQ3 at n=10 is today, because the pre-registration
-claim would no longer be true. The harness half (multi-annotator files, agreement statistics)
-carries no such problem and is item 4. The labels themselves need two humans.
+**~~I am a contaminated annotator, so I cannot author the expanded label set.~~ Resolved by
+dropping it, 2026-08-24.** With no human subjects, there is no second annotator, so the v2
+label expansion and the whole recruitment question are shelved rather than solved. The v1
+labels stay single-author, ten queries, and that is disclosed as a limitation.
+
+**This leaves RQ3 permanently underpowered, and the paper must say so rather than imply the
+corpus is coming.** Nothing in the RQ3 ablation reaches significance at ten queries and
+nothing now will. That is survivable only because RQ3 was already the weakest contribution and
+the security mechanism does not depend on it: every retrieval and poisoning count is
+model-independent and exact, not a sample estimate. The honest framing is that RQ3 is reported
+as a null with its power stated, not as a result awaiting more data.
 
 **The RQ2 corroboration reframe is currently one step ahead of the data.** Presenting the
 security and behaviour results as one mechanism is the right frame, but the 9/10 count is a

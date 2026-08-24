@@ -13,8 +13,9 @@ A progressive, onboarding-to-contribution path for a new engineer. It complement
 sequences them for one person over roughly eight weeks, ramping from *understand it* to
 *own the evaluation harness*. Phases 0 through 4 are done, and so are the bake-off and the
 first CUDA run, so a newcomer's live contribution is one of the outstanding items rather than
-a phase: the blind multi-annotator label pass, the Stardew ground-truth corpus, or working out
-why Ouro runs 54x over the latency target at 40 percent GPU utilisation.
+a phase: the Stardew ground-truth corpus, or working out why Ouro runs 54x over the latency
+target at 40 percent GPU utilisation. (The blind multi-annotator label pass was shelved on
+2026-08-24 with the rest of the human-subject work; see the roadmap's Phase 2 note.)
 
 ## What EMBR is (for a coder)
 
@@ -145,9 +146,10 @@ embr                            # open the menu, try "Conversation Turn"
 
 The open work is what Phase 2 deliberately left behind a seam, all of it in the roadmap:
 
-- the **blind multi-annotator label pass** with agreement statistics, which re-judges the
-  borderline exclusions recorded in `eval/scenarios.py` before any ordering is read off the
-  retrieval table;
+- ~~the blind multi-annotator label pass~~ **shelved 2026-08-24**, with the rest of the
+  human-subject work. The borderline exclusions recorded in `eval/scenarios.py` will now
+  never be re-judged, so no ordering may be read off the retrieval table at all. This is a
+  permanent ceiling, not a pending task;
 - the **real model runner** in place of `StubRunner`, which is what makes every tone and
   drift number in RQ1 and RQ2 mean something;
 - the **off-the-shelf affect classifier and blinded model judge** behind the existing

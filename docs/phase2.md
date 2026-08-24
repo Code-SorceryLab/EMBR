@@ -152,9 +152,9 @@ Read these as a harness shakedown, not as results. Everything ran on the stub mo
 echoes the player's line) and the deterministic content-hash embedder, so relevance here
 is lexical rather than semantic; the real model runner and real embeddings land with the
 eval hardware. The labels are the v1 pre-registered set, authored by one person before
-any retrieval was run; the blind multi-annotator pass with agreement statistics is still
-to come, and it re-judges the recorded borderline cases first (see the honesty note in
-`eval/scenarios.py`). Ten queries buy very little power: the CIs are wide, every paired
+any retrieval was run. **The blind multi-annotator pass is not coming**: it was shelved on
+2026-08-24 with the rest of the human-subject work, so the recorded borderline cases (see the
+honesty note in `eval/scenarios.py`) stay unadjudicated and the label set stays single-author. Ten queries buy very little power: the CIs are wide, every paired
 interval spans zero, and no Holm-corrected comparison is significant (the minimum
 corrected p is 0.75, for the no-relevance ablation, whose attainable floor is 0.03125).
 The tuned rows are honest held-out estimates, which is why they sit below the optimistic
@@ -164,8 +164,9 @@ Do not read an ordering off this table. The default-weight gap between Park and 
 0.014, which is smaller than the swing produced by admitting the borderline label
 exclusions the honesty note already records: admitting the four originally recorded ones
 gives EMBR 0.578 against Park 0.577, and admitting all six gives EMBR 0.581 against Park
-0.577. Both orderings reverse, so the direction is inside label-adjudication noise until
-the blind multi-annotator pass lands. `test_borderline_label_admissions_outweigh_the_park_embr_gap`
+0.577. Both orderings reverse, so the direction is inside label-adjudication noise, and with the
+multi-annotator pass shelved it stays there permanently: **the Park and EMBR ordering is not
+reportable in either direction, ever, on this label set.** `test_borderline_label_admissions_outweigh_the_park_embr_gap`
 pins that re-score rather than asserting it in prose.
 
 What the table does say, directionally: relevance carries the most weight, since dropping

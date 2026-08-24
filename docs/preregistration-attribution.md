@@ -20,10 +20,41 @@ get written into [`findings.md`](findings.md) as deviations, in the project's st
 | Sources | `d = 6`: five retrieved memories, plus the generated mood sentence. |
 | Masks | All `2**6 = 64`, enumerated. Identical set, order, prompts and seeds across estimators. |
 | Estimator A | Likelihood: logit-scaled probability of the fixed reply. Ouro 1.4B and 2.6B, transformers. |
-| Estimator B | Behavioural: rated valence of the reply regenerated under each mask. |
+| Estimator B | Behavioural: rated valence of the reply regenerated under each mask. Rated by the **judge panel** (below), not a single judge. |
 | Statistic | Exact Banzhaf value per source. Leave-one-out reported alongside as a sanity column. |
 | Orderings | Every probe run twice, memories in retrieval order and reversed. |
 | Ouro depth | `total_ut_steps = 4`, `early_exit_threshold = 1.0`, pinned before scoring, logged. |
+
+---
+
+## The rater for estimator B, fixed before the run
+
+**Amended 2026-08-24, before any real-model run, when the human preference study was
+dropped.** That study was carrying RQ1's experiential claim. Without it, **this sweep becomes
+RQ1's strongest evidence**: the behavioural estimator is a *causal* measurement of whether the
+mood sentence drives the reply, which is a stronger design than a ten-person preference study,
+not a weaker substitute for one. H2 and H3 therefore carry more load than when they were
+written, and the temptation to read them generously goes up accordingly. The decision rules
+below are unchanged, and that is the point of having fixed them first.
+
+Estimator B is rated by a **judge panel**: the NRC VAD lexicon plus two or three models from
+**different families**, at temperature 0, blind to condition. Inter-judge agreement is reported
+alongside every reading. A single judge was the previous design and it controls nothing; a
+panel across families is what replaces the human arm's bias control.
+
+Two rules that follow, fixed now:
+
+- **The panel median is the reading.** Not the mean, which one outlying judge can move, and
+  not a judge chosen after seeing results.
+- **If the panel's inter-judge agreement on valence is below the two-rater agreement already
+  reported in `findings.md` (rho +0.314 on llama3.2:3b), the behavioural estimator is reported
+  as too noisy to support H3**, and H3 is withdrawn on those grounds rather than on its p
+  value. The project already found its two raters anti-correlated on arousal; assuming valence
+  will behave better across three families is exactly the assumption worth pre-committing to
+  test.
+
+No hypothesis or decision rule in this document referenced human raters, so nothing else here
+required rewriting when the human arm was dropped.
 
 ---
 
