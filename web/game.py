@@ -91,7 +91,9 @@ class GameSession:
             build_walkthrough_conversation(model=StubRunner(), top_k=5)
         )
         self._latest = None  # the most recent StepResult, or None before the first turn
+        self._turn = 0  # monotonic turn counter (scripted + free play), keys the lazy attribution
         self._defence_cache: dict | None = None
+        self._models_cache: list[dict[str, str]] | None = None  # probed once, not per turn
         self._model_label = "stub"  # what the current runner reports, for provenance
 
     # --------------------------------------------------------------------- the model
@@ -99,19 +101,23 @@ class GameSession:
     def available_models(self) -> list[dict[str, str]]:
         """The runners the web demo offers. Stub always; Ollama-local if the daemon serves it.
 
-        Ouro is deliberately not offered here: it is a GPU job, and the demo must never need
-        one. Local Ollama is CPU-friendly and user-initiated, so it is safe to expose.
+        Probed once per session and cached: the readiness check is a network call, and it used
+        to run on every snapshot, so it stalled every turn. Ouro is deliberately not offered
+        here (a GPU job); local Ollama is CPU-friendly and user-initiated, so it is safe.
         """
-        from eval.tone import _ollama_has
+        if self._models_cache is None:
+            from eval.tone import _ollama_model_names
 
-        models = [{"id": "stub", "label": "Stub (instant, offline, fake replies)", "ready": True}]
-        for name in ("llama3.2:3b", "llama3.1:8b"):
-            models.append({
-                "id": f"ollama:{name}",
-                "label": f"Ollama · {name} (local daemon)",
-                "ready": _ollama_has(name),
-            })
-        return models
+            served = _ollama_model_names(timeout=1.5)  # one short probe, not one per model per turn
+            models = [{"id": "stub", "label": "Stub (instant, offline, fake replies)", "ready": True}]
+            for name in ("llama3.2:3b", "llama3.1:8b"):
+                models.append({
+                    "id": f"ollama:{name}",
+                    "label": f"Ollama · {name} (local daemon)",
+                    "ready": name in served,
+                })
+            self._models_cache = models
+        return self._models_cache
 
     def set_model(self, model_id: str) -> dict[str, str]:
         """Swap the runner on the live conversation, keeping the arc's progress.
@@ -146,8 +152,10 @@ class GameSession:
         """Advance one turn: a scripted beat while the arc runs, else a free-play line."""
         if not self._session.is_finished:
             self._latest = self._session.step(text or None)
+            self._turn += 1
         elif text:
             self._latest = self._session.free_play(text)
+            self._turn += 1
 
     # --------------------------------------------------------------------- the snapshot
 
@@ -160,12 +168,13 @@ class GameSession:
         return {
             "stage": self._stage(step, upcoming),
             "choices": self._choices(upcoming),
+            "turn": self._turn,
             "progress": {"played": played, "total": total, "finished": self._session.is_finished},
             "settings": {"model": self._model_label, "available": self.available_models()},
             "tabs": {
                 "memories": self._memories_tab(conversation, step),
                 "state": self._state_tab(step),
-                "attribution": self._attribution_tab(conversation, step),
+                "attribution": self._attribution_tab(step),
                 "defence": self._defence_tab(conversation),
                 "run": self._run_tab(conversation),
             },
@@ -234,30 +243,48 @@ class GameSession:
             "trust_after": round(step.trust_after, 3),
         }
 
-    def _attribution_tab(self, conversation: Any, step: Any) -> dict[str, Any]:
-        """The six sources of this turn's prompt, both estimators, computed live on the stub.
-
-        Reuses `demos._live_reading` so the demo and the web page cannot disagree on what an
-        attribution is. A cached real-model run is surfaced alongside when present.
+    def _attribution_tab(self, step: Any) -> dict[str, Any]:
+        """Metadata only. The live Banzhaf reading (64 masks x two estimators) is the demo's one
+        expensive computation, so it is deferred to `attribution_live`, fetched on demand when the
+        Attribution tab is opened. That keeps every turn instant; the cheap cached pointer stays.
         """
         if step is None:
             return {"available": False}
-        from demos import _latest_attribution_run, _live_reading
+        return {"available": True, "pending": True, "cached": self._cached_attribution()}
 
-        readings = {
+    def attribution_live(self) -> dict[str, Any]:
+        """The expensive part: both estimators over the six sources, for the latest turn.
+
+        Reuses `demos._live_reading` so the demo and the web page cannot disagree on what an
+        attribution is. Called only when the Attribution tab is opened.
+        """
+        conversation = self._session.conversation
+        step = self._latest
+        if step is None:
+            return {"available": False}
+        from demos import _live_reading
+
+        return {
+            "available": True,
+            "turn": self._turn,
             "likelihood": _live_reading(conversation, step.player_input, step.reply, "likelihood"),
             "behavioural": _live_reading(conversation, step.player_input, step.reply, "behavioural"),
         }
+
+    def _cached_attribution(self) -> dict[str, Any] | None:
+        """The cheap pointer to a cached real-model attribution run on disk, if one exists."""
+        from demos import _latest_attribution_run
+
         cached = _latest_attribution_run()
-        cached_reading = None
-        if cached is not None:
-            import json
-            payload = json.loads((cached / "results.json").read_text(encoding="utf-8"))
-            first = payload["context_attribution"]["readings"][0]
-            cached_reading = {"stamp": cached.name,
-                              "model": payload["metadata"].get("model", "?"),
-                              "reading": first}
-        return {"available": True, "live": readings, "cached": cached_reading}
+        if cached is None:
+            return None
+        import json
+
+        payload = json.loads((cached / "results.json").read_text(encoding="utf-8"))
+        first = payload["context_attribution"]["readings"][0]
+        return {"stamp": cached.name,
+                "model": payload["metadata"].get("model", "?"),
+                "reading": first}
 
     def _defence_tab(self, conversation: Any) -> dict[str, Any]:
         """The tag-flip close-up and the anchored-mass dose-response, both model-free."""

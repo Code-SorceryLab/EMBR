@@ -49,6 +49,9 @@ class DemoHandler(BaseHTTPRequestHandler):
             self._send_file(STATIC_DIR / "index.html")
         elif path == "/api/snapshot":
             self._send_json(self.session.snapshot())
+        elif path == "/api/attribution":
+            # The one expensive computation, fetched on demand when the Attribution tab is opened.
+            self._send_json(self.session.attribution_live())
         elif path.startswith("/static/"):
             self._send_static(STATIC_DIR, path[len("/static/"):])
         elif path.startswith("/portraits/"):

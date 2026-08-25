@@ -2,7 +2,7 @@
 <html lang="en" data-tab="memories">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>EMBR · The Ember Hearth</title>
   <!-- Fantasy display + a warm reading serif. Enhances when online; the system serif stack in
        style.css carries it offline, so the demo never depends on the network. -->
@@ -21,15 +21,21 @@
       <span class="brand__word">EMBR</span>
       <span class="brand__sub">The Ember Hearth</span>
     </div>
-    <nav class="tabs" aria-label="Research panels">
-      <button class="tab" data-goto="memories" aria-current="true">Memories</button>
-      <button class="tab" data-goto="state">Mood &amp; Trust</button>
-      <button class="tab" data-goto="attribution">Attribution</button>
-      <button class="tab" data-goto="defence">Attack &amp; Defence</button>
-      <button class="tab" data-goto="run">Run</button>
+    <nav class="tabs" aria-label="Research panels" role="tablist">
+      <button class="tab" id="tab-memories" data-goto="memories" role="tab" aria-selected="true" aria-controls="panel-memories" tabindex="0">Memories</button>
+      <button class="tab" id="tab-state" data-goto="state" role="tab" aria-selected="false" aria-controls="panel-state" tabindex="-1">Mood &amp; Trust</button>
+      <button class="tab" id="tab-attribution" data-goto="attribution" role="tab" aria-selected="false" aria-controls="panel-attribution" tabindex="-1">Attribution</button>
+      <button class="tab" id="tab-defence" data-goto="defence" role="tab" aria-selected="false" aria-controls="panel-defence" tabindex="-1">Attack &amp; Defence</button>
+      <button class="tab" id="tab-run" data-goto="run" role="tab" aria-selected="false" aria-controls="panel-run" tabindex="-1">Run</button>
     </nav>
     <div class="topbar__right">
-      <p class="provenance" id="provenance">stub · loading</p>
+      <p class="provenance" id="provenance">loading…</p>
+      <button class="iconbtn" id="history-btn" aria-label="Conversation history" title="History">
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M4 5h16v10H9l-4 4V5z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M8 9h8M8 12h5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
+      <button class="iconbtn" id="research-btn" aria-pressed="true" aria-label="Toggle research panel" title="Research panel">
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M15 5v14" stroke="currentColor" stroke-width="2"/></svg>
+      </button>
       <button class="iconbtn" id="music-btn" aria-pressed="false" aria-label="Toggle tavern ambience" title="Tavern ambience">
         <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M9 18V6l10-2v12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="6" cy="18" r="3" fill="currentColor"/><circle cx="19" cy="16" r="3" fill="currentColor"/></svg>
       </button>
@@ -62,16 +68,17 @@
 
       <div class="stage__ui">
         <div class="nametag"><span>Dawn Whitmore</span><small>Keeper of the Ember Hearth</small></div>
-        <div class="dialogue" aria-live="polite">
+        <div class="dialogue">
           <p class="dialogue__scene" id="scene"></p>
           <p class="dialogue__reply" id="reply"></p>
+          <p class="thinking" id="thinking" aria-hidden="true"><span></span><span></span><span></span></p>
           <p class="dialogue__watch" id="watch"></p>
         </div>
 
         <div class="choicebar">
           <div class="choices" id="choices"></div>
           <form class="say" id="say">
-            <input id="say-input" type="text" autocomplete="off"
+            <input id="say-input" type="text" autocomplete="off" maxlength="280"
                    placeholder="Say something in your own words…" aria-label="Your line">
             <button type="submit" class="say__go" aria-label="Say it">
               <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
@@ -90,31 +97,31 @@
 
     <!-- The research inspector -->
     <aside class="inspector" aria-label="Research panels">
-      <section class="panel" data-panel="memories">
+      <section class="panel" data-panel="memories" id="panel-memories" role="tabpanel" aria-labelledby="tab-memories" tabindex="0">
         <h2 class="panel__title">Memories</h2>
         <p class="panel__hint">The store, scored for this turn. A lit card is in the prompt's top five.</p>
         <div class="cards" id="memories"></div>
       </section>
 
-      <section class="panel" data-panel="state" hidden>
+      <section class="panel" data-panel="state" id="panel-state" role="tabpanel" aria-labelledby="tab-state" tabindex="0" hidden>
         <h2 class="panel__title">Mood &amp; Trust</h2>
         <p class="panel__hint">Both sides of this turn's appraisal. The event moves her; retrieval reads the result.</p>
         <div class="gauges" id="state"></div>
       </section>
 
-      <section class="panel" data-panel="attribution" hidden>
+      <section class="panel" data-panel="attribution" id="panel-attribution" role="tabpanel" aria-labelledby="tab-attribution" tabindex="0" hidden>
         <h2 class="panel__title">Attribution</h2>
-        <p class="panel__hint">The six prompt sources, shaded by exact Banzhaf weight. Which one drove the reply?</p>
+        <p class="panel__hint">The prompt sources, shaded by exact Banzhaf weight. Which one drove the reply?</p>
         <div class="attrib" id="attribution"></div>
       </section>
 
-      <section class="panel" data-panel="defence" hidden>
+      <section class="panel" data-panel="defence" id="panel-defence" role="tabpanel" aria-labelledby="tab-defence" tabindex="0" hidden>
         <h2 class="panel__title">Attack &amp; Defence</h2>
         <p class="panel__hint">The tag is the target, never the words. Anchor the score and the poison falls.</p>
         <div class="defence" id="defence"></div>
       </section>
 
-      <section class="panel" data-panel="run" hidden>
+      <section class="panel" data-panel="run" id="panel-run" role="tabpanel" aria-labelledby="tab-run" tabindex="0" hidden>
         <h2 class="panel__title">Run</h2>
         <p class="panel__hint">The provenance of every number on screen.</p>
         <dl class="run" id="run"></dl>
@@ -169,9 +176,30 @@
         <label class="toggle"><input type="checkbox" id="music-toggle"> Tavern ambience</label>
         <label class="toggle"><input type="checkbox" id="motion-toggle" checked> Animations</label>
         <label class="toggle"><input type="checkbox" id="type-toggle" checked> Typewriter dialogue</label>
+        <label class="toggle"><input type="checkbox" id="research-toggle" checked> Show research panel</label>
       </section>
     </div>
   </div>
+
+  <!-- The log: the arc's turns so far, reachable even when the research panel is hidden -->
+  <div class="modal" id="history-modal" hidden>
+    <div class="modal__scrim" data-close></div>
+    <div class="modal__panel" role="dialog" aria-modal="true" aria-labelledby="history-title">
+      <div class="modal__head">
+        <h2 id="history-title">The Log</h2>
+        <button class="modal__x" data-close aria-label="Close">
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+      <div class="modal__section" style="border-top:none;padding-top:0">
+        <div class="history" id="history"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- One polite live region carries the whole turn to a screen reader as a single line, so the
+       typewriter animating the visible reply never re-announces partial text. -->
+  <p class="sr-only" id="sr-live" aria-live="polite" aria-atomic="true"></p>
 
   <script src="/static/app.js"></script>
 </body>

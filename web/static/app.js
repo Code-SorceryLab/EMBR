@@ -20,7 +20,7 @@ function affectColor(valence) {
 const emberRamp = (t) => `color-mix(in oklab, var(--ember) ${Math.round(20 + Math.max(0, Math.min(1, t)) * 80)}%, var(--ink-3))`;
 
 let latest = null;
-const settings = { motion: true, typewriter: true, music: false };
+const settings = { motion: true, typewriter: true, music: false, research: true };
 const prefersMotion = () => settings.motion &&
   !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -76,6 +76,9 @@ function renderStage(s) {
   $("#scene").textContent = stage.narration || "";
   typewrite($("#reply"), stage.reply || "");
   $("#watch").textContent = stage.watch_for || "";
+  // announce the whole turn once to screen readers, so the typewriter never re-reads partial text
+  const announce = [stage.narration, stage.reply, stage.watch_for].filter(Boolean).join(". ");
+  if (announce) $("#sr-live").textContent = announce;
 
   const choices = $("#choices");
   choices.replaceChildren();
@@ -223,17 +226,53 @@ function renderState(t) {
   root.appendChild(gauge("Trust", t.trust_before, t.trust_after, -1, 1, true));
 }
 
+/* The live Banzhaf reading is the demo's one expensive computation (64 masks x two estimators),
+   so it is fetched on demand when this tab is opened — never on an ordinary turn. It is cached
+   here per turn, keyed by the snapshot's monotonic turn counter. */
+let attributionLive = null;
+
+async function ensureAttribution() {
+  if (document.documentElement.dataset.tab !== "attribution") return;
+  const tab = latest && latest.tabs && latest.tabs.attribution;
+  if (!tab || !tab.available) return;
+  const turn = latest.turn;
+  if (attributionLive && attributionLive.available && attributionLive.turn === turn) return;
+  renderAttribution(tab);                       // show the loading state while it computes
+  try {
+    attributionLive = await api("/api/attribution");
+  } catch (e) {
+    console.error(e);
+    attributionLive = { available: false, error: true, turn };
+  }
+  if (document.documentElement.dataset.tab === "attribution" && latest)
+    renderAttribution(latest.tabs.attribution);
+}
+
+function attributionLoading(errored) {
+  const box = el("div", errored ? "guard" : "loading");
+  if (!errored) box.appendChild(el("span", "spinner"));
+  box.appendChild(el("p", "", errored
+    ? "The attribution could not be computed. Reopen the tab to retry."
+    : "Computing attribution — 64 masked evaluations per estimator. This runs only when you open this tab."));
+  return box;
+}
+
 function renderAttribution(t) {
   const root = $("#attribution");
   root.replaceChildren();
   if (!t.available) {
-    root.appendChild(emptyNote("Play a line and its six prompt sources are attributed here."));
+    root.appendChild(emptyNote("Play a line and its prompt sources are attributed here."));
+    return;
+  }
+  const turn = latest && latest.turn;
+  if (!attributionLive || !attributionLive.available || attributionLive.turn !== turn) {
+    root.appendChild(attributionLoading(attributionLive && attributionLive.error));
     return;
   }
   const labels = { likelihood: ["Likelihood", "did the source make this reply probable?"],
                    behavioural: ["Behavioural", "did the source move the reply's valence?"] };
   for (const key of ["likelihood", "behavioural"]) {
-    const reading = t.live[key];
+    const reading = attributionLive[key];
     const group = el("div", "attrib__group");
     const head = el("div", "attrib__est");
     head.appendChild(el("h3", "", labels[key][0]));
@@ -241,7 +280,7 @@ function renderAttribution(t) {
     group.appendChild(head);
 
     if (reading.inert) {
-      group.appendChild(guardBox(reading.utility_range));
+      group.appendChild(guardBox(reading));
     } else {
       const scored = reading.sources.filter((s) => s.banzhaf != null);
       const peak = Math.max(...scored.map((s) => Math.abs(s.banzhaf)), 1e-9);
@@ -268,12 +307,14 @@ function renderAttribution(t) {
   }
 }
 
-function guardBox(range) {
+function guardBox(reading) {
   const box = el("div", "guard");
   box.innerHTML = `<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 3l9 16H3z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M12 10v4M12 17h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`;
-  box.appendChild(el("p", "",
-    `Near-zero attribution: the model barely used its context here (utility range ${range.toFixed(3)}). ` +
-    `No source reading is trustworthy, so nothing is shaded. On the stub the behavioural reply does not vary, so this is expected.`));
+  const msg = reading.unavailable
+    ? reading.reason
+    : `Near-zero attribution: the model barely used its context here (utility range ${(reading.utility_range || 0).toFixed(3)}). ` +
+      `No source reading is trustworthy, so nothing is shaded. On the stub the behavioural reply does not vary, so this is expected.`;
+  box.appendChild(el("p", "", msg));
   return box;
 }
 
@@ -448,8 +489,79 @@ async function switchModel(id) {
 
 /* -------------------------------------------------------------------- the modal */
 
-function openModal() { $("#modal").hidden = false; }
-function closeModal() { $("#modal").hidden = true; }
+let openModalEl = null, modalReturnFocus = null;
+const modalBackground = () => [$(".topbar"), $(".stage-grid")].filter(Boolean);
+function modalFocusables(root) {
+  return [...root.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')]
+    .filter((el) => !el.disabled && el.offsetParent !== null);
+}
+
+function showModal(el) {
+  modalReturnFocus = document.activeElement;
+  openModalEl = el;
+  el.hidden = false;
+  for (const b of modalBackground()) b.inert = true;      // nothing behind the scrim is reachable
+  (el.querySelector(".modal__x") || el).focus();
+}
+function closeModal() {
+  if (!openModalEl) return;
+  openModalEl.hidden = true;
+  openModalEl = null;
+  for (const b of modalBackground()) b.inert = false;
+  if (modalReturnFocus && modalReturnFocus.focus) modalReturnFocus.focus();  // back to the opener
+  modalReturnFocus = null;
+}
+function openModal() { showModal($("#modal")); }
+function openHistory() { renderHistory(); showModal($("#history-modal")); }
+/* Keep Tab inside whichever dialog is open. */
+function trapModalTab(e) {
+  if (e.key !== "Tab" || !openModalEl) return;
+  const f = modalFocusables(openModalEl);
+  if (!f.length) return;
+  const first = f[0], last = f[f.length - 1];
+  if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+  else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+}
+
+/* -------------------------------------------------------------- the log (VN backlog) */
+
+let historyLog = [];
+function recordTurn(s) {
+  if (!s.stage || !s.stage.reply) return;   // only real turns, never the opening frame
+  historyLog.push({ scene: s.stage.narration || "", player: s.stage.player_input || "", reply: s.stage.reply });
+}
+function renderHistory() {
+  const root = $("#history");
+  root.replaceChildren();
+  if (!historyLog.length) {
+    root.appendChild(emptyNote("No turns yet. Play a line and it is logged here."));
+    return;
+  }
+  for (const h of historyLog) {
+    const entry = el("div", "logentry");
+    if (h.scene) entry.appendChild(el("p", "logentry__scene", h.scene));
+    if (h.player) {
+      const p = el("p", "logentry__you"); p.append(el("span", "logentry__who", "You"), h.player);
+      entry.appendChild(p);
+    }
+    const d = el("p", "logentry__dawn"); d.append(el("span", "logentry__who", "Dawn"), h.reply);
+    entry.appendChild(d);
+    root.appendChild(entry);
+  }
+}
+
+/* ------------------------------------------------------ hide/show the research panel */
+
+function applyResearch() {
+  document.documentElement.classList.toggle("hide-research", !settings.research);
+  const btn = $("#research-btn"); if (btn) btn.setAttribute("aria-pressed", String(settings.research));
+  const box = $("#research-toggle"); if (box) box.checked = settings.research;
+}
+function setResearch(show) {
+  settings.research = show;
+  try { localStorage.setItem("embr-research", show ? "1" : "0"); } catch (e) {}
+  applyResearch();
+}
 
 /* ------------------------------------------------------------------- wiring */
 
@@ -462,19 +574,58 @@ function render(s) {
   renderAttribution(s.tabs.attribution);
   renderDefence(s.tabs.defence);
   renderRun(s.tabs.run);
+  ensureAttribution();   // if the Attribution tab is open, fetch this turn's live reading
 }
 
-function selectTab(name) {
+function selectTab(name, { focus = false, scroll = false } = {}) {
   document.documentElement.dataset.tab = name;
-  for (const tab of document.querySelectorAll(".tab"))
-    tab.setAttribute("aria-current", tab.dataset.goto === name ? "true" : "false");
+  for (const tab of document.querySelectorAll(".tab")) {
+    const active = tab.dataset.goto === name;
+    tab.setAttribute("aria-selected", active ? "true" : "false");
+    tab.tabIndex = active ? 0 : -1;            // roving tabindex: only the active tab is in tab order
+    if (active && focus) tab.focus();
+  }
   for (const panel of document.querySelectorAll(".panel"))
     panel.hidden = panel.dataset.panel !== name;
+  // On the stacked mobile layout the instrument sits below the stage, so a tab tap must bring it
+  // into view — otherwise the panel swaps off-screen and nothing appears to happen.
+  if (scroll && window.matchMedia("(max-width: 940px)").matches)
+    $(".inspector").scrollIntoView({ behavior: prefersMotion() ? "smooth" : "auto", block: "start" });
+  if (name === "attribution") ensureAttribution();
 }
 
+/* Arrow / Home / End move between tabs, per the WAI-ARIA tablist pattern. */
+function onTabKeydown(e) {
+  const tabs = [...document.querySelectorAll(".tab")];
+  const i = tabs.indexOf(document.activeElement);
+  if (i < 0) return;
+  let j = null;
+  if (e.key === "ArrowRight" || e.key === "ArrowDown") j = (i + 1) % tabs.length;
+  else if (e.key === "ArrowLeft" || e.key === "ArrowUp") j = (i - 1 + tabs.length) % tabs.length;
+  else if (e.key === "Home") j = 0;
+  else if (e.key === "End") j = tabs.length - 1;
+  if (j === null) return;
+  e.preventDefault();
+  selectTab(tabs[j].dataset.goto, { focus: true, scroll: true });
+}
+
+let stepBusy = false;
 async function say(text) {
-  try { render(await api("/api/step", { text })); }
-  catch (e) { console.error(e); }
+  if (stepBusy) return;                    // one turn in flight at a time; no double-submit
+  stepBusy = true;
+  document.documentElement.classList.add("is-busy");   // Dawn is thinking; her reply is hidden
+  const go = $(".say__go"); if (go) go.disabled = true;
+  try {
+    const s = await api("/api/step", { text });
+    document.documentElement.classList.remove("is-busy");  // reveal the reply before it types in
+    render(s);
+    recordTurn(s);
+  } catch (e) { console.error(e); }
+  finally {
+    stepBusy = false;
+    document.documentElement.classList.remove("is-busy");
+    if (go) go.disabled = false;
+  }
 }
 
 function applyMotion() {
@@ -483,7 +634,8 @@ function applyMotion() {
 
 function init() {
   for (const tab of document.querySelectorAll(".tab"))
-    tab.addEventListener("click", () => selectTab(tab.dataset.goto));
+    tab.addEventListener("click", () => selectTab(tab.dataset.goto, { scroll: true }));
+  $(".tabs").addEventListener("keydown", onTabKeydown);
   $("#say").addEventListener("submit", async (e) => {
     e.preventDefault();
     const input = $("#say-input");
@@ -492,12 +644,36 @@ function init() {
     input.value = "";
     await say(text);
   });
-  $("#reset").addEventListener("click", async () => { render(await api("/api/reset", {})); });
+  // restarting wipes the arc, so confirm with a two-tap (no blocking browser dialog)
+  let resetArmed = false, resetTimer = null;
+  const resetBtn = $("#reset");
+  const disarmReset = () => {
+    resetArmed = false; resetBtn.classList.remove("is-armed"); resetBtn.textContent = "Restart the arc";
+  };
+  resetBtn.addEventListener("click", async () => {
+    if (!resetArmed) {
+      resetArmed = true;
+      resetBtn.classList.add("is-armed");
+      resetBtn.textContent = "Tap again to restart";
+      clearTimeout(resetTimer);
+      resetTimer = setTimeout(disarmReset, 3000);
+      return;
+    }
+    clearTimeout(resetTimer);
+    disarmReset();
+    historyLog = [];                       // a fresh arc starts an empty log
+    attributionLive = null;
+    render(await api("/api/reset", {}));
+    selectTab("memories");                 // a restart returns to the first panel and the top of the page
+    window.scrollTo({ top: 0, behavior: prefersMotion() ? "smooth" : "auto" });
+  });
 
-  // modal open/close
+  // modals (settings + history) open/close, both focus-managed
   $("#menu-btn").addEventListener("click", openModal);
+  $("#history-btn").addEventListener("click", openHistory);
   for (const c of document.querySelectorAll("[data-close]")) c.addEventListener("click", closeModal);
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeModal(); });
+  document.addEventListener("keydown", trapModalTab);
 
   // music
   $("#music-btn").addEventListener("click", () => setMusic(!settings.music));
@@ -507,11 +683,17 @@ function init() {
   $("#motion-toggle").addEventListener("change", (e) => { settings.motion = e.target.checked; applyMotion(); });
   $("#type-toggle").addEventListener("change", (e) => { settings.typewriter = e.target.checked; });
 
+  // show/hide the research panel (topbar button + settings checkbox), persisted
+  $("#research-btn").addEventListener("click", () => setResearch(!settings.research));
+  $("#research-toggle").addEventListener("change", (e) => setResearch(e.target.checked));
+
   // model selector
   $("#model-select").addEventListener("change", (e) => switchModel(e.target.value));
 
+  try { const r = localStorage.getItem("embr-research"); if (r !== null) settings.research = r === "1"; } catch (e) {}
   selectTab("memories");
   applyMotion();
+  applyResearch();
   api("/api/snapshot").then(render).catch((e) => {
     $("#reply").textContent = "The server is not answering. Start it with: python -m web.server";
     console.error(e);

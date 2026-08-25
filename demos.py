@@ -180,6 +180,25 @@ def _live_reading(
     if estimator == "behavioural":
         utility: Any = BehaviouralUtility(runner=conversation.model, rater=default_tone_rater())
     else:
+        from embr.model import ScoringRunner
+
+        # Generate-only runners (Ollama) cannot return token log-probabilities, so the likelihood
+        # estimator is not computable on them. Report it as unavailable rather than calling a
+        # missing .logprob, which would 500 the whole snapshot. The behavioural estimator still runs.
+        if not isinstance(conversation.model, ScoringRunner):
+            label = getattr(conversation.model, "label", type(conversation.model).__name__)
+            return {
+                "estimator": "likelihood",
+                "utility_range": 0.0,
+                "inert": True,
+                "unavailable": True,
+                "reason": (
+                    f"Likelihood attribution needs token log-probabilities, which {label} cannot "
+                    f"provide. The behavioural estimator below still works; switch to the stub to "
+                    f"see the likelihood reading."
+                ),
+                "sources": [],
+            }
         utility = LikelihoodUtility(runner=conversation.model, reply=reply)
     probe = attribute_probe(shell, state, retrieved, reply, utility)
 
@@ -187,6 +206,7 @@ def _live_reading(
         "estimator": probe.estimator,
         "utility_range": probe.utility_range,
         "inert": probe.inert,
+        "unavailable": False,
         "sources": [
             {
                 "source": s.source,

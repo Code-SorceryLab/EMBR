@@ -330,8 +330,13 @@ def judge_specs_from_config(raw: Sequence[dict]) -> tuple[JudgeSpec, ...]:
     return tuple(specs)
 
 
-def _ollama_has(model: str) -> bool:
-    """Whether the local daemon serves `model`. Absent daemon means no, not an error."""
+def _ollama_model_names(timeout: float = 3.0) -> set[str]:
+    """The model names the local daemon serves, or an empty set if it is absent or slow.
+
+    One request, so a caller checking several models pays a single probe rather than one per
+    model. `timeout` is short for latency-sensitive callers (the web demo's model list) and the
+    default elsewhere.
+    """
     import json as _json
     import urllib.error
     import urllib.request
@@ -339,11 +344,16 @@ def _ollama_has(model: str) -> bool:
     from embr.model import DEFAULT_OLLAMA_HOST
 
     try:
-        with urllib.request.urlopen(f"{DEFAULT_OLLAMA_HOST}/api/tags", timeout=3) as response:
+        with urllib.request.urlopen(f"{DEFAULT_OLLAMA_HOST}/api/tags", timeout=timeout) as response:
             tags = _json.loads(response.read())
     except (urllib.error.URLError, OSError, ValueError):
-        return False
-    return any(entry.get("name") == model for entry in tags.get("models", []))
+        return set()
+    return {entry.get("name") for entry in tags.get("models", [])}
+
+
+def _ollama_has(model: str) -> bool:
+    """Whether the local daemon serves `model`. Absent daemon means no, not an error."""
+    return model in _ollama_model_names()
 
 
 @dataclass(frozen=True)

@@ -45,8 +45,12 @@ def test_every_tab_renders_on_the_stub_with_no_cached_data(monkeypatch) -> None:
     assert len(tabs["memories"]["cards"]) == 5  # the seeded store
     assert tabs["memories"]["retrieved_count"] == 5
     assert tabs["state"]["available"] is True
-    assert len(tabs["attribution"]["live"]["likelihood"]["sources"]) == 6  # five memories + mood
+    # the snapshot only carries attribution metadata; the live reading is computed on demand
+    assert tabs["attribution"]["available"] is True
+    assert tabs["attribution"]["pending"] is True
     assert tabs["attribution"]["cached"] is None
+    live = g.attribution_live()
+    assert len(live["likelihood"]["sources"]) == 6  # five memories + mood
     assert len(tabs["defence"]["tag_flip"]) == 2
     assert len(tabs["defence"]["dial"]["rows"]) >= 5
     assert tabs["run"]["model"].startswith("stub")
@@ -58,8 +62,28 @@ def test_the_behavioural_guard_fires_on_the_stub() -> None:
     That must be reported as inert, never dressed up as a real reading."""
     g = GameSession()
     _play_to_finish(g)
-    behavioural = g.snapshot()["tabs"]["attribution"]["live"]["behavioural"]
+    behavioural = g.attribution_live()["behavioural"]
     assert behavioural["inert"] is True
+
+
+def test_likelihood_attribution_is_unavailable_not_crashing_on_a_generate_only_model() -> None:
+    """A runner that cannot return token log-probs (Ollama) must yield an 'unavailable'
+    likelihood reading, never a 500. Regression for the OllamaRunner.logprob crash."""
+    from embr.walkthrough import build_walkthrough_conversation
+    from demos import _live_reading
+
+    class GenerateOnly:
+        label = "fake-local (local)"
+
+        def generate(self, prompt):  # no .logprob on purpose, like OllamaRunner
+            return "…"
+
+    conv = build_walkthrough_conversation(model=GenerateOnly(), top_k=5)
+    reading = _live_reading(conv, "Have you a room?", "No.", "likelihood")
+    assert reading["unavailable"] is True
+    assert reading["inert"] is True
+    assert reading["sources"] == []
+    assert "log-prob" in reading["reason"].lower()
 
 
 def test_the_reckoning_turn_shows_the_betrayed_portrait() -> None:
@@ -138,6 +162,19 @@ def test_the_api_drives_a_turn(server) -> None:
         snapshot = json.loads(r.read())
     assert snapshot["stage"]["reply"]  # a turn was played and a reply came back
     assert snapshot["tabs"]["state"]["available"] is True
+    assert snapshot["tabs"]["attribution"]["pending"] is True  # not computed in the turn itself
+
+
+def test_the_attribution_is_computed_on_demand_not_in_the_turn(server) -> None:
+    """The 64-mask Banzhaf reading is deferred to /api/attribution so a turn stays instant."""
+    step = urllib.request.Request(server + "/api/step", data=b'{"text": ""}',
+                                  headers={"Content-Type": "application/json"}, method="POST")
+    urllib.request.urlopen(step, timeout=10).read()
+    with urllib.request.urlopen(server + "/api/attribution", timeout=30) as r:
+        live = json.loads(r.read())
+    assert live["available"] is True
+    # the mood sentence is always one of the sources; the memory count grows as the arc plays
+    assert any(s["source"] == "mood_sentence" for s in live["likelihood"]["sources"])
 
 
 # --------------------------------------------------------------------- the model loader
