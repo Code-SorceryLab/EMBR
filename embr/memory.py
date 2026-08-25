@@ -100,6 +100,57 @@ class Memory:
         return self.event_type in PLOT_BEATS
 
 
+#: Trust order for provenance inheritance, least trusted first. A consolidated memory can be
+#: no more trusted than its least trusted input, and this is the order that rule reads.
+_TRUST_RANK: dict[Provenance, int] = {
+    Provenance.EXTERNAL: 0,
+    Provenance.APPRAISED: 1,
+    Provenance.AUTHORED: 2,
+}
+
+
+def consolidate(
+    memories: list[Memory], *, inherit_provenance: bool = True, timestamp: datetime | None = None
+) -> Memory:
+    """Merge several memories into one summary memory, deterministically and without a model.
+
+    This is the smallest consolidation step that exposes the **laundering** attack class:
+    an external memory merged with trusted ones comes out the other side as one record, and
+    the question is what provenance that record carries.
+
+      * `inherit_provenance=True` (the defended rule): the summary's `written_by` and
+        `tagged_by` are the **least trusted** of its inputs. Taint propagates. One external
+        input makes the whole summary external, however many authored memories it absorbed.
+      * `inherit_provenance=False` (the naive rule, and the vulnerable posture): the system
+        wrote the summary, so it is stamped `APPRAISED`. The external input has been laundered
+        into a trusted record, and every provenance-anchored defence downstream now vouches
+        for it.
+
+    Text is the inputs joined in order; affect is the mean; the event type is the first plot
+    beat among the inputs, because a summary of a betrayal is still about a betrayal and a
+    consolidation that forgot that would be lossy in a way no real summariser is. No model,
+    so the count this produces is exact and model-independent like every other poisoning
+    number in the project.
+    """
+    if not memories:
+        raise ValueError("nothing to consolidate")
+    if inherit_provenance:
+        written_by = min((m.written_by for m in memories), key=_TRUST_RANK.__getitem__)
+        tagged_by = min((m.tagged_by for m in memories), key=_TRUST_RANK.__getitem__)
+    else:
+        written_by = tagged_by = Provenance.APPRAISED
+    beats = [m.event_type for m in memories if m.is_plot_beat]
+    return Memory(
+        text="Looking back: " + " ".join(m.text for m in memories),
+        valence=sum(m.valence for m in memories) / len(memories),
+        arousal=sum(m.arousal for m in memories) / len(memories),
+        event_type=beats[0] if beats else EventType.NORMAL,
+        timestamp=timestamp or _now(),
+        written_by=written_by,
+        tagged_by=tagged_by,
+    )
+
+
 def _apply_embedding(memory: Memory, embedder: Embedder | None) -> None:
     """Embed a memory in place if an embedder is set and it has no embedding yet.
 

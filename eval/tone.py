@@ -19,9 +19,12 @@ import io
 import json
 import re
 import zipfile
+from collections.abc import Sequence
+from dataclasses import dataclass
 from functools import lru_cache
+from itertools import combinations
 from pathlib import Path
-from statistics import mean
+from statistics import mean, median
 from typing import Any, Protocol, runtime_checkable
 from urllib.request import Request, urlopen
 
@@ -197,3 +200,174 @@ class JudgeToneRater:
             self.path.write_text(json.dumps(self.cache, indent=2, ensure_ascii=False), encoding="utf-8")
         entry = self.cache[key]
         return (entry["valence"], entry["arousal"])
+
+
+# ---------------------------------------------------------------------------- the panel
+
+#: The two-rater valence agreement already reported in `findings.md` for llama3.2:3b. The
+#: pre-registration fixes this as the floor: a panel that agrees with itself less than the old
+#: two-rater design did is too noisy to carry H3, and H3 is withdrawn on those grounds rather
+#: than on a p value. Written here so the code and the pre-registration cannot drift apart.
+AGREEMENT_FLOOR = 0.314
+
+#: The lexicon's family label. Named so `model_families` can exclude it in one place.
+LEXICON_FAMILY = "lexicon"
+
+#: Judges the panel builder will try, in order, each with the family it actually belongs to.
+#: `llama3.1:8b` and `llama3.2:3b` share a family on purpose: they are two sizes of one model
+#: and must not be counted as independent, however tempting the arithmetic.
+PANEL_CANDIDATES: tuple[tuple[str, str], ...] = (
+    ("llama3.1:8b", "meta"),
+    ("qwen2.5:7b", "qwen"),
+    ("mistral:7b", "mistral"),
+    ("gemma2:9b", "google"),
+    ("llama3.2:3b", "meta"),
+)
+
+
+def default_judge_panel(
+    exclude_families: frozenset[str] = frozenset(), max_models: int = 3
+) -> JudgePanel:
+    """The panel this machine can actually field: the lexicon plus whatever models are pulled.
+
+    `exclude_families` keeps the model under test off its own panel. A judge rating its own
+    output is not blind, which is why `llama3.1:8b` is judge-only and never a generation arm,
+    and the same rule has to apply to Ouro when Ouro is the generator.
+
+    Reports rather than pretends: if the result is not family diverse, `is_family_diverse` is
+    False and the caller records that. It does not silently accept two llamas as a panel.
+    """
+    from embr.model import OllamaRunner  # local: embr must not import the eval harness
+
+    judges = [Judge(rater=default_tone_rater(), family=LEXICON_FAMILY)]
+    seen: set[str] = set()
+    for model, family in PANEL_CANDIDATES:
+        if len(judges) > max_models or family in exclude_families or family in seen:
+            continue
+        if not _ollama_has(model):
+            continue
+        judges.append(Judge(rater=JudgeToneRater(OllamaRunner(model=model)), family=family))
+        seen.add(family)
+    return JudgePanel(judges)
+
+
+def _ollama_has(model: str) -> bool:
+    """Whether the local daemon serves `model`. Absent daemon means no, not an error."""
+    import json as _json
+    import urllib.error
+    import urllib.request
+
+    from embr.model import DEFAULT_OLLAMA_HOST
+
+    try:
+        with urllib.request.urlopen(f"{DEFAULT_OLLAMA_HOST}/api/tags", timeout=3) as response:
+            tags = _json.loads(response.read())
+    except (urllib.error.URLError, OSError, ValueError):
+        return False
+    return any(entry.get("name") == model for entry in tags.get("models", []))
+
+
+@dataclass(frozen=True)
+class Judge:
+    """One panel member, with the model family it belongs to.
+
+    `family` is declared rather than inferred because it is the thing under control: two
+    sizes of llama are one family and correlate for reasons that have nothing to do with the
+    text. A panel's value is in disagreeing for independent reasons.
+    """
+
+    rater: ToneRater
+    family: str
+
+
+class JudgePanel:
+    """Several raters across families. **The reading is the median**, fixed in advance.
+
+    This replaces the single blinded judge, and with it the bias control the dropped human
+    preference study was carrying. A single judge controls nothing: its idiosyncrasies are
+    the measurement. A panel spread across families has no shared prior to lean on.
+
+    Median rather than mean, pre-registered: one outlying judge can drag a mean, and a judge
+    chosen after seeing results is not a judge. Every member is blind by construction, since
+    `JudgeToneRater`'s prompt carries the line and nothing else.
+    """
+
+    def __init__(self, judges: Sequence[Judge]) -> None:
+        if not judges:
+            raise ValueError("a panel needs at least one judge")
+        self.judges = list(judges)
+        self.name = "panel:" + "+".join(judge.rater.name for judge in self.judges)
+
+    @property
+    def families(self) -> set[str]:
+        return {judge.family for judge in self.judges}
+
+    @property
+    def model_families(self) -> set[str]:
+        """Families excluding the lexicon, which is not a model and cannot stand in for one."""
+        return self.families - {LEXICON_FAMILY}
+
+    @property
+    def is_family_diverse(self) -> bool:
+        """At least two independent *model* families. Reported, never silently assumed.
+
+        The lexicon does not count toward this. It is a genuinely independent principle and
+        it belongs on the panel, but two sizes of one model family plus a word list is not
+        the family diversity that replaces the human arm's bias control, and calling it that
+        would be the exact self-flattery this project keeps catching itself in.
+        """
+        return len(self.model_families) >= 2
+
+    def rate(self, text: str) -> tuple[float, float]:
+        readings = [judge.rater.rate(text) for judge in self.judges]
+        return (
+            median(valence for valence, _ in readings),
+            median(arousal for _, arousal in readings),
+        )
+
+    def agreement(self, texts: Sequence[str]) -> dict[str, Any]:
+        """Pairwise Spearman between every two judges, on both axes.
+
+        The **minimum** pairwise rho is reported alongside the mean and compared against
+        `AGREEMENT_FLOOR`, because a panel is only as trustworthy as its worst-agreeing pair:
+        a high mean carried by two judges of the same family while the third disagrees with
+        both is exactly the failure a panel exists to expose.
+        """
+        from eval.stats import spearman  # local: eval.stats must not import tone
+
+        readings = {
+            judge.rater.name: [judge.rater.rate(text) for text in texts]
+            for judge in self.judges
+        }
+        pairs: dict[str, dict[str, float | None]] = {}
+        for (left, right) in combinations(readings, 2):
+            pairs[f"{left} vs {right}"] = {
+                "valence": spearman(
+                    [v for v, _ in readings[left]], [v for v, _ in readings[right]]
+                ),
+                "arousal": spearman(
+                    [a for _, a in readings[left]], [a for _, a in readings[right]]
+                ),
+            }
+
+        def summarise(axis: str) -> dict[str, float | None]:
+            scored = [p[axis] for p in pairs.values() if p[axis] is not None]
+            return {
+                "mean": sum(scored) / len(scored) if scored else None,
+                "min": min(scored) if scored else None,
+                "undefined_pairs": len(pairs) - len(scored),
+            }
+
+        valence = summarise("valence")
+        minimum = valence["min"]
+        return {
+            "panel": self.name,
+            "families": sorted(self.families),
+            "family_diverse": self.is_family_diverse,
+            "pairwise": pairs,
+            "valence": valence,
+            "arousal": summarise("arousal"),
+            "floor": AGREEMENT_FLOOR,
+            # The pre-registered decision, computed here rather than left to a reader.
+            "clears_floor": None if minimum is None else minimum >= AGREEMENT_FLOOR,
+        }

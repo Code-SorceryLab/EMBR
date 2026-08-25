@@ -18,6 +18,7 @@ from .memory import (
     Provenance,
     SQLiteMemoryStore,
     TRUSTED_ORIGINS,
+    consolidate,
 )
 from .model import (
     GenerationSettings,
@@ -63,6 +64,7 @@ __all__ = [
     "PLOT_BEATS",
     "Provenance",
     "TRUSTED_ORIGINS",
+    "consolidate",
     # embeddings + vectors
     "Embedder",
     "DeterministicEmbedder",

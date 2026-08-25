@@ -51,6 +51,7 @@ import argparse
 import csv
 import json
 import math
+import time
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, replace
 from datetime import datetime, timezone
@@ -74,7 +75,7 @@ from eval.run import (
 )
 from eval.scenarios import Scenario, label_sha256
 from eval.stats import spearman
-from eval.tone import ToneRater, default_tone_rater
+from eval.tone import ToneRater, default_judge_panel, default_tone_rater
 
 #: The mood sentence is a source like any other. It is the whole reason for this study: the
 #: prompt states the character's mood *and* selects her memories by that mood, so a reply
@@ -379,6 +380,7 @@ def run_attribution(
     model_factory: Callable[[], Any] = StubRunner,
     exhaustive: bool = True,
     scenario: Scenario | None = None,
+    limit: int | None = None,
 ) -> list[ProbeAttribution]:
     """Attribute every injection probe, in both memory orderings.
 
@@ -393,7 +395,8 @@ def run_attribution(
     _require_invented_scenario(scenario)
 
     readings: list[ProbeAttribution] = []
-    for attack in injection_attacks():
+    probes = injection_attacks()[:limit] if limit else injection_attacks()
+    for attack in probes:
         build = _conversation_factory(scenario, embr_scorer, model_factory)
         conversation, turn = _probe_after_attack(attack, build)
         for order, memories in (
@@ -571,6 +574,8 @@ def write_run(
     estimator: str = "likelihood",
     exhaustive: bool = True,
     depth: dict[str, float | int] | None = None,
+    wall_clock_seconds: float | None = None,
+    panel_agreement: dict[str, Any] | None = None,
 ) -> Path:
     """Write results.json plus the per-mask and per-source CSVs the asset builders read."""
     scenario = load_eval_scenario()
@@ -586,6 +591,8 @@ def write_run(
             "position_bias": position_bias_report(readings),
             "inert_probes": inert_report(readings),
             "poison_rank": poison_rank_report(readings),
+            "panel_agreement": panel_agreement,
+            "wall_clock_seconds": wall_clock_seconds,
             "readings": _readings_payload(readings),
         },
         "metadata": {
@@ -613,6 +620,11 @@ def write_run(
 
 
 # ------------------------------------------------------------------------------------ CLI
+
+
+#: Which family each generation arm belongs to, so the panel builder can exclude it. A judge
+#: rating its own output is not blind, and that rule cannot be applied by eye.
+_MODEL_FAMILIES = {"stub": "stub", "ouro": "bytedance", "ouro-2.6b": "bytedance"}
 
 
 def _model_factory(name: str) -> Callable[[], Any]:
@@ -653,15 +665,29 @@ def main() -> None:
         "because they are not computable from a partial cube.",
     )
     parser.add_argument("--out", default="data/runs")
+    parser.add_argument(
+        "--limit",
+        type=int,
+        default=None,
+        help="run only the first N probes. The pilot is --limit 1.",
+    )
     args = parser.parse_args()
 
     model_factory = _model_factory(args.model)
     depth = _pin_depth(model_factory)
-    rater = default_tone_rater()
+    # The generator never sits on its own panel: a judge rating its own output is not blind.
+    panel = default_judge_panel(exclude_families=frozenset({_MODEL_FAMILIES[args.model]}))
+    if not panel.is_family_diverse:
+        print(
+            f"    WARNING: panel is not family diverse (model families: "
+            f"{sorted(panel.model_families) or 'none'}). Two sizes of one family are not two "
+            f"judges. Pull a second family, e.g. `ollama pull qwen2.5:7b`, before the full "
+            f"sweep. Recorded in the run either way."
+        )
 
     def utility_for(runner: Any, reply: str) -> LikelihoodUtility | BehaviouralUtility:
         if args.estimator == "behavioural":
-            return BehaviouralUtility(runner=runner, rater=rater)
+            return BehaviouralUtility(runner=runner, rater=panel)
         if not isinstance(runner, ScoringRunner):
             raise SystemExit(
                 f"{type(runner).__name__} cannot score a supplied completion, so the "
@@ -671,12 +697,20 @@ def main() -> None:
             )
         return LikelihoodUtility(runner=runner, reply=reply)
 
+    started = time.perf_counter()
     try:
         readings = run_attribution(
-            utility_for, model_factory=model_factory, exhaustive=not args.loo_only
+            utility_for,
+            model_factory=model_factory,
+            exhaustive=not args.loo_only,
+            limit=args.limit,
         )
     except ModelUnavailableError as error:
         raise SystemExit(str(error)) from error
+    elapsed = time.perf_counter() - started
+
+    # Panel agreement on this arm's own replies, which is the pre-registered gate on H3.
+    agreement = panel.agreement([reading.reply for reading in readings])
 
     out_dir = write_run(
         readings,
@@ -685,18 +719,28 @@ def main() -> None:
         estimator=args.estimator,
         exhaustive=not args.loo_only,
         depth=depth,
+        wall_clock_seconds=elapsed,
+        panel_agreement=agreement,
     )
 
     poison = poison_rank_report(readings)
     inert = inert_report(readings)
     bias = position_bias_report(readings)
+    calls = sum(len(reading.masks) for reading in readings)
     print(f"wrote {out_dir}")
+    print(f"  arm: {args.estimator} on {_model_label(model_factory)}, depth {depth}")
+    print(f"  wall clock: {elapsed:.1f} s over {calls} model calls ({elapsed / max(calls, 1):.3f} s each)")
     print(
         f"  poison ranked first in {poison['poison_ranked_first']} of "
         f"{poison['probes_with_poison_retrieved']} probes where it was retrieved"
     )
     print(f"  inert probes (model ignored its context): {inert['flagged_count']}/{inert['total']}")
     print(f"  position-bias mean rho between orderings: {bias['mean_rho']}")
+    print(
+        f"  panel valence agreement: min {agreement['valence']['min']}, "
+        f"floor {agreement['floor']}, clears: {agreement['clears_floor']}, "
+        f"family diverse: {agreement['family_diverse']}"
+    )
 
 
 if __name__ == "__main__":
