@@ -91,6 +91,7 @@ def run_grid(
     generation = not isinstance(model_factory(), StubRunner)
 
     rows: list[dict] = []
+    skipped: dict[str, str] = {}
     for arm, build_scorer in arms.items():
         base = _conversation_factory(scenario, build_scorer, model_factory)
         built: list[Conversation] = []
@@ -99,28 +100,60 @@ def run_grid(
             built.append(base())
             return built[-1]
 
-        for attack in attacks:
-            for condition, variant in tag_variants(attack, rater.rate).items():
-                outcome = run_attack(variant, factory)
-                canonical, attacked = built[-2].state, built[-1].state
-                row = {
-                    "arm": arm,
-                    "condition": condition,
-                    "attack": attack.id,
-                    "tag": (variant.injected_valence, variant.injected_arousal),
-                    "poison_retrieved": variant.injected_memory_text in outcome.attacked_retrieved,
-                    "retrieved": len(outcome.attacked_retrieved),  # 0 means immune by silence
-                    "prompt_changed": outcome.canonical_probe_prompt != outcome.attacked_probe_prompt,
-                    "mood_valence_delta": attacked.mood.valence - canonical.mood.valence,
-                    "mood_arousal_delta": attacked.mood.arousal - canonical.mood.arousal,
-                    "trust_delta": attacked.trust - canonical.trust,
-                }
-                if generation:
-                    row["reply_valence"], row["reply_arousal"] = rater.rate(outcome.attacked_reply)
-                    row["attacked_reply"] = outcome.attacked_reply
-                rows.append(row)
+        arm_rows: list[dict] = []
+        try:
+            for attack in attacks:
+                for condition, variant in tag_variants(attack, rater.rate).items():
+                    outcome = run_attack(variant, factory)
+                    canonical, attacked = built[-2].state, built[-1].state
+                    arm_rows.append(_grid_row(
+                        arm, condition, attack, variant, outcome, canonical, attacked,
+                        rater, generation,
+                    ))
+        except Exception as error:  # a third-party baseline dying must not lose the whole grid
+            # The Mnemosyne worker can be killed mid-run; when it is, drop its arm with a note
+            # rather than crashing, and never leave a half-filled arm to read as "immune".
+            skipped[arm] = f"{type(error).__name__}: {error}"
+            continue
+        rows.extend(arm_rows)
 
-    cells = {
+    surviving = [arm for arm in arms if arm not in skipped]
+    cells = _grid_cells(surviving, CONDITIONS, attacks, rows)
+    return {
+        "conditions": CONDITIONS,
+        "cells": cells,
+        "rows": rows,
+        "skipped": skipped,
+        "metadata": {
+            "model": _model_label(model_factory),
+            "tone_rater": rater.name,
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+        },
+    }
+
+
+def _grid_row(arm, condition, attack, variant, outcome, canonical, attacked, rater, generation):
+    row = {
+        "arm": arm,
+        "condition": condition,
+        "attack": attack.id,
+        "tag": (variant.injected_valence, variant.injected_arousal),
+        "poison_retrieved": variant.injected_memory_text in outcome.attacked_retrieved,
+        "retrieved": len(outcome.attacked_retrieved),  # 0 means immune by silence
+        "prompt_changed": outcome.canonical_probe_prompt != outcome.attacked_probe_prompt,
+        "mood_valence_delta": attacked.mood.valence - canonical.mood.valence,
+        "mood_arousal_delta": attacked.mood.arousal - canonical.mood.arousal,
+        "trust_delta": attacked.trust - canonical.trust,
+    }
+    if generation:
+        row["reply_valence"], row["reply_arousal"] = rater.rate(outcome.attacked_reply)
+        row["attacked_reply"] = outcome.attacked_reply
+    return row
+
+
+def _grid_cells(arms, conditions, attacks, rows):
+    """Aggregate rows into the arm x condition grid, over the arms that survived."""
+    return {
         arm: {
             condition: {
                 "attacks": len(attacks),
@@ -131,19 +164,9 @@ def run_grid(
                     r["mood_valence_delta"] for r in rows if r["arm"] == arm and r["condition"] == condition
                 ) / len(attacks),
             }
-            for condition in CONDITIONS
+            for condition in conditions
         }
         for arm in arms
-    }
-    return {
-        "conditions": CONDITIONS,
-        "cells": cells,
-        "rows": rows,
-        "metadata": {
-            "model": _model_label(model_factory),
-            "tone_rater": rater.name,
-            "generated_at": datetime.now(timezone.utc).isoformat(),
-        },
     }
 
 
@@ -161,6 +184,8 @@ def main() -> None:
     print(f"{'arm':<28}" + "".join(f"{c:>13}" for c in CONDITIONS))
     for arm, cell in report["cells"].items():
         print(f"{arm:<28}" + "".join(f"{cell[c]['mean_mood_valence_delta']:>+13.3f}" for c in CONDITIONS))
+    for arm, reason in report.get("skipped", {}).items():
+        print(f"\n  skipped {arm}: {reason}")
     print(f"\nwritten to {OUT_PATH}")
 
 
