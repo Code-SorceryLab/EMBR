@@ -7,7 +7,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/python-3.10+-4584b6?style=flat-square&logo=python&logoColor=white" alt="Python 3.10+">
   <img src="https://img.shields.io/badge/core-zero%20dependencies-ea580c?style=flat-square" alt="Zero dependencies">
-  <img src="https://img.shields.io/badge/tests-406%20passing-22c55e?style=flat-square" alt="406 tests">
+  <img src="https://img.shields.io/badge/tests-462%20passing-22c55e?style=flat-square" alt="462 tests">
   <img src="https://img.shields.io/badge/runs-byte%20identical-22c55e?style=flat-square" alt="Reproducible">
   <img src="https://img.shields.io/badge/models-Ouro%201.4B%20%C2%B7%20llama3.2%3A3b-1e1e22?style=flat-square" alt="Models">
   <img src="https://img.shields.io/badge/GPU-optional-9a9a9a?style=flat-square" alt="GPU optional">
@@ -131,8 +131,19 @@ transformers 4.x, which the extra pins: on 5.x its remote code does not load.
 | | | | | 11 | Generate every figure and table |
 | | | | | 12 | **Interactive demo**: the node brain in 2D and 3D, guided, then yours |
 | | | | | 13 | Latest results |
-| | | | | L | Fetch the tone lexicon (NRC VAD v2.1) |
-| | | | | D | Delete all generated data, types `DELETE` |
+
+**Demo suite** &nbsp;·&nbsp; *rows 14 to 19, each runs on the stub, no GPU, and names the run and model behind its numbers*
+
+| | | |
+|--:|---|---|
+| 14 | **Reckoning reveal** | six prompt sources shaded by exact Banzhaf weight, both estimators side by side |
+| 15 | **Mood slider** | one line under three moods: retrieval, tone and attribution re-flowing |
+| 16 | **Defence dial** | anchor weight against poisoning, and its failure on a hostile anchor |
+| 17 | **Tag-flip close-up** | flip an affect tag: the rank moves, the words never do |
+| 18 | **Estimator divergence** | where likelihood and behaviour disagree (needs both attribution arms) |
+| 19 | **Record walk** | a capture-ready pass through demos 14 to 17 for a screen recording |
+
+`L` Fetch the tone lexicon (NRC VAD v2.1) &nbsp;·&nbsp; `S` Settings &nbsp;·&nbsp; `D` Delete all generated data, types `DELETE`
 
 <details>
 <summary><b>Command line equivalents</b></summary>
@@ -149,6 +160,13 @@ python -m eval.grid                    # the content x tag grid
 python -m eval.attribution             # per-signal and per-axis attribution
 python -m eval.provenance              # the anchored-mass defence sweep
 python -m eval.agreement               # two tone raters, and RQ1's generation claim
+python -m eval.attacks_v2              # 2026 attack classes: dormant, laundering
+python -m eval.consistency             # does she refuse the room after the betrayal?
+
+# Context attribution (the six-source cite view; likelihood needs a transformers model)
+python -m eval.context_attribution                       # stub, full 64-mask cube, seconds
+python -m eval.context_attribution --model ouro          # the thesis model on the GPU
+python demos.py --record                                 # a screen-recording walk of the demos
 
 # The assets
 python assets/build_figures.py data/runs/<stamp>   # the run's figures and tables
@@ -343,10 +361,14 @@ EMBR/
 │   ├── poignancy.py      #   Park's LLM poignancy rater, cached per model
 │   ├── agreement.py      #   two tone raters, and RQ1's generation claim
 │   ├── backends.py       #   external memory systems behind the retrieval seam
-│   └── bakeoff.py        #   same probes, different models
+│   ├── bakeoff.py        #   same probes, different models
+│   ├── attacks_v2.py     #   2026 attack classes: dormant, self-summarisation laundering
+│   ├── consistency.py    #   the behavioural check: does she refuse the room after the lie?
+│   └── context_attribution.py  # the six-source cite view, exact Banzhaf attribution
+├── demos.py              # the five-demo suite, driven from the menu
 ├── assets/               # hand-authored: branding, the diagram, every builder
 ├── docs/                 # findings, metrics, design, roadmap, related work, handoff
-├── tests/                # 406 tests
+├── tests/                # 462 tests
 └── data/                 # generated: runs, figures, tables, ratings, judgements
 ```
 
@@ -362,6 +384,8 @@ pipeline and rebuilds from one menu option, which is what the wipe option exists
 | [`docs/handoff.md`](docs/handoff.md) | The working record: setup, version constraints, and how each result was found and corrected |
 | [`docs/corpus.md`](docs/corpus.md) | The one thing the project needs and does not have: a state-conditioned label set, and why nobody here may write it |
 | [`docs/related-work.md`](docs/related-work.md) | Verified prior art, including the 2026 literature that reshaped the claims |
+| [`docs/cite.md`](docs/cite.md) | Context attribution: the six-source cite view, exact Banzhaf, and the demo suite |
+| [`docs/preregistration-attribution.md`](docs/preregistration-attribution.md) | The attribution sweep's hypotheses and decision rules, fixed before the run |
 | [`docs/design.md`](docs/design.md), [`docs/roadmap.md`](docs/roadmap.md) | The architecture, and the phase-by-phase plan |
 
 ## Status
@@ -375,12 +399,15 @@ pipeline and rebuilds from one menu option, which is what the wipe option exists
 | 4 | Real model runners, the playable walkthrough, the menu | done |
 | 5 | Defensible instruments, the content x tag grid, a real third-party system | done |
 | 6 | State-conditioned labels (harness done, corpus outstanding), the interactive demo | **in progress** |
+| 7 | Context attribution (six-source cite view, demo suite), the shipped provenance defence | **in progress** |
 
 **What is honestly missing.** There is no human evaluation, so no claim about believability is
-made anywhere. The label set is ten single-author queries, which is the ceiling on RQ3 and the
-reason the Stardew corpus in [`docs/handoff.md`](docs/handoff.md) section 8 is the next piece
-of work. A recorded playthrough and a companion page for the interactive demo will be linked
-here.
+made anywhere; the RQ1 tone result rests on automatic raters, now a family-diverse judge panel
+rather than a single judge. The label set is ten single-author queries, which is the permanent
+ceiling on RQ3 and the reason the Stardew corpus in [`docs/handoff.md`](docs/handoff.md)
+section 8 is the next piece of work. Context attribution has a pilot on Ouro 1.4B; no
+attribution number reaches [`docs/findings.md`](docs/findings.md) until the full real-model
+sweep lands. A recorded playthrough will be linked here.
 
 ## Authors
 

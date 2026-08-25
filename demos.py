@@ -21,10 +21,10 @@ import glob
 import json
 from dataclasses import dataclass, replace
 from pathlib import Path
-from typing import Any, Callable, Sequence
+from typing import Any, Callable
 
 # ANSI helpers reused from the menu, so the palette is defined in exactly one place.
-from menu import _BOLD, _CYAN, _DIM, _EMBER, _GRN, _MAG, _RED, _WHT, _YEL, _c, _SUPPORTS_COLOR
+from menu import _BOLD, _CYAN, _DIM, _EMBER, _RED, _WHT, _YEL, _c, _SUPPORTS_COLOR
 
 from embr import (
     CharacterState,
@@ -36,7 +36,6 @@ from embr import (
     StubRunner,
     embr_scorer,
 )
-from embr.prompt import PromptBuilder
 
 RUNS_DIR = Path("data/runs")
 #: Attribution runs live in their own subtree so the asset builders and menu, which scan
