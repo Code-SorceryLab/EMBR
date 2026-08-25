@@ -7,7 +7,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/python-3.10+-4584b6?style=flat-square&logo=python&logoColor=white" alt="Python 3.10+">
   <img src="https://img.shields.io/badge/core-zero%20dependencies-ea580c?style=flat-square" alt="Zero dependencies">
-  <img src="https://img.shields.io/badge/tests-462%20passing-22c55e?style=flat-square" alt="462 tests">
+  <img src="https://img.shields.io/badge/tests-479%20passing-22c55e?style=flat-square" alt="479 tests">
   <img src="https://img.shields.io/badge/runs-byte%20identical-22c55e?style=flat-square" alt="Reproducible">
   <img src="https://img.shields.io/badge/models-Ouro%201.4B%20%C2%B7%20llama3.2%3A3b-1e1e22?style=flat-square" alt="Models">
   <img src="https://img.shields.io/badge/GPU-optional-9a9a9a?style=flat-square" alt="GPU optional">
@@ -126,6 +126,7 @@ transformers 4.x, which the extra pins: on 5.x its remote code does not load.
 |--:|---|--:|---|--:|---|
 | 1 | Conversation turn: watch the lie resurface | 3 | Quick scoreboard (RQ3 at defaults) | 7 | Affective indexing: flip every emotion |
 | 2 | Tavern-keeper walkthrough, stub or real model | 4 | Full evaluation (RQ1 + RQ2 + RQ3) | 8 | Poisoning attribution, one ablation each |
+| W | **Web demo**: the visual novel with research tabs | | | | |
 | | | 5 | Seeded runs: replicate, or compare models | 9 | Provenance sweep: the defence |
 | | | 6 | Model bake-off | 10 | Content x tag grid |
 | | | | | 11 | Generate every figure and table |
@@ -167,6 +168,7 @@ python -m eval.consistency             # does she refuse the room after the betr
 python -m eval.context_attribution                       # stub, full 64-mask cube, seconds
 python -m eval.context_attribution --model ouro          # the thesis model on the GPU
 python demos.py --record                                 # a screen-recording walk of the demos
+python -m web.server                                      # the playable visual-novel web demo (stub, no model)
 
 # The assets
 python assets/build_figures.py data/runs/<stamp>   # the run's figures and tables
@@ -176,7 +178,10 @@ python assets/build_demo.py                        # the interactive demo page
 ```
 
 Cloud models are optional and read a key from a gitignored `.env`, written as UTF-8:
-`OLLAMA_API_KEY=your-key-from-ollama.com/settings/keys`
+`OLLAMA_API_KEY=your-key-from-ollama.com/settings/keys`. The same key lets the tone-judge panel
+mix local and cloud judges (configured as `{model, family, backend}`); the key is handed only
+to the cloud host, never logged, and never written to the config or any tracked file. The
+family-diversity gate counts the mixed panel as one, and `llama3.1:8b` stays judge-only.
 </details>
 
 ---
@@ -366,9 +371,10 @@ EMBR/
 │   ├── consistency.py    #   the behavioural check: does she refuse the room after the lie?
 │   └── context_attribution.py  # the six-source cite view, exact Banzhaf attribution
 ├── demos.py              # the five-demo suite, driven from the menu
-├── assets/               # hand-authored: branding, the diagram, every builder
+├── web/                  # the visual-novel web demo (server, bridge, static UI)
+├── assets/               # hand-authored: branding, portraits, the diagram, every builder
 ├── docs/                 # findings, metrics, design, roadmap, related work, handoff
-├── tests/                # 462 tests
+├── tests/                # 479 tests
 └── data/                 # generated: runs, figures, tables, ratings, judgements
 ```
 

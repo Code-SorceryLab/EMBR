@@ -43,6 +43,11 @@ class EmbrConfig:
     model_runner: str = "stub"  # "stub" | "ollama" | "ouro"
     model_name: str = ""  # blank = the chosen runner's own default model
     ollama_host: str = DEFAULT_OLLAMA_HOST  # set to https://ollama.com for the hosted one
+    #: The judge panel (estimator B and the RQ1 tone ratings only; generation is untouched).
+    #: Each entry is {"model", "family", "backend": "local"|"cloud"}; an empty list means the
+    #: harness's default specs. Cloud judges reach ollama.com with the key from the environment
+    #: or the gitignored .env, and no credential is ever written here.
+    judges: list[dict] = field(default_factory=list)
 
     def save(self, path: str = DEFAULT_CONFIG_PATH) -> None:
         """Write the config to `path` as pretty JSON (creating parent folders if needed)."""

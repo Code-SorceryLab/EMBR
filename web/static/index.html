@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en" data-tab="memories">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>EMBR · The Ember Hearth</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <a class="skip" href="#stage">Skip to the stage</a>
+
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand__mark" aria-hidden="true"></span>
+      <span class="brand__word">EMBR</span>
+      <span class="brand__sub">The Ember Hearth</span>
+    </div>
+    <nav class="tabs" aria-label="Research panels">
+      <button class="tab" data-goto="memories" aria-current="true">Memories</button>
+      <button class="tab" data-goto="state">Mood &amp; Trust</button>
+      <button class="tab" data-goto="attribution">Attribution</button>
+      <button class="tab" data-goto="defence">Attack &amp; Defence</button>
+      <button class="tab" data-goto="run">Run</button>
+    </nav>
+    <p class="provenance" id="provenance">stub · loading</p>
+  </header>
+
+  <main class="stage-grid">
+    <!-- The visual-novel stage -->
+    <section class="stage" id="stage" aria-label="The scene">
+      <div class="cast">
+        <figure class="portrait portrait--dawn" id="dawn">
+          <img id="dawn-img" alt="Dawn Whitmore" src="/portraits/dawn-neutral.png"
+               onerror="this.classList.add('is-missing')">
+          <figcaption class="plate">
+            <span class="plate__name">Dawn Whitmore</span>
+            <span class="plate__role">Keeper of the Ember Hearth</span>
+          </figcaption>
+        </figure>
+        <figure class="portrait portrait--player" id="player">
+          <img alt="You, a traveller" src="/portraits/player.png"
+               onerror="this.classList.add('is-missing')">
+          <figcaption class="plate plate--sm">
+            <span class="plate__name">You</span>
+            <span class="plate__role">A traveller</span>
+          </figcaption>
+        </figure>
+      </div>
+
+      <div class="dialogue" aria-live="polite">
+        <p class="dialogue__scene" id="scene"></p>
+        <p class="dialogue__reply" id="reply"></p>
+        <p class="dialogue__watch" id="watch"></p>
+      </div>
+
+      <div class="choicebar">
+        <div class="choices" id="choices"></div>
+        <form class="say" id="say">
+          <input id="say-input" type="text" autocomplete="off"
+                 placeholder="Say something in your own words…" aria-label="Your line">
+          <button type="submit" class="say__go" aria-label="Say it">
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+              <path d="M4 12h14M13 6l6 6-6 6" fill="none" stroke="currentColor"
+                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </form>
+        <div class="stagefoot">
+          <span class="progress" id="progress"></span>
+          <button class="reset" id="reset">Restart the arc</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- The research inspector -->
+    <aside class="inspector" aria-label="Research panels">
+      <section class="panel" data-panel="memories">
+        <h2 class="panel__title">Memories</h2>
+        <p class="panel__hint">The store, scored for this turn. A lit card is in the prompt's top five.</p>
+        <div class="cards" id="memories"></div>
+      </section>
+
+      <section class="panel" data-panel="state" hidden>
+        <h2 class="panel__title">Mood &amp; Trust</h2>
+        <p class="panel__hint">Both sides of this turn's appraisal. The event moves her; retrieval reads the result.</p>
+        <div class="gauges" id="state"></div>
+      </section>
+
+      <section class="panel" data-panel="attribution" hidden>
+        <h2 class="panel__title">Attribution</h2>
+        <p class="panel__hint">The six prompt sources, shaded by exact Banzhaf weight. Which one drove the reply?</p>
+        <div class="attrib" id="attribution"></div>
+      </section>
+
+      <section class="panel" data-panel="defence" hidden>
+        <h2 class="panel__title">Attack &amp; Defence</h2>
+        <p class="panel__hint">The tag is the target, never the words. Anchor the score and the poison falls.</p>
+        <div class="defence" id="defence"></div>
+      </section>
+
+      <section class="panel" data-panel="run" hidden>
+        <h2 class="panel__title">Run</h2>
+        <p class="panel__hint">The provenance of every number on screen.</p>
+        <dl class="run" id="run"></dl>
+      </section>
+    </aside>
+  </main>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

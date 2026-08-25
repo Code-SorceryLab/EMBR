@@ -75,7 +75,7 @@ from eval.run import (
 )
 from eval.scenarios import Scenario, label_sha256
 from eval.stats import spearman
-from eval.tone import ToneRater, default_judge_panel, default_tone_rater
+from eval.tone import ToneRater, configured_judge_panel, default_tone_rater
 
 #: The mood sentence is a source like any other. It is the whole reason for this study: the
 #: prompt states the character's mood *and* selects her memories by that mood, so a reply
@@ -678,7 +678,7 @@ def main() -> None:
     model_factory = _model_factory(args.model)
     depth = _pin_depth(model_factory)
     # The generator never sits on its own panel: a judge rating its own output is not blind.
-    panel = default_judge_panel(exclude_families=frozenset({_MODEL_FAMILIES[args.model]}))
+    panel = configured_judge_panel(exclude_families=frozenset({_MODEL_FAMILIES[args.model]}))
     if not panel.is_family_diverse:
         print(
             f"    WARNING: panel is not family diverse (model families: "

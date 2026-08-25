@@ -213,42 +213,121 @@ AGREEMENT_FLOOR = 0.314
 #: The lexicon's family label. Named so `model_families` can exclude it in one place.
 LEXICON_FAMILY = "lexicon"
 
-#: Judges the panel builder will try, in order, each with the family it actually belongs to.
-#: `llama3.1:8b` and `llama3.2:3b` share a family on purpose: they are two sizes of one model
-#: and must not be counted as independent, however tempting the arithmetic.
-PANEL_CANDIDATES: tuple[tuple[str, str], ...] = (
-    ("llama3.1:8b", "meta"),
-    ("qwen2.5:7b", "qwen"),
-    ("mistral:7b", "mistral"),
-    ("gemma2:9b", "google"),
-    ("llama3.2:3b", "meta"),
+@dataclass(frozen=True)
+class JudgeSpec:
+    """A configured judge: which model, which family, and which backend serves it.
+
+    `backend` is `local` (this machine's Ollama daemon) or `cloud` (the hosted endpoint at
+    ollama.com, reached with the user's key). Family is what the diversity gate counts, so a
+    model run local and the same model run cloud are one family and do not both count.
+    """
+
+    model: str
+    family: str
+    backend: str = "local"
+
+
+#: The judges the default panel will try, in order. `llama3.1:8b` and `llama3.2:3b` share a
+#: family on purpose: two sizes of one model must not be counted as independent. Cloud entries
+#: let a subscription supply families the local machine does not have pulled.
+DEFAULT_JUDGE_SPECS: tuple[JudgeSpec, ...] = (
+    JudgeSpec("llama3.1:8b", "meta", "local"),
+    JudgeSpec("qwen2.5:7b", "qwen", "local"),
+    JudgeSpec("mistral:7b", "mistral", "local"),
+    JudgeSpec("gemma2:9b", "google", "local"),
+    JudgeSpec("llama3.2:3b", "meta", "local"),
 )
+
+OLLAMA_CLOUD_HOST = "https://ollama.com"
+
+
+def _judge_runner(spec: JudgeSpec):
+    """Build the Ollama runner for one judge spec: local daemon, or the cloud host with a key.
+
+    The key is read from the environment or the gitignored `.env`, is handed only to the cloud
+    host, and is never logged. A cloud spec with no key available raises rather than silently
+    falling back to an unauthenticated request.
+    """
+    from embr.model import DEFAULT_OLLAMA_HOST, OllamaRunner, read_ollama_api_key
+
+    if spec.backend == "cloud":
+        key = read_ollama_api_key()
+        if not key:
+            raise RuntimeError(
+                f"judge {spec.model!r} is configured for the cloud backend but no Ollama API "
+                f"key is set. Put OLLAMA_API_KEY in the environment or a gitignored .env."
+            )
+        return OllamaRunner(model=spec.model, host=OLLAMA_CLOUD_HOST, api_key=key)
+    return OllamaRunner(model=spec.model, host=DEFAULT_OLLAMA_HOST)
+
+
+def build_judge_panel(
+    specs: Sequence[JudgeSpec] = DEFAULT_JUDGE_SPECS,
+    exclude_families: frozenset[str] = frozenset(),
+    max_models: int = 3,
+) -> JudgePanel:
+    """Build the panel from configured specs: the lexicon plus the judges that are reachable.
+
+    Local judges are included only if the daemon actually serves them; cloud judges are
+    included as configured, trusting the subscription, because probing them would cost a call.
+    `exclude_families` keeps the generator off its own panel: a judge rating its own output is
+    not blind, which is why `llama3.1:8b` is judge-only and never a generation arm, and the
+    same rule applies to Ouro when Ouro generates.
+
+    Reports rather than pretends: `is_family_diverse` counts the panel *as configured*, local
+    and cloud combined, and two same-family judges never pass however they are hosted.
+    """
+    judges = [Judge(rater=default_tone_rater(), family=LEXICON_FAMILY, backend="lexicon")]
+    seen: set[str] = set()
+    for spec in specs:
+        if len(judges) > max_models or spec.family in exclude_families or spec.family in seen:
+            continue
+        if spec.backend == "local" and not _ollama_has(spec.model):
+            continue
+        judges.append(
+            Judge(rater=JudgeToneRater(_judge_runner(spec)), family=spec.family, backend=spec.backend)
+        )
+        seen.add(spec.family)
+    return JudgePanel(judges)
 
 
 def default_judge_panel(
     exclude_families: frozenset[str] = frozenset(), max_models: int = 3
 ) -> JudgePanel:
-    """The panel this machine can actually field: the lexicon plus whatever models are pulled.
+    """The panel this machine can field from the default specs. See `build_judge_panel`."""
+    return build_judge_panel(DEFAULT_JUDGE_SPECS, exclude_families, max_models)
 
-    `exclude_families` keeps the model under test off its own panel. A judge rating its own
-    output is not blind, which is why `llama3.1:8b` is judge-only and never a generation arm,
-    and the same rule has to apply to Ouro when Ouro is the generator.
 
-    Reports rather than pretends: if the result is not family diverse, `is_family_diverse` is
-    False and the caller records that. It does not silently accept two llamas as a panel.
+def configured_judge_panel(
+    exclude_families: frozenset[str] = frozenset(), max_models: int = 3
+) -> JudgePanel:
+    """The panel named by the saved config's `judges`, or the default specs when it is empty.
+
+    This is the entry point a run uses, so a user who configured cloud judges gets them and a
+    user who configured nothing gets the local defaults. Reading the config here keeps the
+    key-handling in one place (`_judge_runner`), and no credential is ever read from the config.
     """
-    from embr.model import OllamaRunner  # local: embr must not import the eval harness
+    from embr.config import EmbrConfig
 
-    judges = [Judge(rater=default_tone_rater(), family=LEXICON_FAMILY)]
-    seen: set[str] = set()
-    for model, family in PANEL_CANDIDATES:
-        if len(judges) > max_models or family in exclude_families or family in seen:
+    specs = judge_specs_from_config(EmbrConfig.load().judges) or DEFAULT_JUDGE_SPECS
+    return build_judge_panel(specs, exclude_families, max_models)
+
+
+def judge_specs_from_config(raw: Sequence[dict]) -> tuple[JudgeSpec, ...]:
+    """Turn a config's judge list (dicts) into specs, ignoring malformed entries.
+
+    A judge entry is `{"model": ..., "family": ..., "backend": "local"|"cloud"}`. Backend
+    defaults to local. An entry missing model or family is skipped rather than crashing the
+    panel, the same tolerance the rest of the config loader uses.
+    """
+    specs: list[JudgeSpec] = []
+    for entry in raw:
+        model, family = entry.get("model"), entry.get("family")
+        if not model or not family:
             continue
-        if not _ollama_has(model):
-            continue
-        judges.append(Judge(rater=JudgeToneRater(OllamaRunner(model=model)), family=family))
-        seen.add(family)
-    return JudgePanel(judges)
+        backend = entry.get("backend", "local")
+        specs.append(JudgeSpec(model=model, family=family, backend=backend))
+    return tuple(specs)
 
 
 def _ollama_has(model: str) -> bool:
@@ -269,15 +348,20 @@ def _ollama_has(model: str) -> bool:
 
 @dataclass(frozen=True)
 class Judge:
-    """One panel member, with the model family it belongs to.
+    """One panel member, with the model family it belongs to and where it runs.
 
     `family` is declared rather than inferred because it is the thing under control: two
     sizes of llama are one family and correlate for reasons that have nothing to do with the
-    text. A panel's value is in disagreeing for independent reasons.
+    text, and a llama run locally and the same llama run in the cloud are still one family.
+    A panel's value is in disagreeing for independent reasons.
+
+    `backend` (`local`, `cloud`, or `lexicon`) is recorded so a rated number can be traced to
+    the judge that produced it, wherever it ran. It never carries a credential.
     """
 
     rater: ToneRater
     family: str
+    backend: str = "local"
 
 
 class JudgePanel:
@@ -301,6 +385,18 @@ class JudgePanel:
     @property
     def families(self) -> set[str]:
         return {judge.family for judge in self.judges}
+
+    @property
+    def roster(self) -> list[dict[str, str]]:
+        """Every judge as (name, family, backend), for a run's provenance block.
+
+        This is how a rated number is traced to the judge that produced it and where it ran.
+        Names come from `JudgeToneRater`, which never embeds a credential.
+        """
+        return [
+            {"name": judge.rater.name, "family": judge.family, "backend": judge.backend}
+            for judge in self.judges
+        ]
 
     @property
     def model_families(self) -> set[str]:
@@ -362,6 +458,7 @@ class JudgePanel:
         minimum = valence["min"]
         return {
             "panel": self.name,
+            "roster": self.roster,  # model, family and backend of each judge, for provenance
             "families": sorted(self.families),
             "family_diverse": self.is_family_diverse,
             "pairwise": pairs,

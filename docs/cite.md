@@ -233,7 +233,50 @@ Demo 5 is left out because it is cached-only and may have nothing to show.
 Rich (the menu and harness are stdlib-only by design) and `embr/` may not import the harness,
 so the demos use the menu's own ember ANSI palette and live at the repo root beside it.
 
-## 9. Still open
+## 9. The web demo
+
+A playable visual-novel front for the Dawn Whitmore arc, in `web/` beside `menu.py` and
+`demos.py` (not in `embr/`, which must never import the harness). Presentation only: it drives
+the existing `Conversation` pipeline and reads existing run data, and re-implements no scoring,
+appraisal or attribution. A structural test pins that (`web/game.py` reuses `demos._live_reading`
+and never computes Banzhaf itself). Launch it from menu row `W` or `python -m web.server`; it
+runs on the stub, so **no model and no network are ever required**.
+
+The stage is a warm ember-lit tavern; the research panel beside it is a cool instrument. The
+tab bar carries the RESEARCH tabs where a game would put Politics or Reputation:
+
+- **Memories** the store as cards, each with its affect tag, event type, and, when it is in
+  this turn's top five, its rank and per-signal score breakdown.
+- **Mood & Trust** both sides of this turn's appraisal, as bipolar gauges with a ghost marker
+  at the before value.
+- **Attribution** the six prompt sources shaded by exact Banzhaf weight, both estimators side
+  by side, with the near-zero guard rendering its warning instead of colouring noise (which is
+  what happens on the stub's behavioural arm, honestly).
+- **Attack & Defence** the tag-flip close-up and the anchored-mass defence dial, including the
+  attacker-influenced-anchor column.
+- **Run** the provenance of everything on screen: git commit, dirty flag, model, label version.
+
+**Portraits.** Dawn has four expressions (warm, neutral, suspicious, betrayed) plus a player
+icon, chosen by the mood and beat the turn produced. To swap the art, drop a same-named PNG
+into `assets/portraits/` (`dawn-warm.png`, `dawn-neutral.png`, `dawn-suspicious.png`,
+`dawn-betrayed.png`, `player.png`); no code changes. A missing file falls back to a drawn ember
+silhouette. Cached real-model turns and attribution light up automatically when present under
+`data/runs/attribution/`; nothing on the page needs a live call.
+
+## 10. Judging backends: local and cloud
+
+The judge panel (estimator B and the RQ1 tone ratings only; generation is untouched) can mix
+local and cloud judges. Each judge is configured as `{model, family, backend}` where backend is
+`local` (this machine's Ollama daemon) or `cloud` (ollama.com, reached with the user's key from
+the environment or the gitignored `.env`, following PR #4's pattern). The credential is handed
+only to the cloud host, is never logged, and never appears in the config or any tracked file; a
+canary test pins that a runner printed in a log cannot leak it. Provenance records each judge's
+model **and** backend (`JudgePanel.roster`), so a rated number traces to the judge that produced
+it and where it ran. The family-diversity gate counts the panel as configured, local and cloud
+combined, and still refuses two judges of one family however they are hosted. `llama3.1:8b`
+stays judge-only and never generates.
+
+## 11. Still open
 
 - **No `findings.md` section yet.** Nothing goes there until a run on a real model exists.
 - **The behavioural estimator over the full cube is 64 generations per probe**, so 1280 per

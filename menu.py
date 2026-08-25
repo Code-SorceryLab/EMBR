@@ -73,6 +73,7 @@ _RULE = "    " + "─" * 56
 _MENU_ITEMS = [
     ("1", "Conversation Turn", "one demo turn: watch the lie resurface"),
     ("2", "Tavern-Keeper Walkthrough", "play Dawn's trust, betrayal, reconciliation arc"),
+    ("W", "Web Demo", "the visual-novel demo in a browser, research tabs and all"),
     ("3", "Quick Scoreboard", "RQ3 at published defaults, answers instantly"),
     ("4", "Full Evaluation", "RQ1 + RQ2 + RQ3, writes a run directory"),
     ("5", "Seeded Runs", "replicate on one model, or compare across models"),
@@ -98,7 +99,7 @@ _MENU_ITEMS = [
 ]
 
 _SECTIONS = [
-    ("PLAY", ("1", "2")),
+    ("PLAY", ("1", "2", "W")),
     ("MEASURE", ("3", "4", "5", "6")),
     ("MECHANISM", ("7", "8", "9", "10")),
     ("PAPER", ("11", "12", "13")),
@@ -512,6 +513,15 @@ def _do_demo() -> None:
         webbrowser.open(paths[0].resolve().as_uri())   # the flat diagram is the one to read
 
 
+def _do_web_demo() -> None:
+    """Serve the visual-novel web demo and open it in a browser. Runs on the stub, no model."""
+    from web.server import serve
+
+    print(_DIM("\n    Serving the web demo on http://127.0.0.1:8000 . Ctrl+C to stop and return."))
+    print(_DIM("    It runs on the stub, so no model or network is needed."))
+    serve(port=8000, open_browser=True)
+
+
 def _do_reckoning_reveal() -> None:
     """Demo 1: play to the reckoning and reveal the six sources by Banzhaf weight."""
     from demos import demo_reckoning_reveal
@@ -651,6 +661,7 @@ def _do_delete_run_data() -> None:
 _ACTIONS: dict[str, Callable[[], None]] = {
     "1": _do_conversation_turn,
     "2": _do_walkthrough,
+    "W": _do_web_demo,
     "3": _do_quick_scoreboard,
     "4": _do_full_evaluation,
     "5": _do_seeded_runs,
