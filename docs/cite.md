@@ -257,11 +257,30 @@ tab bar carries the RESEARCH tabs where a game would put Politics or Reputation:
 - **Run** the provenance of everything on screen: git commit, dirty flag, model, label version.
 
 **Portraits.** Dawn has four expressions (warm, neutral, suspicious, betrayed) plus a player
-icon, chosen by the mood and beat the turn produced. To swap the art, drop a same-named PNG
-into `assets/portraits/` (`dawn-warm.png`, `dawn-neutral.png`, `dawn-suspicious.png`,
-`dawn-betrayed.png`, `player.png`); no code changes. A missing file falls back to a drawn ember
-silhouette. Cached real-model turns and attribution light up automatically when present under
+icon, chosen by the mood and beat the turn produced, and crossfaded on change. To swap the art,
+drop a same-named PNG into `assets/portraits/` (`dawn-warm.png`, `dawn-neutral.png`,
+`dawn-suspicious.png`, `dawn-betrayed.png`, `player.png`); no code changes. A missing file
+falls back to a drawn ember silhouette. `assets/portraits/cutout.py` makes a portrait's flat
+field transparent by flooding from the borders inward, so it never eats white hair on a white
+background (a border flood stops at the first drawn outline); it is idempotent enough to re-run.
+Cached real-model turns and attribution light up automatically when present under
 `data/runs/attribution/`; nothing on the page needs a live call.
+
+**The room and the craft.** The tavern is drawn entirely in CSS (plank walls, a hearth glow, a
+board floor, a vignette, a fractal-noise grain), so it ships with no image and no network. The
+faces are Cinzel (display) and Cormorant Garamond (dialogue) from Google Fonts, with a system
+serif fallback so the page holds its shape offline. A gear opens an **instructions and settings
+menu**: how to play, what each tab means, a **model selector** (stub, or a local Ollama model;
+Ouro is a GPU job and is not offered here), and toggles for animations, the typewriter, and the
+ambience. The **ambience** is a tavern hearth synthesised in the Web Audio API (a warm drone, a
+noise bed, and random fire crackles), opt-in because browsers block autoplay, and needs no
+audio file. The **Mood & Trust** tab plots the appraisal as a point moving on Russell's
+circumplex, beside the trust gauge.
+
+**Model switching** runs through the same `OllamaRunner` seam as the rest of the project and is
+CPU-only: `set_model` swaps the runner on the live conversation, a failed switch (no daemon)
+leaves the stub in place and says so, and no GPU runner is constructible from the web UI. The
+key, when a cloud judge or model needs one, follows PR #4's rule and never reaches the page.
 
 ## 10. Judging backends: local and cloud
 

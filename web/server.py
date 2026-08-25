@@ -60,12 +60,17 @@ class DemoHandler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:
         path = urlparse(self.path).path
-        if path not in ("/api/step", "/api/reset"):
+        if path not in ("/api/step", "/api/reset", "/api/model"):
             self._send_error(404, "not found")
             return
         body = self._read_json_body()
         if path == "/api/reset":
             self.session.reset()
+        elif path == "/api/model":
+            # The result carries whether the switch took; the snapshot reflects the new model.
+            status = self.session.set_model(str(body.get("model") or "stub"))
+            self._send_json({"status": status, **self.session.snapshot()})
+            return
         else:
             self.session.step((body.get("text") or "").strip() or None)
         self._send_json(self.session.snapshot())

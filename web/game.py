@@ -92,6 +92,50 @@ class GameSession:
         )
         self._latest = None  # the most recent StepResult, or None before the first turn
         self._defence_cache: dict | None = None
+        self._model_label = "stub"  # what the current runner reports, for provenance
+
+    # --------------------------------------------------------------------- the model
+
+    def available_models(self) -> list[dict[str, str]]:
+        """The runners the web demo offers. Stub always; Ollama-local if the daemon serves it.
+
+        Ouro is deliberately not offered here: it is a GPU job, and the demo must never need
+        one. Local Ollama is CPU-friendly and user-initiated, so it is safe to expose.
+        """
+        from eval.tone import _ollama_has
+
+        models = [{"id": "stub", "label": "Stub (instant, offline, fake replies)", "ready": True}]
+        for name in ("llama3.2:3b", "llama3.1:8b"):
+            models.append({
+                "id": f"ollama:{name}",
+                "label": f"Ollama · {name} (local daemon)",
+                "ready": _ollama_has(name),
+            })
+        return models
+
+    def set_model(self, model_id: str) -> dict[str, str]:
+        """Swap the runner on the live conversation, keeping the arc's progress.
+
+        Returns a status dict. A model that cannot be reached leaves the stub in place and
+        says so, rather than breaking the next turn. No GPU runner is constructible from here.
+        """
+        from embr.model import DEFAULT_OLLAMA_HOST, ModelUnavailableError, OllamaRunner
+
+        if model_id == "stub":
+            self._session.conversation.model = StubRunner()
+            self._model_label = "stub"
+            return {"ok": True, "model": self._model_label}
+        if model_id.startswith("ollama:"):
+            name = model_id.split(":", 1)[1]
+            runner = OllamaRunner(model=name, host=DEFAULT_OLLAMA_HOST)
+            try:  # fail here, at the switch, not mid-scene
+                runner.generate("Say the single word: ready.")
+            except ModelUnavailableError as error:
+                return {"ok": False, "model": self._model_label, "error": str(error)}
+            self._session.conversation.model = runner
+            self._model_label = runner.label
+            return {"ok": True, "model": self._model_label}
+        return {"ok": False, "model": self._model_label, "error": f"unknown model {model_id!r}"}
 
     # ------------------------------------------------------------------ driving the arc
 
@@ -117,6 +161,7 @@ class GameSession:
             "stage": self._stage(step, upcoming),
             "choices": self._choices(upcoming),
             "progress": {"played": played, "total": total, "finished": self._session.is_finished},
+            "settings": {"model": self._model_label, "available": self.available_models()},
             "tabs": {
                 "memories": self._memories_tab(conversation, step),
                 "state": self._state_tab(step),
@@ -230,7 +275,7 @@ class GameSession:
         scenario = load_scenario(reference_time=REFERENCE_TIME)
         return {
             **_provenance(),
-            "model": "stub (this session)",
+            "model": f"{self._model_label} (this session)",
             "label_set": scenario.name,
             "label_version": scenario.version,
             "label_sha256": label_sha256(),

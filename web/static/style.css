@@ -30,7 +30,10 @@
   --warn:       #e0b341;
   --bad:        #d2603f;
 
-  --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+  /* Display is the fantasy face; serif is the reading voice; both fall back to the system
+     serif stack so the page holds its shape with no network. */
+  --display: "Cinzel", "Trajan Pro", "Iowan Old Style", Georgia, serif;
+  --serif: "Cormorant Garamond", "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
   --sans:  ui-sans-serif, "Segoe UI", Inter, system-ui, -apple-system, sans-serif;
   --mono:  "Cascadia Code", "JetBrains Mono", "SF Mono", ui-monospace, monospace;
 
@@ -85,10 +88,20 @@ body {
   background: linear-gradient(180deg, var(--ember-hi), var(--ember) 55%, var(--ember-lo));
   box-shadow: 0 0 18px -2px rgba(234,88,12,.7);
 }
-.brand__word { font-weight: 800; letter-spacing: .14em; font-size: 1.05rem; }
+.brand__word { font-family: var(--display); font-weight: 700; letter-spacing: .16em; font-size: 1.1rem; }
 .brand__sub {
-  font-family: var(--serif); font-style: italic; color: var(--parch-dim); font-size: .95rem;
+  font-family: var(--serif); font-style: italic; color: var(--parch-dim); font-size: 1.05rem;
 }
+
+.topbar__right { display: flex; align-items: center; gap: 10px; justify-self: end; }
+.iconbtn {
+  display: grid; place-items: center; width: 38px; height: 38px; border-radius: 9px; cursor: pointer;
+  color: var(--parch-dim); background: rgba(243,231,210,.04); border: 1px solid var(--line);
+  transition: color .16s, border-color .16s, background .16s;
+}
+.iconbtn:hover { color: var(--parch); border-color: var(--gold); background: rgba(217,164,65,.08); }
+.iconbtn[aria-pressed="true"] { color: var(--ember-hi); border-color: var(--ember-lo); background: rgba(234,88,12,.12); }
+.iconbtn:focus-visible { outline: 2px solid var(--ember-hi); outline-offset: 2px; }
 
 .tabs { display: flex; gap: 4px; justify-self: center; flex-wrap: wrap; }
 .tab {
@@ -106,9 +119,9 @@ body {
 .tab:focus-visible { outline: 2px solid var(--ember-hi); outline-offset: 2px; }
 
 .provenance {
-  margin: 0; justify-self: end; font-family: var(--mono); font-size: .72rem;
+  margin: 0; font-family: var(--mono); font-size: .7rem;
   color: var(--parch-mut); font-variant-numeric: tabular-nums; letter-spacing: .01em;
-  max-width: 34ch; text-align: right; line-height: 1.4;
+  max-width: 26ch; text-align: right; line-height: 1.4;
 }
 
 /* ------------------------------------------------------------------- stage grid */
@@ -119,158 +132,219 @@ body {
   gap: 0;
   min-height: calc(100vh - 62px);
 }
+/* On desktop the two columns are exactly one viewport tall, so the stage clips its own art
+   and the dialogue and choices never leave the screen; the inspector scrolls on its own. */
+@media (min-width: 941px) {
+  .stage-grid { height: calc(100vh - 62px); min-height: 0; }
+  .stage { height: 100%; min-height: 0; }
+}
 
 /* ------------------------------------------------------------------- the stage */
+/* An RPG tavern interior, drawn entirely in CSS so it ships with no image and no network:
+   plank walls, a hearth throwing warm light from the right, a board floor, and a vignette. */
 
 .stage {
   position: relative;
   display: flex; flex-direction: column;
-  padding: 26px 30px 24px;
+  padding: 0;
   overflow: hidden;
-  background:
-    radial-gradient(80% 60% at 30% 8%, rgba(245,158,91,.10), transparent 60%),
-    linear-gradient(180deg, #241a12 0%, #1a130d 60%, #140f0a 100%);
+  isolation: isolate;
 }
-/* Firelight that breathes, one authored moment, from an already-lit default. */
-.stage::before {
-  content: ""; position: absolute; inset: 0; pointer-events: none;
-  background: radial-gradient(60% 45% at 34% 22%, rgba(234,88,12,.14), transparent 70%);
-  animation: firelight 7s ease-in-out infinite;
+
+/* the room: walls, floor, hearth, and grain, stacked back to front */
+.stage__room { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
+.stage__room::before {              /* plank wall + board floor */
+  content: ""; position: absolute; inset: 0;
+  background:
+    repeating-linear-gradient(90deg, rgba(0,0,0,.28) 0 1px, transparent 1px 84px) bottom / 100% 30% no-repeat,
+    repeating-linear-gradient(90deg, rgba(0,0,0,.22) 0 2px, transparent 2px 132px) top / 100% 70% no-repeat,
+    linear-gradient(180deg, transparent 0 68%, #3c2a1a 70%, #2a1c10 100%),
+    linear-gradient(180deg, #241811 0%, #2c1e14 50%, #32241a 68%);
+}
+.stage__room::after {               /* hearth glow from the right, plus a top lantern pool */
+  content: ""; position: absolute; inset: 0;
+  background:
+    radial-gradient(38% 50% at 96% 62%, rgba(245,158,91,.42), rgba(234,88,12,.12) 40%, transparent 66%),
+    radial-gradient(30% 26% at 34% 4%, rgba(245,200,120,.16), transparent 70%);
+  mix-blend-mode: screen;
+  animation: firelight 6s ease-in-out infinite;
+}
+.stage__grain {                     /* fine wood grain + a focusing vignette */
+  position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  background-image: var(--grain);
+  background-size: 220px 220px;
+  opacity: .5; mix-blend-mode: overlay;
+}
+.stage__vignette {
+  position: absolute; inset: 0; z-index: 3; pointer-events: none;
+  box-shadow: inset 0 0 160px 30px rgba(0,0,0,.7), inset 0 -60px 90px -30px rgba(0,0,0,.6);
 }
 @keyframes firelight {
-  0%, 100% { opacity: .7; transform: scale(1); }
-  50%      { opacity: 1;  transform: scale(1.04); }
+  0%, 100% { opacity: .82; }
+  50%      { opacity: 1; }
 }
 
-.cast {
-  position: relative; z-index: 1;
-  flex: 1 1 auto; min-height: 0;
-  display: grid; grid-template-columns: 1fr auto; align-items: end; gap: 20px;
-}
+/* the cast fills the stage; the dialogue overlays its lower third (classic VN layout), so
+   Dawn always stands at full height behind the words and never gets squeezed by long copy. */
+.cast { position: absolute; inset: 0; z-index: 1; }
 
-.portrait { margin: 0; position: relative; }
-.portrait img {
-  display: block; width: 100%; height: 100%; object-fit: contain; object-position: bottom;
-  filter: drop-shadow(0 22px 30px rgba(0,0,0,.55));
-  transition: opacity .45s ease, transform .5s cubic-bezier(.16,.84,.3,1);
-}
+.portrait { margin: 0; position: absolute; }
+
 .portrait--dawn {
-  height: min(56vh, 520px); justify-self: start;
-  display: flex; align-items: flex-end;
+  left: 26px; top: 18px; bottom: 0; display: flex; align-items: flex-end;
 }
-.portrait--dawn img { width: auto; max-width: 100%; max-height: 100%; }
+.portrait--dawn img {
+  height: 100%; max-height: 100%; width: auto; max-width: 46vw;
+  object-fit: contain; object-position: bottom;
+  filter:
+    drop-shadow(-12px 8px 16px rgba(0,0,0,.5))
+    drop-shadow(14px 0 22px rgba(234,88,12,.18));
+  transition: opacity .5s ease, transform .6s cubic-bezier(.16,.84,.3,1), filter .5s ease;
+  animation: sway 9s ease-in-out infinite;
+}
+@keyframes sway {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50%      { transform: translateY(-6px) rotate(-.4deg); }
+}
+.portrait--dawn::after {            /* the floor shadow she casts */
+  content: ""; position: absolute; left: 8%; right: 6%; bottom: -4px; height: 26px;
+  background: radial-gradient(50% 60% at 50% 50%, rgba(0,0,0,.55), transparent 72%);
+  filter: blur(3px); z-index: -1;
+}
+.portrait--dawn:has(img.is-missing) {
+  min-width: 280px;
+  background:
+    radial-gradient(58% 54% at 50% 34%, var(--line-2), transparent 60%),
+    linear-gradient(180deg, transparent 40%, rgba(234,88,12,.10));
+  border-radius: 46% 46% 8px 8px;
+}
+.portrait img.is-missing { visibility: hidden; }
+
 .portrait--player {
-  width: clamp(88px, 12vw, 132px); justify-self: end; opacity: .92;
+  position: absolute; top: 22px; right: 28px; width: clamp(78px, 8vw, 104px);
+  text-align: center; z-index: 2;
 }
 .portrait--player img {
-  border-radius: 50%; aspect-ratio: 1; object-fit: cover;
-  border: 2px solid var(--line-2); background: var(--ink-2);
-}
-/* When a portrait file is absent, a drawn ember silhouette stands in. */
-.portrait img.is-missing { visibility: hidden; }
-.portrait--dawn img.is-missing + .plate::before,
-.portrait img.is-missing { position: relative; }
-.portrait--dawn:has(img.is-missing) {
-  min-width: 260px;
-  background:
-    radial-gradient(60% 55% at 50% 32%, var(--line-2), transparent 62%),
-    linear-gradient(180deg, transparent, rgba(234,88,12,.08));
-  border-radius: 40% 40% 12px 12px;
+  width: 100%; border-radius: 50%; aspect-ratio: 1; object-fit: cover;
+  background: radial-gradient(circle at 50% 30%, #2c2118, #16100b);
+  box-shadow:
+    0 0 0 3px #5a4326, 0 0 0 4px #7a5c33, 0 0 0 6px #2a1c10,
+    0 10px 24px -8px rgba(0,0,0,.7), inset 0 0 18px rgba(0,0,0,.5);
 }
 
-.plate {
-  position: absolute; bottom: 8px; left: 0;
-  display: flex; flex-direction: column; gap: 1px;
-  padding: 9px 16px; border-radius: 4px 12px 12px 4px;
-  background: linear-gradient(180deg, rgba(29,24,19,.92), rgba(20,17,14,.86));
-  border: 1px solid var(--line-2); border-left: 3px solid var(--ember);
-  box-shadow: var(--shadow);
+/* the speaker name tag, riding the top-left of the dialogue box (VN convention) */
+.nametag {
+  position: relative; z-index: 4; margin: 0 0 -10px 34px; width: max-content;
+  display: flex; align-items: baseline; gap: 10px;
+  padding: 7px 20px 12px 16px;
+  background: linear-gradient(180deg, rgba(48,33,19,.98), rgba(30,20,11,.96));
+  border: 1px solid #6b4f2b; border-bottom: none; border-left: 3px solid var(--gold);
+  clip-path: polygon(0 0, 100% 0, calc(100% - 16px) 100%, 0 100%);
+  box-shadow: 0 -6px 18px -10px rgba(0,0,0,.7), inset 0 1px 0 rgba(217,164,65,.25);
 }
-.plate--sm { padding: 6px 12px; position: static; margin-top: 8px; text-align: center; }
-.plate__name { font-family: var(--serif); font-weight: 700; font-size: 1.05rem; letter-spacing: .01em; }
-.plate--sm .plate__name { font-size: .9rem; }
-.plate__role { font-size: .74rem; color: var(--parch-mut); letter-spacing: .02em; }
+.nametag span { font-family: var(--display); font-weight: 700; font-size: 1.02rem; letter-spacing: .05em; color: var(--gold); }
+.nametag small { font-family: var(--serif); font-style: italic; font-size: .82rem; color: var(--parch-mut); }
 
-/* dialogue box */
+.plate--sm {
+  margin-top: 8px; padding: 5px 12px; text-align: center;
+  background: linear-gradient(180deg, rgba(43,30,18,.92), rgba(26,17,10,.9));
+  border: 1px solid var(--line-2); border-radius: 5px;
+}
+.plate__name { font-family: var(--display); font-size: .8rem; color: var(--parch); letter-spacing: .05em; display: block; }
+.plate__role { font-size: .7rem; color: var(--parch-mut); letter-spacing: .02em; }
+
+/* the UI overlay: dialogue + choices pinned to the stage floor, over a scrim that lifts the
+   text off Dawn's lower body so it stays readable whatever she is wearing. */
+.stage__ui {
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 3;
+  padding: 64px 0 4px;
+  background: linear-gradient(180deg, transparent, rgba(16,10,6,.55) 26%, rgba(12,8,4,.82) 55%);
+}
+
+/* the dialogue box: an RPG parchment-and-gold frame */
 .dialogue {
-  position: relative; z-index: 1; margin-top: 18px;
-  border: 1px solid var(--line-2); border-radius: var(--r);
-  background: linear-gradient(180deg, rgba(243,231,210,.055), rgba(243,231,210,.02));
-  box-shadow: var(--shadow), inset 0 1px 0 rgba(243,231,210,.06);
-  padding: 18px 22px; min-height: 116px;
+  position: relative; z-index: 2; margin: 0 30px;
+  border: 1px solid #6b4f2b; border-radius: 6px;
+  background: linear-gradient(180deg, rgba(38,26,16,.93), rgba(24,16,10,.95));
+  box-shadow:
+    0 -1px 0 rgba(217,164,65,.18) inset,
+    0 0 0 3px rgba(10,7,4,.7),
+    0 24px 50px -22px rgba(0,0,0,.85);
+  padding: 20px 26px;
+  min-height: 118px;
 }
-.dialogue__scene {
-  margin: 0 0 8px; font-family: var(--serif); font-style: italic;
-  color: var(--parch-dim); font-size: .92rem; line-height: 1.5;
+.dialogue::before {                 /* thin inner gold keyline */
+  content: ""; position: absolute; inset: 5px; border: 1px solid rgba(217,164,65,.28); border-radius: 3px; pointer-events: none;
 }
+.dialogue__scene { margin: 0 0 8px; font-family: var(--serif); font-style: italic; color: var(--parch-dim); font-size: 1.08rem; line-height: 1.45; }
 .dialogue__scene:empty { display: none; }
 .dialogue__reply {
-  margin: 0; font-family: var(--serif); font-size: 1.28rem; line-height: 1.5; color: var(--parch);
-  text-wrap: balance;
+  margin: 0; font-family: var(--serif); font-weight: 500; font-size: 1.55rem; line-height: 1.42; color: var(--parch); text-wrap: pretty;
 }
-.dialogue__reply::first-letter { color: var(--ember-hi); }
+.dialogue__reply .caret { color: var(--ember-hi); font-weight: 400; animation: blink 1s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+.dialogue__reply::first-letter { color: var(--ember-hi); font-weight: 700; }
 .dialogue__reply:empty::before {
   content: "The rain taps the shutters. She waits for you to speak.";
   color: var(--parch-mut); font-style: italic; font-size: 1rem;
 }
-.dialogue__watch {
-  margin: 12px 0 0; font-size: .8rem; color: var(--gold);
-  padding-left: 20px; position: relative;
-}
+.dialogue__watch { margin: 12px 0 0; font-size: .8rem; color: var(--gold); padding-left: 20px; position: relative; }
 .dialogue__watch:empty { display: none; }
 .dialogue__watch::before {
-  content: ""; position: absolute; left: 0; top: .45em; width: 11px; height: 11px;
+  content: ""; position: absolute; left: 0; top: .4em; width: 12px; height: 12px;
   background: var(--gold); mask: var(--eye) center / contain no-repeat; -webkit-mask: var(--eye) center / contain no-repeat;
 }
 
-/* choices + free text */
-.choicebar { position: relative; z-index: 1; margin-top: 16px; }
-.choices { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+/* choices: an RPG command list with a gold pointer */
+.choicebar { position: relative; z-index: 2; margin: 12px 30px 0; }
+.choices { display: flex; flex-direction: column; gap: 7px; margin-bottom: 12px; }
 .choice {
-  text-align: left; font: inherit; color: var(--parch); cursor: pointer;
-  border: 1px solid var(--line-2); border-radius: var(--r-sm);
-  background: linear-gradient(180deg, rgba(39,31,24,.7), rgba(29,24,19,.5));
-  padding: 11px 15px 11px 40px; position: relative;
-  transition: border-color .16s, transform .16s, background .16s;
+  text-align: left; font: inherit; font-size: .96rem; color: var(--parch-dim); cursor: pointer;
+  border: 1px solid #4a3823; border-radius: 5px;
+  background: linear-gradient(180deg, rgba(40,28,17,.82), rgba(28,19,11,.7));
+  padding: 11px 15px 11px 42px; position: relative;
+  transition: border-color .16s, color .16s, padding-left .16s, background .16s;
 }
-.choice::before {
-  content: ""; position: absolute; left: 15px; top: 50%; transform: translateY(-50%);
-  width: 8px; height: 8px; border-radius: 50%; background: var(--line-2);
-  transition: background .16s, box-shadow .16s;
+.choice::before {                   /* the pointer, a small ember chevron */
+  content: ""; position: absolute; left: 15px; top: 50%; transform: translateY(-50%) scale(.6);
+  width: 12px; height: 12px; opacity: 0;
+  background: var(--ember-hi); mask: var(--chev) center / contain no-repeat; -webkit-mask: var(--chev) center / contain no-repeat;
+  transition: opacity .16s, transform .16s;
 }
-.choice:hover {
-  border-color: var(--ember-lo); transform: translateX(3px);
-  background: linear-gradient(180deg, rgba(60,42,26,.7), rgba(39,31,24,.55));
+.choice:hover, .choice:focus-visible {
+  color: var(--parch); border-color: var(--gold); padding-left: 46px;
+  background: linear-gradient(180deg, rgba(60,42,24,.85), rgba(40,28,17,.72));
+  outline: none;
 }
-.choice:hover::before { background: var(--ember); box-shadow: 0 0 10px 0 rgba(234,88,12,.7); }
-.choice:focus-visible { outline: 2px solid var(--ember-hi); outline-offset: 2px; }
+.choice:hover::before, .choice:focus-visible::before { opacity: 1; transform: translateY(-50%) scale(1); }
 
 .say { display: flex; gap: 8px; }
 .say input {
   flex: 1; font: inherit; color: var(--parch); caret-color: var(--ember-hi);
-  background: rgba(20,17,14,.7); border: 1px solid var(--line-2); border-radius: var(--r-sm);
-  padding: 11px 15px;
+  background: rgba(18,12,8,.8); border: 1px solid #4a3823; border-radius: 5px; padding: 11px 15px;
 }
 .say input::placeholder { color: var(--parch-mut); }
-.say input:focus { outline: none; border-color: var(--ember); box-shadow: 0 0 0 3px rgba(234,88,12,.2); }
+.say input:focus { outline: none; border-color: var(--gold); box-shadow: 0 0 0 3px rgba(217,164,65,.18); }
 .say__go {
-  display: grid; place-items: center; width: 46px; border-radius: var(--r-sm); cursor: pointer;
-  color: var(--ink); border: 1px solid var(--ember-lo);
+  display: grid; place-items: center; width: 48px; border-radius: 5px; cursor: pointer; color: var(--ink);
+  border: 1px solid var(--ember-lo);
   background: linear-gradient(180deg, var(--ember-hi), var(--ember));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.3), 0 6px 14px -8px rgba(234,88,12,.8);
   transition: filter .16s, transform .1s;
 }
 .say__go:hover { filter: brightness(1.08); }
 .say__go:active { transform: translateY(1px); }
 .say__go:focus-visible { outline: 2px solid var(--ember-hi); outline-offset: 2px; }
 
-.stagefoot { display: flex; justify-content: space-between; align-items: center; margin-top: 14px; }
+.stagefoot { display: flex; justify-content: space-between; align-items: center; margin: 10px 30px 8px; }
 .progress { font-family: var(--mono); font-size: .72rem; color: var(--parch-mut); font-variant-numeric: tabular-nums; }
 .reset {
   font: inherit; font-size: .78rem; color: var(--parch-dim); cursor: pointer;
-  background: none; border: 1px solid var(--line); border-radius: 999px; padding: 5px 13px;
+  background: none; border: 1px solid #4a3823; border-radius: 999px; padding: 5px 14px;
   transition: color .16s, border-color .16s;
 }
-.reset:hover { color: var(--parch); border-color: var(--line-2); }
+.reset:hover { color: var(--parch); border-color: var(--gold); }
+
 
 /* ------------------------------------------------------------------- inspector */
 
@@ -280,8 +354,9 @@ body {
   overflow-y: auto; max-height: calc(100vh - 62px);
 }
 .panel { padding: 24px 24px 32px; animation: rise .32s cubic-bezier(.16,.84,.3,1) both; }
-@keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
-.panel__title { margin: 0 0 4px; font-size: 1.25rem; font-weight: 700; letter-spacing: -.01em; }
+/* transform-only: a frozen (backgrounded) tab must never leave a panel invisible */
+@keyframes rise { from { transform: translateY(10px); } to { transform: none; } }
+.panel__title { margin: 0 0 4px; font-family: var(--display); font-size: 1.2rem; font-weight: 700; letter-spacing: .03em; color: var(--parch); }
 .panel__hint { margin: 0 0 20px; font-size: .84rem; color: var(--parch-mut); line-height: 1.5; max-width: 42ch; }
 
 /* memory cards */
@@ -372,8 +447,9 @@ body {
 
 @media (max-width: 940px) {
   .stage-grid { grid-template-columns: 1fr; }
+  .stage { height: 86vh; min-height: 520px; }  /* absolute cast needs a definite height */
   .inspector { border-left: none; border-top: 1px solid var(--line); max-height: none; }
-  .portrait--dawn { height: min(46vh, 400px); }
+  .portrait--dawn img { max-width: 62vw; }
   .provenance { display: none; }
   .tabs { justify-self: start; }
 }
@@ -388,8 +464,77 @@ body {
 @media (prefers-reduced-motion: reduce) {
   *, *::before { animation: none !important; transition: none !important; }
 }
+:root.no-motion *, :root.no-motion *::before, :root.no-motion *::after {
+  animation: none !important; transition: none !important;
+}
+
+/* ------------------------------------------------------------------ mood circumplex */
+
+.circumplex-wrap { display: grid; grid-template-columns: auto 1fr; gap: 18px; align-items: center; margin-bottom: 24px; }
+.circumplex { position: relative; width: 168px; height: 168px; flex: none; }
+.circumplex svg { width: 100%; height: 100%; overflow: visible; }
+.circumplex__axis { stroke: var(--line-2); stroke-width: 1; }
+.circumplex__ring { fill: none; stroke: var(--line); stroke-width: 1; }
+.circumplex__label { fill: var(--parch-mut); font-family: var(--mono); font-size: 8px; }
+.circumplex__before { fill: rgba(243,231,210,.5); }
+.circumplex__after { stroke: #14110e; stroke-width: 1.5; }
+.circumplex__track { stroke: var(--ember-hi); stroke-width: 1.5; stroke-dasharray: 3 3; opacity: .7; }
+.circumplex__legend { font-size: .8rem; color: var(--parch-mut); line-height: 1.7; }
+.circumplex__legend b { color: var(--parch-dim); font-weight: 600; }
+.circumplex__legend .swatch { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+
+/* ------------------------------------------------------------------------- the modal */
+
+.modal { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 24px; }
+.modal[hidden] { display: none; }
+.modal__scrim { position: absolute; inset: 0; background: rgba(8,5,3,.72); backdrop-filter: blur(3px); animation: fade .2s ease both; }
+.modal__panel {
+  position: relative; width: min(560px, 100%); max-height: 88vh; overflow-y: auto;
+  background: linear-gradient(180deg, var(--ink-2), var(--ink));
+  border: 1px solid #6b4f2b; border-radius: 12px;
+  box-shadow: 0 0 0 3px rgba(10,7,4,.7), 0 40px 90px -30px rgba(0,0,0,.9);
+  padding: 26px 28px 30px; animation: rise .28s cubic-bezier(.16,.84,.3,1) both;
+}
+.modal__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+.modal__head h2 { margin: 0; font-family: var(--display); font-weight: 700; font-size: 1.4rem; letter-spacing: .04em; color: var(--gold); }
+.modal__x { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 8px; cursor: pointer; color: var(--parch-mut); background: none; border: 1px solid var(--line); }
+.modal__x:hover { color: var(--parch); border-color: var(--gold); }
+.modal__section { padding: 16px 0; border-top: 1px solid var(--line); }
+.modal__section:first-of-type { border-top: none; padding-top: 0; }
+.modal__section h3 { margin: 0 0 10px; font-family: var(--display); font-size: 1rem; letter-spacing: .03em; color: var(--parch); }
+.modal__section p { margin: 0 0 10px; font-size: .92rem; line-height: 1.55; color: var(--parch-dim); }
+.modal__hint { font-size: .84rem !important; color: var(--parch-mut) !important; }
+.modal__tabs { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 8px 14px; }
+.modal__tabs dt { font-weight: 600; color: var(--gold); font-size: .88rem; }
+.modal__tabs dd { margin: 0; font-size: .88rem; color: var(--parch-dim); line-height: 1.45; }
+
+.field { display: flex; align-items: center; gap: 12px; }
+.field label { font-size: .9rem; color: var(--parch-dim); }
+.field select {
+  flex: 1; font: inherit; font-size: .9rem; color: var(--parch); cursor: pointer;
+  background: rgba(18,12,8,.8); border: 1px solid #4a3823; border-radius: 6px; padding: 9px 12px;
+}
+.field select:focus { outline: none; border-color: var(--gold); box-shadow: 0 0 0 3px rgba(217,164,65,.18); }
+.model-status { margin: 10px 0 0; font-family: var(--mono); font-size: .78rem; min-height: 1.2em; }
+.model-status.ok { color: var(--ok); } .model-status.bad { color: var(--bad); } .model-status.busy { color: var(--warn); }
+
+.toggle { display: flex; align-items: center; gap: 10px; padding: 7px 0; font-size: .92rem; color: var(--parch-dim); cursor: pointer; }
+.toggle input { width: 18px; height: 18px; accent-color: var(--ember); cursor: pointer; }
+
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+
+/* choice stagger-in: transform-only so the content is visible even if the animation never
+   advances (a backgrounded tab freezes the compositor); the slide is pure enhancement. */
+.choice { animation: choicein .34s cubic-bezier(.16,.84,.3,1) both; animation-delay: var(--i, 0ms); }
+@keyframes choicein { from { transform: translateX(-12px); } to { transform: none; } }
+
+/* portrait crossfade when Dawn's expression changes */
+.portrait--dawn img.swapping { opacity: 0; transform: translateY(6px); }
 
 /* icon masks (drawn, not emoji) */
 :root {
   --eye: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="black" d="M12 5C6 5 2 12 2 12s4 7 10 7 10-7 10-7-4-7-10-7zm0 11a4 4 0 110-8 4 4 0 010 8z"/></svg>');
+  --chev: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path fill="black" d="M8 4l10 8-10 8z"/></svg>');
+  /* fine wood grain, a self-contained fractal-noise texture so the walls are not flat fills */
+  --grain: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="220" height="220"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.9 0.012" numOctaves="2" seed="7"/><feColorMatrix type="saturate" values="0"/></filter><rect width="220" height="220" filter="url(%23n)" opacity="0.5"/></svg>');
 }

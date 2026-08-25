@@ -138,3 +138,44 @@ def test_the_api_drives_a_turn(server) -> None:
         snapshot = json.loads(r.read())
     assert snapshot["stage"]["reply"]  # a turn was played and a reply came back
     assert snapshot["tabs"]["state"]["available"] is True
+
+
+# --------------------------------------------------------------------- the model loader
+
+
+def test_the_snapshot_offers_stub_and_never_offers_ouro() -> None:
+    """The web model loader is CPU-only: stub plus local Ollama, never the GPU model."""
+    models = GameSession().available_models()
+    ids = [m["id"] for m in models]
+    assert "stub" in ids
+    assert any(m["id"] == "stub" and m["ready"] for m in models)
+    assert not any("ouro" in i.lower() for i in ids)  # Ouro is a GPU job; not exposed here
+
+
+def test_set_model_to_stub_is_always_ok() -> None:
+    g = GameSession()
+    status = g.set_model("stub")
+    assert status["ok"] is True
+    assert status["model"] == "stub"
+
+
+def test_set_model_reports_failure_without_breaking_the_session(monkeypatch) -> None:
+    """An unreachable Ollama leaves the stub in place and says so, rather than crashing."""
+    from embr.model import ModelUnavailableError, OllamaRunner
+
+    def _boom(self, prompt):
+        raise ModelUnavailableError("no daemon")
+
+    monkeypatch.setattr(OllamaRunner, "generate", _boom)
+    g = GameSession()
+    status = g.set_model("ollama:llama3.2:3b")
+    assert status["ok"] is False
+    assert "no daemon" in status["error"]
+    # the session still runs a turn on the stub it fell back to
+    g.step()
+    assert g.snapshot()["stage"]["reply"]
+
+
+def test_an_unknown_model_is_rejected() -> None:
+    status = GameSession().set_model("gpt-9")
+    assert status["ok"] is False

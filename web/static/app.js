@@ -20,6 +20,9 @@ function affectColor(valence) {
 const emberRamp = (t) => `color-mix(in oklab, var(--ember) ${Math.round(20 + Math.max(0, Math.min(1, t)) * 80)}%, var(--ink-3))`;
 
 let latest = null;
+const settings = { motion: true, typewriter: true, music: false };
+const prefersMotion = () => settings.motion &&
+  !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 async function api(path, body) {
   const res = await fetch(path, body
@@ -31,22 +34,58 @@ async function api(path, body) {
 
 /* ------------------------------------------------------------------ the stage */
 
+let typeTimer = null;
+
+function setPortrait(name) {
+  const img = $("#dawn-img");
+  const next = `/portraits/${name}.png`;
+  if (img.dataset.portrait === name) return;
+  img.dataset.portrait = name;
+  // crossfade: fade out, swap, fade in (unless motion is off)
+  if (prefersMotion()) {
+    img.classList.add("swapping");
+    setTimeout(() => {
+      img.src = next;
+      img.alt = `Dawn Whitmore (${name.replace("dawn-", "")})`;
+      requestAnimationFrame(() => img.classList.remove("swapping"));
+    }, 220);
+  } else {
+    img.src = next;
+    img.alt = `Dawn Whitmore (${name.replace("dawn-", "")})`;
+  }
+}
+
+function typewrite(node, text) {
+  if (typeTimer) { clearInterval(typeTimer); typeTimer = null; }
+  if (!text) { node.textContent = ""; return; }
+  if (!prefersMotion() || !settings.typewriter) { node.textContent = text; return; }
+  node.textContent = "";
+  const caret = el("span", "caret", "▏");
+  node.appendChild(caret);
+  let i = 0;
+  typeTimer = setInterval(() => {
+    i += 2;
+    caret.before(text.slice(i - 2, i));
+    if (i >= text.length) { clearInterval(typeTimer); typeTimer = null; caret.remove(); }
+  }, 16);
+}
+
 function renderStage(s) {
   const stage = s.stage;
-  $("#dawn-img").src = `/portraits/${stage.portrait}.png`;
-  $("#dawn-img").alt = `Dawn Whitmore (${stage.portrait.replace("dawn-", "")})`;
+  setPortrait(stage.portrait);
   $("#scene").textContent = stage.narration || "";
-  $("#reply").textContent = stage.reply || "";
+  typewrite($("#reply"), stage.reply || "");
   $("#watch").textContent = stage.watch_for || "";
 
   const choices = $("#choices");
   choices.replaceChildren();
-  for (const line of s.choices) {
+  s.choices.forEach((line, idx) => {
     const b = el("button", "choice", line);
     b.type = "button";
+    b.style.setProperty("--i", `${idx * 60}ms`);
     b.addEventListener("click", () => say(line));
     choices.appendChild(b);
-  }
+  });
 
   const p = s.progress;
   $("#progress").textContent = p.finished
@@ -62,6 +101,11 @@ function renderStage(s) {
 function renderMemories(t) {
   const root = $("#memories");
   root.replaceChildren();
+  if (!t.cards.length) {
+    root.appendChild(emptyNote(
+      "Her store is empty until the arc writes to it. Play a line and the memory it creates appears here, scored."));
+    return;
+  }
   for (const c of t.cards) {
     const lit = c.rank != null;
     const card = el("div", `mcard ${lit ? "is-lit" : "is-dim"}`);
@@ -128,6 +172,37 @@ function gauge(name, before, after, lo, hi, bipolar) {
   return wrap;
 }
 
+function circumplex(before, after) {
+  // A Russell circumplex: x = valence [-1,1], y = arousal [0,1] mapped to the upper half.
+  const NS = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(NS, "svg");
+  svg.setAttribute("viewBox", "0 0 100 100");
+  const cx = 50, x = (v) => 50 + v * 44, y = (a) => 92 - a * 84;
+  const mk = (tag, attrs) => { const n = document.createElementNS(NS, tag); for (const k in attrs) n.setAttribute(k, attrs[k]); return n; };
+  svg.append(
+    mk("circle", { cx: 50, cy: 50, r: 46, class: "circumplex__ring" }),
+    mk("line", { x1: 4, y1: 50, x2: 96, y2: 50, class: "circumplex__axis" }),
+    mk("line", { x1: 50, y1: 4, x2: 50, y2: 96, class: "circumplex__axis" }),
+  );
+  const labels = [["calm", 50, 99], ["intense", 50, 6], ["cold", 8, 53], ["warm", 92, 53]];
+  for (const [txt, lx, ly] of labels) {
+    const t = mk("text", { x: lx, y: ly, class: "circumplex__label", "text-anchor": "middle" });
+    t.textContent = txt; svg.append(t);
+  }
+  // track from before to after, then the two points
+  svg.append(mk("line", { x1: x(before.valence), y1: y(before.arousal), x2: x(after.valence), y2: y(after.arousal), class: "circumplex__track" }));
+  svg.append(mk("circle", { cx: x(before.valence), cy: y(before.arousal), r: 3.5, class: "circumplex__before" }));
+  const pt = mk("circle", { cx: x(before.valence), cy: y(before.arousal), r: 5, class: "circumplex__after" });
+  pt.style.fill = affectColor(after.valence);
+  svg.append(pt);
+  // animate the after-point along the track
+  if (prefersMotion()) {
+    pt.animate([{ cx: x(before.valence), cy: y(before.arousal) }, { cx: x(after.valence), cy: y(after.arousal) }],
+      { duration: 520, easing: "cubic-bezier(.16,.84,.3,1)", fill: "forwards" });
+  } else { pt.setAttribute("cx", x(after.valence)); pt.setAttribute("cy", y(after.arousal)); }
+  return svg;
+}
+
 function renderState(t) {
   const root = $("#state");
   root.replaceChildren();
@@ -135,8 +210,16 @@ function renderState(t) {
     root.appendChild(emptyNote("Play a line and this turn's appraisal appears here, before and after."));
     return;
   }
-  root.appendChild(gauge("Mood · valence", t.mood_before.valence, t.mood_after.valence, -1, 1, true));
-  root.appendChild(gauge("Mood · arousal", t.mood_before.arousal, t.mood_after.arousal, 0, 1, false));
+  const wrap = el("div", "circumplex-wrap");
+  const plot = el("div", "circumplex");
+  plot.appendChild(circumplex(t.mood_before, t.mood_after));
+  const legend = el("div", "circumplex__legend");
+  legend.innerHTML =
+    `<div><span class="swatch" style="background:rgba(243,231,210,.5)"></span><b>before</b> the turn</div>` +
+    `<div><span class="swatch" style="background:${affectColor(t.mood_after.valence)}"></span><b>after</b> the appraisal</div>` +
+    `<div style="margin-top:8px">Her mood is a point on Russell's circumplex: left to right is cold to warm, low to high is calm to intense.</div>`;
+  wrap.append(plot, legend);
+  root.appendChild(wrap);
   root.appendChild(gauge("Trust", t.trust_before, t.trust_after, -1, 1, true));
 }
 
@@ -257,11 +340,123 @@ function renderRun(t) {
 
 function emptyNote(text) { return el("p", "panel__hint", text); }
 
+/* ---------------------------------------------------------- ambient (Web Audio) */
+/* A tavern hearth, synthesised so it needs no audio file and works offline: a warm filtered
+   drone, a slow low swell, and occasional fire crackles. Opt-in; browsers block autoplay. */
+const Ambience = (() => {
+  let ctx = null, nodes = [], crackleTimer = null, on = false;
+  function start() {
+    if (on) return;
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    ctx = new AC();
+    const master = ctx.createGain(); master.gain.value = 0; master.connect(ctx.destination);
+    master.gain.linearRampToValueAtTime(0.18, ctx.currentTime + 2);
+
+    // a warm two-note drone through a low-pass, gently detuned for movement
+    const filter = ctx.createBiquadFilter(); filter.type = "lowpass"; filter.frequency.value = 320; filter.Q.value = 0.7;
+    filter.connect(master);
+    for (const freq of [82.4, 123.5]) {
+      const o = ctx.createOscillator(); o.type = "sawtooth"; o.frequency.value = freq;
+      const g = ctx.createGain(); g.gain.value = 0.12;
+      const lfo = ctx.createOscillator(); lfo.frequency.value = 0.07 + Math.random() * 0.05;
+      const lfog = ctx.createGain(); lfog.gain.value = 0.04;
+      lfo.connect(lfog); lfog.connect(g.gain);
+      o.connect(g); g.connect(filter); o.start(); lfo.start();
+      nodes.push(o, lfo);
+    }
+    // a filtered-noise bed, the room tone
+    const buffer = ctx.createBuffer(1, ctx.sampleRate * 2, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * 0.5;
+    const noise = ctx.createBufferSource(); noise.buffer = buffer; noise.loop = true;
+    const nf = ctx.createBiquadFilter(); nf.type = "bandpass"; nf.frequency.value = 500; nf.Q.value = 0.6;
+    const ng = ctx.createGain(); ng.gain.value = 0.05;
+    noise.connect(nf); nf.connect(ng); ng.connect(master); noise.start(); nodes.push(noise);
+
+    // fire crackles: short bursts at random intervals
+    const crackle = () => {
+      if (!ctx) return;
+      const b = ctx.createBuffer(1, ctx.sampleRate * 0.08, ctx.sampleRate);
+      const d = b.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 3);
+      const src = ctx.createBufferSource(); src.buffer = b;
+      const g = ctx.createGain(); g.gain.value = 0.06 + Math.random() * 0.08;
+      const f = ctx.createBiquadFilter(); f.type = "highpass"; f.frequency.value = 1600;
+      src.connect(f); f.connect(g); g.connect(master); src.start();
+      crackleTimer = setTimeout(crackle, 400 + Math.random() * 2600);
+    };
+    crackle();
+    on = true;
+  }
+  function stop() {
+    if (!on) return;
+    clearTimeout(crackleTimer);
+    for (const n of nodes) { try { n.stop(); } catch (e) {} }
+    nodes = [];
+    if (ctx) { const c = ctx; ctx = null; setTimeout(() => c.close(), 300); }
+    on = false;
+  }
+  return { toggle: (want) => { want ? start() : stop(); }, get on() { return on; } };
+})();
+
+function setMusic(want) {
+  settings.music = want;
+  Ambience.toggle(want);
+  const btn = $("#music-btn"); const box = $("#music-toggle");
+  if (btn) btn.setAttribute("aria-pressed", String(want));
+  if (box) box.checked = want;
+}
+
+/* ------------------------------------------------------------------- the model */
+
+function renderModelOptions(s) {
+  const sel = $("#model-select");
+  if (!s.settings) return;
+  if (!sel || sel.dataset.built) {
+    if (sel) sel.value = currentModelId(s);
+    return;
+  }
+  sel.replaceChildren();
+  for (const m of s.settings.available) {
+    const o = el("option", null, m.ready ? m.label : `${m.label} — not running`);
+    o.value = m.id; o.disabled = !m.ready && m.id !== "stub";
+    sel.appendChild(o);
+  }
+  sel.value = currentModelId(s);
+  sel.dataset.built = "1";
+}
+
+function currentModelId(s) {
+  const label = s.settings.model;
+  if (label.startsWith("stub")) return "stub";
+  const match = s.settings.available.find((m) => m.label.includes(label.split(" ")[0]));
+  return match ? match.id : "stub";
+}
+
+async function switchModel(id) {
+  const status = $("#model-status");
+  status.className = "model-status busy";
+  status.textContent = id === "stub" ? "Switching to the stub…" : "Waking the model, this can take a moment…";
+  try {
+    const res = await api("/api/model", { model: id });
+    if (res.status.ok) { status.className = "model-status ok"; status.textContent = `Now replying with ${res.status.model}.`; }
+    else { status.className = "model-status bad"; status.textContent = res.status.error || "Could not switch model."; $("#model-select").value = "stub"; }
+    render(res);
+  } catch (e) { status.className = "model-status bad"; status.textContent = "The server did not answer."; }
+}
+
+/* -------------------------------------------------------------------- the modal */
+
+function openModal() { $("#modal").hidden = false; }
+function closeModal() { $("#modal").hidden = true; }
+
 /* ------------------------------------------------------------------- wiring */
 
 function render(s) {
   latest = s;
   renderStage(s);
+  renderModelOptions(s);
   renderMemories(s.tabs.memories);
   renderState(s.tabs.state);
   renderAttribution(s.tabs.attribution);
@@ -282,6 +477,10 @@ async function say(text) {
   catch (e) { console.error(e); }
 }
 
+function applyMotion() {
+  document.documentElement.classList.toggle("no-motion", !settings.motion);
+}
+
 function init() {
   for (const tab of document.querySelectorAll(".tab"))
     tab.addEventListener("click", () => selectTab(tab.dataset.goto));
@@ -294,7 +493,25 @@ function init() {
     await say(text);
   });
   $("#reset").addEventListener("click", async () => { render(await api("/api/reset", {})); });
+
+  // modal open/close
+  $("#menu-btn").addEventListener("click", openModal);
+  for (const c of document.querySelectorAll("[data-close]")) c.addEventListener("click", closeModal);
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeModal(); });
+
+  // music
+  $("#music-btn").addEventListener("click", () => setMusic(!settings.music));
+  $("#music-toggle").addEventListener("change", (e) => setMusic(e.target.checked));
+
+  // motion + typewriter toggles
+  $("#motion-toggle").addEventListener("change", (e) => { settings.motion = e.target.checked; applyMotion(); });
+  $("#type-toggle").addEventListener("change", (e) => { settings.typewriter = e.target.checked; });
+
+  // model selector
+  $("#model-select").addEventListener("change", (e) => switchModel(e.target.value));
+
   selectTab("memories");
+  applyMotion();
   api("/api/snapshot").then(render).catch((e) => {
     $("#reply").textContent = "The server is not answering. Start it with: python -m web.server";
     console.error(e);

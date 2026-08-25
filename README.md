@@ -7,7 +7,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/python-3.10+-4584b6?style=flat-square&logo=python&logoColor=white" alt="Python 3.10+">
   <img src="https://img.shields.io/badge/core-zero%20dependencies-ea580c?style=flat-square" alt="Zero dependencies">
-  <img src="https://img.shields.io/badge/tests-479%20passing-22c55e?style=flat-square" alt="479 tests">
+  <img src="https://img.shields.io/badge/tests-485%20passing-22c55e?style=flat-square" alt="485 tests">
   <img src="https://img.shields.io/badge/runs-byte%20identical-22c55e?style=flat-square" alt="Reproducible">
   <img src="https://img.shields.io/badge/models-Ouro%201.4B%20%C2%B7%20llama3.2%3A3b-1e1e22?style=flat-square" alt="Models">
   <img src="https://img.shields.io/badge/GPU-optional-9a9a9a?style=flat-square" alt="GPU optional">
@@ -374,7 +374,7 @@ EMBR/
 ├── web/                  # the visual-novel web demo (server, bridge, static UI)
 ├── assets/               # hand-authored: branding, portraits, the diagram, every builder
 ├── docs/                 # findings, metrics, design, roadmap, related work, handoff
-├── tests/                # 479 tests
+├── tests/                # 485 tests
 └── data/                 # generated: runs, figures, tables, ratings, judgements
 ```
 
