@@ -197,13 +197,44 @@ version and sha256, model label, tone rater, reference time, and the pinned Ouro
 
 ---
 
-## 8. Still open
+## 8. The demo suite
 
-- **Not yet wired into the menu.** Three options are planned: the batch run, a live cite view
-  that shades each memory line by weight, and a detection-versus-prevention comparison against
-  the anchored-scoring-mass sweep. The HTML surface (`assets/demo/cite.html`) replays
-  attributions from a run; JavaScript cannot run the model, so the page must say it replays
-  rather than recomputes.
+Five terminal demos, in `demos.py` beside `menu.py` (not in `embr/`, which must never import
+the eval harness), menu rows 14 to 19. **Every one runs end to end on the stub, CPU only, and
+never launches a model.** The through-line is the six-source highlighting: each source shaded
+on the ember ramp by its exact Banzhaf weight, the near-zero guard rendering a warning in place
+of highlighting whenever the model barely used its context.
+
+1. **Reckoning reveal** (default). Plays the arc to the reckoning beat on the stub, freezes,
+   and attributes the frozen turn's sources under both estimators side by side. On the stub the
+   behavioural estimator is legitimately inert (the echo reply does not move), so the guard
+   fires there and the point is made honestly; a cached real-model reading is shown beside it.
+2. **Mood slider.** One line under warm, neutral and suspicious, with the retrieved set
+   changing, the Jaccard shift as a number, the reply's rated tone, and the attribution
+   re-flowing across the six sources.
+3. **Defence dial.** The anchor-weight dose-response from `eval/provenance.py`, poison falling
+   to 0/10, then the hostile-anchor column snapping back to 10/10.
+4. **Tag-flip close-up.** One memory, its affect tag flipped, the retrieval rank moving while
+   the words do not; repeated with the opposite words to show direction-blindness.
+5. **Estimator divergence.** The probe where likelihood and behaviour most disagree, as paired
+   bars. Cached-only, because it needs the behavioural arm, which is a GPU job the demo never
+   launches; it degrades to an instruction when only one arm is cached.
+
+**The caching rule.** A demo prefers cached real-model output under `data/runs/<stamp>/` when
+present, computes live on the stub otherwise, and explains itself and returns if neither is
+available. It never blocks free play and never calls a model. Every demo screen names the run
+stamp and model behind its numbers, so a stub number can never be read as a real-model one.
+
+**Recording.** `python demos.py --record` (menu row 19) walks demos 1 to 4 in order with
+capture-ready output for a two-to-three-minute screen recording: arc, reveal, slider, dial.
+Demo 5 is left out because it is cached-only and may have nothing to show.
+
+**Not Rich, and not `embr/`.** The task brief named Rich and `embr/demos.py`; the repo has no
+Rich (the menu and harness are stdlib-only by design) and `embr/` may not import the harness,
+so the demos use the menu's own ember ANSI palette and live at the repo root beside it.
+
+## 9. Still open
+
 - **No `findings.md` section yet.** Nothing goes there until a run on a real model exists.
 - **The behavioural estimator over the full cube is 64 generations per probe**, so 1280 per
   arm. Affordable on llama3.2:3b, expensive on Ouro, whose known latency problem is a decode
@@ -212,6 +243,26 @@ version and sha256, model label, tone rater, reference time, and the pinned Ouro
 - **A llama arm for the likelihood estimator** needs a transformers runner, since Ollama cannot
   score. Only worth building if the Ouro likelihood result is null, which would leave the
   measurement ambiguous between the method and the model.
+
+## 10. The v2 defence finding, stated precisely
+
+The 2026 attack classes (`eval/attacks_v2.py`, a second corpus that leaves the pre-registered
+twenty untouched) each test the defence at a different edge, and the laundering result is the
+sharp one:
+
+**Under the defended posture, the defence is a composition, not a single term.** Provenance
+anchoring alone does not stop a laundered poison: when an external memory is consolidated with
+a trusted one and the summary is naively stamped system-written, the poison passes the anchor,
+**3/5** laundered probes reaching the top 5 at anchor weight 8. Taint-inheriting consolidation,
+where the summary is no more trusted than its least trusted input, stops all of them, **0/5**.
+So the shipped defence is **provenance anchoring plus taint-inheriting consolidation**, and
+both parts must be named wherever it is described. The anchor decides what a fresh external
+write is worth; the consolidation rule decides that laundering cannot upgrade it.
+
+The dormant class is reported as a curve, not a headline. Across the pre-registered backdate
+range (H5), an out-of-band plant is quiet at write time in 4 of 5, and exactly one probe is
+both quiet and woken by a legitimate trigger, at a single backdate. Reported as demonstrated at
+that point, with the whole curve shown and nothing tuned to make it fire.
 
 ## Phase numbering
 

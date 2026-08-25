@@ -569,7 +569,7 @@ def _readings_payload(readings: Sequence[ProbeAttribution]) -> list[dict[str, An
 
 def write_run(
     readings: Sequence[ProbeAttribution],
-    out_root: str | Path = "data/runs",
+    out_root: str | Path = "data/runs/attribution",
     model_factory: Callable[[], Any] = StubRunner,
     estimator: str = "likelihood",
     exhaustive: bool = True,
@@ -664,7 +664,9 @@ def main() -> None:
         help="score only the d+1 leave-one-out masks. Banzhaf values are not reported, "
         "because they are not computable from a partial cube.",
     )
-    parser.add_argument("--out", default="data/runs")
+    # A subtree of its own, so an attribution run is never mistaken for an eval run
+    # by the asset builders and menu, which scan data/runs/*/results.json one level deep.
+    parser.add_argument("--out", default="data/runs/attribution")
     parser.add_argument(
         "--limit",
         type=int,

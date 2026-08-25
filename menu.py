@@ -84,6 +84,12 @@ _MENU_ITEMS = [
     ("11", "Generate Paper Assets", "figures, tables and the results page, from the run"),
     ("12", "Interactive Demo", "the node brain, flat and in 3D: press play, then drive"),
     ("13", "Latest Results", "summarise the newest run directory"),
+    ("14", "Reckoning Reveal", "six sources shaded by exact Banzhaf weight, both estimators"),
+    ("15", "Mood Slider", "one line, three moods: retrieval, tone and attribution re-flow"),
+    ("16", "Defence Dial", "anchor weight vs poisoning, with its failure condition"),
+    ("17", "Tag-Flip Close-Up", "flip an affect tag: the words never change, the rank does"),
+    ("18", "Estimator Divergence", "where likelihood and behaviour disagree (needs both arms)"),
+    ("19", "Record Walk (1-4)", "capture-ready pass through the first four demos"),
     ("S", "Settings", "weights, top-k, backends, model runner"),
     ("L", "Fetch Tone Lexicon", "NRC VAD v2.1, research use, stays out of git"),
     ("D", "Delete All Data", "wipe runs, figures and tables, requires DELETE"),
@@ -96,6 +102,7 @@ _SECTIONS = [
     ("MEASURE", ("3", "4", "5", "6")),
     ("MECHANISM", ("7", "8", "9", "10")),
     ("PAPER", ("11", "12", "13")),
+    ("DEMO SUITE", ("14", "15", "16", "17", "18", "19")),
     ("SYSTEM", ("S", "L", "D", "C")),
 ]
 
@@ -505,6 +512,48 @@ def _do_demo() -> None:
         webbrowser.open(paths[0].resolve().as_uri())   # the flat diagram is the one to read
 
 
+def _do_reckoning_reveal() -> None:
+    """Demo 1: play to the reckoning and reveal the six sources by Banzhaf weight."""
+    from demos import demo_reckoning_reveal
+
+    demo_reckoning_reveal()
+
+
+def _do_mood_slider() -> None:
+    """Demo 2: one line under three moods, retrieval and tone and attribution re-flowing."""
+    from demos import demo_mood_slider
+
+    demo_mood_slider()
+
+
+def _do_defence_dial() -> None:
+    """Demo 3: the anchor-weight dose-response, and its failure on a hostile anchor."""
+    from demos import demo_defence_dial
+
+    demo_defence_dial()
+
+
+def _do_tag_flip() -> None:
+    """Demo 4: flip an affect tag and watch the rank move while the words do not."""
+    from demos import demo_tag_flip
+
+    demo_tag_flip()
+
+
+def _do_estimator_divergence() -> None:
+    """Demo 5: where likelihood and behavioural attribution disagree (cached-only)."""
+    from demos import demo_estimator_divergence
+
+    demo_estimator_divergence()
+
+
+def _do_record_walk() -> None:
+    """Walk demos 1 to 4 in order, capture-ready for a screen recording."""
+    from demos import run_record
+
+    run_record()
+
+
 def _do_latest_results() -> None:
     """Summarise the newest run without rerunning anything."""
     run_dir = _latest_run()
@@ -613,6 +662,12 @@ _ACTIONS: dict[str, Callable[[], None]] = {
     "11": _do_generate_assets,
     "12": _do_demo,
     "13": _do_latest_results,
+    "14": _do_reckoning_reveal,
+    "15": _do_mood_slider,
+    "16": _do_defence_dial,
+    "17": _do_tag_flip,
+    "18": _do_estimator_divergence,
+    "19": _do_record_walk,
     "S": _do_settings,
     "L": _do_fetch_lexicon,
     "D": _do_delete_run_data,

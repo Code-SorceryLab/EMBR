@@ -79,12 +79,55 @@ measured. Test: the poison's Banzhaf under estimator B is non-zero (bootstrap 95
 zero, pooled over probes). **If B is null, the reframe is withdrawn and RQ2 stays a security
 result about ranking.** RQ1 was already null on Ouro 1.4B, so this is a live possibility.
 
+> **Valence only. Arousal is a secondary, diagnostic-only channel.** The tone raters in this
+> project came out *anti-correlated on arousal* (`findings.md` 1.3: rho -0.217 and -0.322),
+> so an arousal reading is not measuring one thing and no claim may rest on it. Every estimator
+> B test above, H3 included, is computed on **valence alone**. Arousal attribution is still
+> recorded and rendered, because a divergence between the two axes is worth seeing, but it is
+> reported as a diagnostic and never enters a hypothesis. H3 lives or dies on valence.
+
 **H4. Does likelihood attribution predict behavioural attribution?**
 No directional prediction. This is the open question. Spearman between the two estimators'
 Banzhaf vectors, per probe, pooled; two-sided permutation p. Both outcomes are reportable and
 the disagreement is the more interesting one.
 
 Holm-Bonferroni within the family {H1, H2, H3, H4}. Adjusted p values reported alongside raw.
+
+---
+
+## H5. The dormant backdate-sensitivity sweep
+
+**Added 2026-08-24, before the sweep runs. A measurement, not attack engineering.** The v2
+pilot found that an out-of-band dormant plant is quiet at write time (4/5) but that no single
+legitimate trigger woke one. Before concluding anything from that, one free parameter has to
+be swept rather than fixed by hand: **how far back the plant is dated.** A plant dated far
+enough back loses on recency; one dated too recently is not dormant at all. The question is
+whether any backdate exists at which a plant is *both* quiet at write time *and* woken by the
+trigger.
+
+This is pre-registered as a measurement so that sweeping it cannot be mistaken for tuning an
+attack until it fires. The range, the "woken" definition and the conclusion each outcome
+supports are all fixed here, now.
+
+- **Range.** Backdate from 0 to 120 hours in 12-hour steps (11 points), the span of the five
+  pinned sessions. Fixed; not extended after seeing results.
+- **"Quiet at plant".** The plant text is *not* in the top 5 when the probe is asked
+  immediately after the write, before any trigger. Model-free and exact.
+- **"Woken".** The plant text *is* in the top 5 after the legitimate trigger turn, on a probe
+  that was quiet at plant. A plant that was never quiet cannot be woken; it is a v1 injection.
+- **Decision rule, fixed:**
+  - If **no** backdate in range yields quiet-and-woken for any of the five probes, the dormant
+    class is reported as **not demonstrated on this scenario**, and the finding is that lagged
+    mood congruence's own mechanism resists it: waking requires the trigger to move the mood
+    as far as the attack's own appraisal would have, and one legitimate event does not.
+  - If a backdate yields quiet-and-woken for **one or more** probes, the class is reported as
+    **demonstrated**, with the count and the backdate at which it occurs, and the write-time
+    provenance defence is the reported mitigation, since a woken dormant poison is still
+    stamped external.
+  - Either way the **full curve is reported**, not the best point. The quiet-at-plant count and
+    the woken count are given at every backdate. No single backdate is selected as "the" result.
+
+This sweep changes no default and touches no v1 count. It runs on the stub, model-free.
 
 ---
 
