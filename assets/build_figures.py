@@ -193,10 +193,16 @@ def latest_run_dir(runs_root: Path | str = "data/runs") -> Path:
     """The newest run directory under `runs_root`.
 
     Run stamps are `%Y%m%d-%H%M%S`, so lexical order is chronological order and `max` is
-    enough. No file timestamps are involved, which keeps this stable across copies.
+    enough. No file timestamps are involved, which keeps this stable across copies. Only
+    directories holding a results.json count: the attribution subtree also lives under
+    data/runs, sorts after every date stamp, and must never be mistaken for a run.
     """
     root = Path(runs_root)
-    candidates = [path for path in root.iterdir() if path.is_dir()] if root.is_dir() else []
+    candidates = (
+        [path for path in root.iterdir() if (path / "results.json").is_file()]
+        if root.is_dir()
+        else []
+    )
     if not candidates:
         raise FileNotFoundError(
             f"no run directories under {root}. Create one with `python -m eval.run`."

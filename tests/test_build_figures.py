@@ -37,6 +37,7 @@ from assets.build_figures import (
     divergence_rows,
     figure_footer_text,
     latency_rows,
+    latest_run_dir,
     load_run_results,
     poison_summary,
     retrieval_rows,
@@ -447,10 +448,10 @@ def test_every_png_opens_at_the_declared_dpi_and_pixel_size(built_dir: Path) -> 
         with Image.open(built_dir / f"{spec.stem}.png") as image:
             assert image.format == "PNG"
             width_inches, height_inches = spec.size_inches
-            assert image.size == (
-                round(width_inches * FIGURE_DPI),
-                round(height_inches * FIGURE_DPI),
-            )
+            # One pixel of slack: inches times dpi lands on x.999... in binary floats, and
+            # matplotlib versions differ on whether the canvas rounds or truncates it.
+            assert abs(image.size[0] - width_inches * FIGURE_DPI) <= 1
+            assert abs(image.size[1] - height_inches * FIGURE_DPI) <= 1
             # PNG stores pixels per metre, so the round trip is approximate by one part
             # in 10**5, not exact.
             horizontal_dpi, vertical_dpi = image.info["dpi"]
@@ -529,8 +530,9 @@ _REAL_RUNS = Path(__file__).resolve().parents[1] / "data" / "runs"
 )
 def test_builds_from_the_newest_real_run_directory(tmp_path: Path) -> None:
     # Guards against fixture drift: if the harness renames a key, this fails even though
-    # the fixture above still passes. Run stamps sort chronologically, so max() is newest.
-    newest = max((path for path in _REAL_RUNS.iterdir() if path.is_dir()), key=lambda p: p.name)
+    # the fixture above still passes. Reuses the builder's own picker so this test cannot
+    # disagree with it about what counts as a run (the attribution subtree does not).
+    newest = latest_run_dir(_REAL_RUNS)
     paths = build_all_figures(newest, tmp_path / "real")
     assert len(paths) == 3 * len(FIGURE_SPECS) + 1  # three formats each, plus results.txt
     for spec in FIGURE_SPECS:
@@ -576,3 +578,16 @@ def test_the_preliminary_warning_names_the_run_s_own_model(run_dir: Path) -> Non
     results["metadata"]["model"] = "ByteDance/Ouro-1.4B (cuda)"
     warning = preliminary_warning(results)
     assert "Ouro" in warning and "stub" not in warning
+
+
+def test_latest_run_dir_skips_directories_without_results(tmp_path) -> None:
+    """The attribution subtree lives under data/runs and sorts after every date stamp, so
+    picking by name alone would return it forever once it exists. Only a directory that
+    actually holds a results.json counts as a run."""
+    from assets.build_figures import latest_run_dir
+
+    real = tmp_path / "20260101-000000"
+    real.mkdir()
+    (real / "results.json").write_text("{}", encoding="utf-8")
+    (tmp_path / "attribution").mkdir()  # stamped subruns live below it, no results.json here
+    assert latest_run_dir(tmp_path) == real
