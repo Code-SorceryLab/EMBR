@@ -2,13 +2,17 @@
 
 Presentation only. Every number here comes from the existing objects, the `WalkthroughSession`
 that drives the pipeline, `demos._live_reading` for attribution, `eval.provenance` for the
-defence, and `eval.run._provenance` for the run block. Nothing is recomputed by hand, and no
-live model is ever called: the session runs on the stub, and cached real-model output lights
-up when it is on disk.
+defence, and `eval.run._provenance` for the run block. Nothing is recomputed by hand. The
+session opens on the best model the box can serve (Ouro on a ready GPU, else the stub), and
+the settings menu can swap models or download a missing one while a progress bar watches.
 """
 
 from __future__ import annotations
 
+import importlib.util
+import threading
+import urllib.error
+import urllib.request
 from dataclasses import replace
 from pathlib import Path
 from typing import Any
@@ -56,6 +60,57 @@ _FREE_PLAY_PROMPTS = (
 
 _PORTRAITS = ("dawn-warm", "dawn-neutral", "dawn-suspicious", "dawn-betrayed", "player")
 
+#: The Ollama models the settings menu offers beside the stub and Ouro.
+_OLLAMA_MODELS = ("llama3.2:3b", "llama3.1:8b")
+
+
+# ------------------------------------------------------------------- model readiness
+
+# Each probe is a tiny module function so a test can monkeypatch it and so no probe
+# imports torch at snapshot time (importing torch costs seconds on Windows).
+
+
+def _torch_present() -> bool:
+    """Whether torch is importable at all, checked without importing it."""
+    return importlib.util.find_spec("torch") is not None
+
+
+def _ouro_ready() -> bool:
+    """Whether Ouro can load right now: torch present and the weights cached locally."""
+    if not _torch_present():
+        return False
+    try:
+        from huggingface_hub import snapshot_download
+
+        from embr.model import DEFAULT_OURO_MODEL
+
+        snapshot_download(DEFAULT_OURO_MODEL, local_files_only=True)
+        return True
+    except Exception:  # noqa: BLE001 - any miss (no cache, no hub) just means not ready
+        return False
+
+
+def _cuda_available() -> bool:
+    """Whether torch sees a GPU. Imports torch, so call it once at startup, not per snapshot."""
+    try:
+        import torch
+
+        return bool(torch.cuda.is_available())
+    except Exception:  # noqa: BLE001 - a broken torch install means no GPU, not a crash
+        return False
+
+
+def default_model_id() -> str:
+    """The model a fresh server session opens on.
+
+    Ouro is the thesis model, so it is the default wherever it can actually answer at demo
+    speed: weights cached and a GPU up. Everywhere else the stub keeps the demo instant.
+    Ouro on cpu stays available in the menu, it is just never the silent default.
+    """
+    if _ouro_ready() and _cuda_available():
+        return "ouro"
+    return "stub"
+
 
 def portrait_for(step: Any) -> str:
     """Pick Dawn's portrait from the state the turn produced. Presentation, not a new signal.
@@ -93,55 +148,80 @@ class GameSession:
         self._latest = None  # the most recent StepResult, or None before the first turn
         self._turn = 0  # monotonic turn counter (scripted + free play), keys the lazy attribution
         self._defence_cache: dict | None = None
-        self._models_cache: list[dict[str, str]] | None = None  # probed once, not per turn
+        self._models_cache: list[dict[str, Any]] | None = None  # probed once, not per turn
         self._model_label = "stub"  # what the current runner reports, for provenance
+        self._model_id = "stub"  # the menu id behind the label, so the select needs no parsing
 
     # --------------------------------------------------------------------- the model
 
-    def available_models(self) -> list[dict[str, str]]:
-        """The runners the web demo offers. Stub always; Ollama-local if the daemon serves it.
+    def available_models(self) -> list[dict[str, Any]]:
+        """The runners the web demo offers: the stub, local Ollama, and Ouro.
 
-        Probed once per session and cached: the readiness check is a network call, and it used
-        to run on every snapshot, so it stalled every turn. Ouro is deliberately not offered
-        here (a GPU job); local Ollama is CPU-friendly and user-initiated, so it is safe.
+        Probed once per session and cached: the readiness checks cost a network call and a
+        cache scan, and they used to run on every snapshot, so they stalled every turn.
+        `downloadable` tells the page a not-ready model can be fetched from the settings
+        menu instead of being greyed out.
         """
         if self._models_cache is None:
             from eval.tone import _ollama_model_names
 
             served = _ollama_model_names(timeout=1.5)  # one short probe, not one per model per turn
-            models = [{"id": "stub", "label": "Stub (instant, offline, fake replies)", "ready": True}]
-            for name in ("llama3.2:3b", "llama3.1:8b"):
+            daemon_up = bool(served)
+            models: list[dict[str, Any]] = [{
+                "id": "stub",
+                "label": "Stub (instant, offline, fake replies)",
+                "ready": True,
+                "downloadable": False,
+            }]
+            for name in _OLLAMA_MODELS:
                 models.append({
                     "id": f"ollama:{name}",
                     "label": f"Ollama · {name} (local daemon)",
                     "ready": name in served,
+                    "downloadable": daemon_up and name not in served,
                 })
+            ouro_cached = _ouro_ready()
+            models.append({
+                "id": "ouro",
+                "label": "Ouro 1.4B (thesis model, in-process)",
+                "ready": ouro_cached,
+                "downloadable": _torch_present() and not ouro_cached,
+            })
             self._models_cache = models
         return self._models_cache
+
+    def refresh_models(self) -> None:
+        """Drop the cached probe so the next snapshot re-checks readiness (after a download)."""
+        self._models_cache = None
 
     def set_model(self, model_id: str) -> dict[str, str]:
         """Swap the runner on the live conversation, keeping the arc's progress.
 
-        Returns a status dict. A model that cannot be reached leaves the stub in place and
-        says so, rather than breaking the next turn. No GPU runner is constructible from here.
+        Returns a status dict. A model that cannot be reached or loaded leaves the current
+        runner in place and says so, rather than breaking the next turn.
         """
-        from embr.model import DEFAULT_OLLAMA_HOST, ModelUnavailableError, OllamaRunner
+        from embr.model import DEFAULT_OLLAMA_HOST, ModelUnavailableError, OllamaRunner, OuroRunner
 
         if model_id == "stub":
             self._session.conversation.model = StubRunner()
             self._model_label = "stub"
+            self._model_id = "stub"
             return {"ok": True, "model": self._model_label}
         if model_id.startswith("ollama:"):
             name = model_id.split(":", 1)[1]
             runner = OllamaRunner(model=name, host=DEFAULT_OLLAMA_HOST)
-            try:  # fail here, at the switch, not mid-scene
-                runner.generate("Say the single word: ready.")
-            except ModelUnavailableError as error:
-                return {"ok": False, "model": self._model_label, "error": str(error)}
-            self._session.conversation.model = runner
-            self._model_label = runner.label
-            return {"ok": True, "model": self._model_label}
-        return {"ok": False, "model": self._model_label, "error": f"unknown model {model_id!r}"}
+        elif model_id == "ouro":
+            runner = OuroRunner()
+        else:
+            return {"ok": False, "model": self._model_label, "error": f"unknown model {model_id!r}"}
+        try:  # fail here, at the switch, not mid-scene (for Ouro this also loads the weights)
+            runner.generate("Say the single word: ready.")
+        except ModelUnavailableError as error:
+            return {"ok": False, "model": self._model_label, "error": str(error)}
+        self._session.conversation.model = runner
+        self._model_label = runner.label
+        self._model_id = model_id
+        return {"ok": True, "model": self._model_label}
 
     # ------------------------------------------------------------------ driving the arc
 
@@ -170,7 +250,11 @@ class GameSession:
             "choices": self._choices(upcoming),
             "turn": self._turn,
             "progress": {"played": played, "total": total, "finished": self._session.is_finished},
-            "settings": {"model": self._model_label, "available": self.available_models()},
+            "settings": {
+                "model": self._model_label,
+                "model_id": self._model_id,
+                "available": self.available_models(),
+            },
             "tabs": {
                 "memories": self._memories_tab(conversation, step),
                 "state": self._state_tab(step),
@@ -308,6 +392,95 @@ class GameSession:
             "label_sha256": label_sha256(),
             "reference_time": REFERENCE_TIME.isoformat(),
         }
+
+
+# ------------------------------------------------------------------- model downloads
+
+
+class PullJob:
+    """One model download at a time, watched by polling `snapshot()`.
+
+    The demo needs no queue: a person clicks one model in the settings menu and watches one
+    bar. Ollama streams byte counts, so its bar is real; the Hugging Face snapshot download
+    reports none through this path, so Ouro's bar is indeterminate (total stays 0).
+    """
+
+    # ponytail: one job per process and no cancellation; add both if the demo ever needs them.
+
+    def __init__(self) -> None:
+        self.state = "idle"  # idle | running | done | error
+        self.model_id: str | None = None
+        self.completed = 0
+        self.total = 0
+        self.detail = ""
+        self.error: str | None = None
+        self._thread: threading.Thread | None = None
+
+    def snapshot(self) -> dict[str, Any]:
+        return {
+            "state": self.state,
+            "model": self.model_id,
+            "completed": self.completed,
+            "total": self.total,
+            "detail": self.detail,
+            "error": self.error,
+        }
+
+    def start(self, model_id: str) -> dict[str, Any]:
+        """Begin downloading `model_id` in the background; a running job is left alone."""
+        if self._thread is not None and self._thread.is_alive():
+            return self.snapshot()
+        if model_id != "ouro" and not model_id.startswith("ollama:"):
+            self.state, self.model_id = "error", model_id
+            self.error = f"unknown model {model_id!r}"
+            return self.snapshot()
+        self.state, self.model_id = "running", model_id
+        self.completed, self.total, self.detail, self.error = 0, 0, "starting", None
+        self._thread = threading.Thread(target=self._run, args=(model_id,), daemon=True)
+        self._thread.start()
+        return self.snapshot()
+
+    def _run(self, model_id: str) -> None:
+        try:
+            if model_id == "ouro":
+                self._pull_ouro()
+            else:
+                self._pull_ollama(model_id.split(":", 1)[1])
+            self.state = "done"
+        except Exception as error:  # noqa: BLE001 - whatever failed, the page needs the words
+            self.state, self.error = "error", str(error)
+
+    def _pull_ollama(self, name: str) -> None:
+        """Stream the local daemon's /api/pull and mirror its byte counts."""
+        import json
+
+        from embr.model import DEFAULT_OLLAMA_HOST
+
+        request = urllib.request.Request(
+            f"{DEFAULT_OLLAMA_HOST}/api/pull",
+            data=json.dumps({"model": name}).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with urllib.request.urlopen(request, timeout=3600) as response:
+            for raw in response:
+                line = json.loads(raw)
+                if "error" in line:
+                    raise RuntimeError(line["error"])
+                self.detail = line.get("status", self.detail)
+                if "total" in line:
+                    self.total = int(line["total"])
+                if "completed" in line:
+                    self.completed = int(line["completed"])
+
+    def _pull_ouro(self) -> None:
+        """Fetch the Ouro weights into the local Hugging Face cache."""
+        from huggingface_hub import snapshot_download
+
+        from embr.model import DEFAULT_OURO_MODEL
+
+        self.detail = f"downloading {DEFAULT_OURO_MODEL} (about 3 GB)"
+        snapshot_download(DEFAULT_OURO_MODEL)
 
 
 # --------------------------------------------------------- model-free defence computations

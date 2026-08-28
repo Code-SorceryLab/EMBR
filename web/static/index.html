@@ -143,8 +143,8 @@
       <section class="modal__section">
         <h3>How to play</h3>
         <p>Dawn Whitmore keeps a tavern and remembers what you do. Play her five-scene arc with the
-        suggested lines or your own words, then keep talking once it is done. Everything runs on a
-        stub model in your browser, so nothing here needs a network or a graphics card.</p>
+        suggested lines or your own words, then keep talking once it is done. Replies come from the
+        best model this machine can serve; the offline stub always works as a fallback.</p>
         <p>The point is the panel on the right. It is the real research instrument, reading the
         actual memory system as it answers each turn.</p>
       </section>
@@ -162,11 +162,16 @@
 
       <section class="modal__section">
         <h3>Model</h3>
-        <p class="modal__hint">The stub is instant and offline. A local Ollama model gives real replies, if its
-        daemon is running. The thesis model, Ouro, is a GPU job and is not offered here.</p>
+        <p class="modal__hint">The stub is instant and offline. Ouro 1.4B is the thesis model and gives
+        real replies (best with a GPU). A local Ollama model also answers if its daemon runs.
+        A model marked "will download" is fetched here first, with a progress bar.</p>
         <div class="field">
           <label for="model-select">Reply model</label>
           <select id="model-select"></select>
+        </div>
+        <div class="pull" id="pull" hidden>
+          <progress id="pull-bar"></progress>
+          <span class="pull__detail" id="pull-detail"></span>
         </div>
         <p class="model-status" id="model-status"></p>
       </section>

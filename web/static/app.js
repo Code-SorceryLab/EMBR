@@ -451,17 +451,21 @@ function setMusic(want) {
 
 /* ------------------------------------------------------------------- the model */
 
+let modelsById = {};
+
 function renderModelOptions(s) {
   const sel = $("#model-select");
   if (!s.settings) return;
+  for (const m of s.settings.available) modelsById[m.id] = m;
   if (!sel || sel.dataset.built) {
     if (sel) sel.value = currentModelId(s);
     return;
   }
   sel.replaceChildren();
   for (const m of s.settings.available) {
-    const o = el("option", null, m.ready ? m.label : `${m.label} — not running`);
-    o.value = m.id; o.disabled = !m.ready && m.id !== "stub";
+    const suffix = m.ready ? "" : (m.downloadable ? " (will download)" : " (unavailable)");
+    const o = el("option", null, m.label + suffix);
+    o.value = m.id; o.disabled = !m.ready && !m.downloadable && m.id !== "stub";
     sel.appendChild(o);
   }
   sel.value = currentModelId(s);
@@ -469,14 +473,14 @@ function renderModelOptions(s) {
 }
 
 function currentModelId(s) {
-  const label = s.settings.model;
-  if (label.startsWith("stub")) return "stub";
-  const match = s.settings.available.find((m) => m.label.includes(label.split(" ")[0]));
-  return match ? match.id : "stub";
+  if (s.settings.model_id) return s.settings.model_id;
+  return s.settings.model && s.settings.model.startsWith("stub") ? "stub" : "stub";
 }
 
 async function switchModel(id) {
   const status = $("#model-status");
+  const m = modelsById[id];
+  if (m && !m.ready && m.downloadable) return pullThenSwitch(id);
   status.className = "model-status busy";
   status.textContent = id === "stub" ? "Switching to the stub…" : "Waking the model, this can take a moment…";
   try {
@@ -485,6 +489,42 @@ async function switchModel(id) {
     else { status.className = "model-status bad"; status.textContent = res.status.error || "Could not switch model."; $("#model-select").value = "stub"; }
     render(res);
   } catch (e) { status.className = "model-status bad"; status.textContent = "The server did not answer."; }
+}
+
+/* Download a missing model, watching /api/pull, then switch to it. The bar is real for
+   Ollama (byte counts) and indeterminate for the Ouro snapshot (no counts on this path). */
+async function pullThenSwitch(id) {
+  const status = $("#model-status"), box = $("#pull"), bar = $("#pull-bar"), detail = $("#pull-detail");
+  status.className = "model-status busy";
+  status.textContent = "Downloading the model…";
+  box.hidden = false;
+  bar.removeAttribute("value"); bar.removeAttribute("max");
+  try {
+    let snap = await api("/api/pull", { model: id });
+    while (snap.state === "running") {
+      if (snap.total > 0) { bar.max = snap.total; bar.value = snap.completed; }
+      detail.textContent = snap.total > 0
+        ? `${snap.detail || "downloading"} · ${Math.round((snap.completed / snap.total) * 100)}%`
+        : (snap.detail || "downloading…");
+      await new Promise((resolve) => setTimeout(resolve, 700));
+      snap = await api("/api/pull");
+    }
+    box.hidden = true;
+    if (snap.state === "done") {
+      const m = modelsById[id];
+      if (m) { m.ready = true; m.downloadable = false; }  // or switchModel would pull again
+      const built = $("#model-select"); built.dataset.built = "";  // labels must rebuild as ready
+      await switchModel(id);
+    } else {
+      status.className = "model-status bad";
+      status.textContent = snap.error || "The download failed.";
+      $("#model-select").value = "stub";
+    }
+  } catch (e) {
+    box.hidden = true;
+    status.className = "model-status bad";
+    status.textContent = "The server did not answer.";
+  }
 }
 
 /* -------------------------------------------------------------------- the modal */
