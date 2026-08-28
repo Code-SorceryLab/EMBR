@@ -514,11 +514,11 @@ def _do_demo() -> None:
 
 
 def _do_web_demo() -> None:
-    """Serve the visual-novel web demo and open it in a browser. Runs on the stub, no model."""
+    """Serve the visual-novel web demo and open it in a browser."""
     from web.server import serve
 
     print(_DIM("\n    Serving the web demo on http://127.0.0.1:8000 . Ctrl+C to stop and return."))
-    print(_DIM("    It runs on the stub, so no model or network is needed."))
+    print(_DIM("    It opens on the best model this box can serve; the stub always works."))
     serve(port=8000, open_browser=True)
 
 
