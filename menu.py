@@ -366,7 +366,7 @@ def _do_full_evaluation() -> None:
     from eval.run import run_all
 
     print(_DIM("\n    Running RQ1, RQ2 and RQ3. This takes a minute or two."))
-    path, _summary = run_all()
+    path, _summary = run_all(progress=lambda message: print(_DIM(f"    {message}")))
     print(f"\n    {_GRN('✓ Done.')} Results in {_BOLD(str(path))}")
     print(_DIM("    Option 11 turns this into the paper's figures and tables."))
     _chime()

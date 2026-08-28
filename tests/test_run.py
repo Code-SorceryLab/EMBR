@@ -64,12 +64,23 @@ _EXPECTED_RQ2_COLUMNS = {
 _PURE_INPUT_CATEGORIES = {"role_override", "persona_dissolution"}
 
 
+#: Stage announcements collected from the shared run, asserted by the progress test.
+_PROGRESS_LINES: list[str] = []
+
+
 @pytest.fixture(scope="module")
 def full_run(tmp_path_factory) -> tuple:
     """One `run_all` shared by every artifact assertion here: (root, out_dir, summary)."""
     root = tmp_path_factory.mktemp("runs")
-    out_dir, summary = run_all(out_root=root)
+    out_dir, summary = run_all(out_root=root, progress=_PROGRESS_LINES.append)
     return root, out_dir, summary
+
+
+def test_run_all_announces_each_stage(full_run) -> None:
+    """The long run tells the terminal where it is: one line per stage, numbered."""
+    assert len(_PROGRESS_LINES) == 4
+    assert any("1/4" in line for line in _PROGRESS_LINES)
+    assert any("4/4" in line for line in _PROGRESS_LINES)
 
 
 def test_reference_time_is_pinned_and_utc() -> None:

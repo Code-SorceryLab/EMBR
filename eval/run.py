@@ -963,6 +963,7 @@ def run_all(
     out_root: str | Path = "data/runs",
     model_factory: ModelFactory = StubRunner,
     latency_turns: int = 100,
+    progress: Callable[[str], None] | None = None,
 ) -> tuple[Path, dict]:
     """Run all three studies and write a timestamped, auditable run directory.
 
@@ -973,25 +974,32 @@ def run_all(
     published number was scored on it. Note what a swap can and cannot move: retrieval runs
     on the embedder and the scorer, so nDCG and retrieval drift are model-independent by
     construction. Only the two tone readings respond to the model.
+
+    `progress` receives one line as each stage starts, so a long real-model run shows where
+    it is. It defaults to silence because the tests and the demos call this too.
     """
+    tell = progress or (lambda message: None)
     scenario = load_eval_scenario()
-    results = {
-        "rq1": run_rq1(scenario, model_factory),
-        "rq2": run_rq2(scenario, model_factory, latency_turns),
-        "rq3": run_rq3(scenario),
-        "rq3_state": run_rq3_state_conditioned(scenario),
-        "metadata": {
-            # Provenance first: which code, and which label bytes, produced these numbers.
-            **_provenance(),
-            "label_set": scenario.name,
-            "label_version": scenario.version,
-            "label_sha256": label_sha256(),
-            "model": _model_label(model_factory),
-            "tone_rater": default_tone_rater().name,
-            "reference_time": REFERENCE_TIME.isoformat(),
-            "embr_version": __version__,
-            "generated_at": datetime.now(timezone.utc).isoformat(),
-        },
+    results: dict = {}
+    tell("RQ1 tone under mood (1/4)")
+    results["rq1"] = run_rq1(scenario, model_factory)
+    tell("RQ2 attacks and latency (2/4)")
+    results["rq2"] = run_rq2(scenario, model_factory, latency_turns)
+    tell("RQ3 retrieval comparisons (3/4)")
+    results["rq3"] = run_rq3(scenario)
+    tell("RQ3 state-conditioned (4/4)")
+    results["rq3_state"] = run_rq3_state_conditioned(scenario)
+    results["metadata"] = {
+        # Provenance first: which code, and which label bytes, produced these numbers.
+        **_provenance(),
+        "label_set": scenario.name,
+        "label_version": scenario.version,
+        "label_sha256": label_sha256(),
+        "model": _model_label(model_factory),
+        "tone_rater": default_tone_rater().name,
+        "reference_time": REFERENCE_TIME.isoformat(),
+        "embr_version": __version__,
+        "generated_at": datetime.now(timezone.utc).isoformat(),
     }
 
     out_dir = Path(out_root) / datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
