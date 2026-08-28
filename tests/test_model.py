@@ -181,6 +181,53 @@ def test_ollama_runner_trims_a_trailing_slash_on_the_host(monkeypatch) -> None:
     assert captured[0].full_url == "http://localhost:11434/api/generate"
 
 
+def test_ollama_generate_retries_a_timed_out_call(monkeypatch) -> None:
+    """One stalled response must not kill a twelve-hour sweep: the call is retried.
+
+    Regression for the behavioural attribution run that died on a single raw TimeoutError
+    (a read timeout after connect bypasses URLError entirely) twelve hours in.
+    """
+    calls: list = []
+
+    def flaky_urlopen(request, timeout=None):  # noqa: ANN001 - mirrors urlopen's shape
+        calls.append(request)
+        if len(calls) < 3:
+            raise TimeoutError("timed out")
+        return _FakeHTTPResponse(json.dumps({"response": "late but here"}).encode("utf-8"))
+
+    monkeypatch.setattr(urllib.request, "urlopen", flaky_urlopen)
+    assert OllamaRunner(model=LOCAL_TEST_MODEL).generate("hello") == "late but here"
+    assert len(calls) == 3
+
+
+def test_ollama_generate_retries_a_connect_phase_timeout(monkeypatch) -> None:
+    # urllib wraps a timeout during connect in URLError; the same transient class applies.
+    calls: list = []
+
+    def flaky_urlopen(request, timeout=None):  # noqa: ANN001
+        calls.append(request)
+        if len(calls) < 2:
+            raise urllib.error.URLError(TimeoutError("timed out"))
+        return _FakeHTTPResponse(json.dumps({"response": "second try"}).encode("utf-8"))
+
+    monkeypatch.setattr(urllib.request, "urlopen", flaky_urlopen)
+    assert OllamaRunner(model=LOCAL_TEST_MODEL).generate("hello") == "second try"
+
+
+def test_ollama_generate_is_loud_after_every_attempt_times_out(monkeypatch) -> None:
+    calls: list = []
+
+    def stalled_urlopen(request, timeout=None):  # noqa: ANN001
+        calls.append(request)
+        raise TimeoutError("timed out")
+
+    monkeypatch.setattr(urllib.request, "urlopen", stalled_urlopen)
+    with pytest.raises(ModelUnavailableError) as error:
+        OllamaRunner(model=LOCAL_TEST_MODEL).generate("hello")
+    assert "timed out" in str(error.value)
+    assert len(calls) == OllamaRunner.GENERATE_ATTEMPTS
+
+
 def test_ollama_runner_rejects_an_empty_reply_from_a_reasoning_model(monkeypatch) -> None:
     # Measured against the hosted gpt-oss:120b: a reasoning model puts its chain of thought
     # in "thinking" and can spend the whole token budget there, leaving "response" empty.

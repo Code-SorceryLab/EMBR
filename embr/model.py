@@ -265,22 +265,37 @@ class OllamaRunner:
             method="POST",
         )
 
+    #: Attempts per generate. A single stalled response hours into a sweep must not kill
+    #: the whole run; a daemon that is really gone still fails fast (connection refused,
+    #: no retry). A read timeout after connect arrives as a raw TimeoutError, not URLError.
+    GENERATE_ATTEMPTS = 3
+
     def generate(self, prompt: str) -> str:
         request = self._build_request(prompt)
-        try:
-            with urllib.request.urlopen(request, timeout=self.timeout_seconds) as response:
-                body = json.loads(response.read())
-        except urllib.error.HTTPError as error:
-            raise ModelUnavailableError(self._http_error_hint(error)) from error
-        except urllib.error.URLError as error:
-            raise ModelUnavailableError(
-                f"Could not reach the Ollama daemon at {self.host} ({error.reason}). "
-                f"Start it with `ollama serve`, or point host= at a running one."
-            ) from error
-        except json.JSONDecodeError as error:
-            raise ModelUnavailableError(
-                f"Ollama at {self.host} returned a body that is not JSON."
-            ) from error
+        for attempt in range(1, self.GENERATE_ATTEMPTS + 1):
+            try:
+                with urllib.request.urlopen(request, timeout=self.timeout_seconds) as response:
+                    body = json.loads(response.read())
+                break
+            except TimeoutError as error:  # the response stalled mid-read
+                if attempt == self.GENERATE_ATTEMPTS:
+                    raise ModelUnavailableError(
+                        f"Ollama at {self.host} timed out {attempt} times at "
+                        f"{self.timeout_seconds:.0f} s each for model {self.model!r}."
+                    ) from error
+            except urllib.error.HTTPError as error:
+                raise ModelUnavailableError(self._http_error_hint(error)) from error
+            except urllib.error.URLError as error:
+                if isinstance(error.reason, TimeoutError) and attempt < self.GENERATE_ATTEMPTS:
+                    continue  # a timeout during connect: the same transient class as above
+                raise ModelUnavailableError(
+                    f"Could not reach the Ollama daemon at {self.host} ({error.reason}). "
+                    f"Start it with `ollama serve`, or point host= at a running one."
+                ) from error
+            except json.JSONDecodeError as error:
+                raise ModelUnavailableError(
+                    f"Ollama at {self.host} returned a body that is not JSON."
+                ) from error
 
         if "response" not in body:
             raise ModelUnavailableError(
