@@ -399,6 +399,8 @@ class OuroRunner:
             self._tokenizer = AutoTokenizer.from_pretrained(
                 self.model_name, trust_remote_code=True
             )
+            # `dtype` needs transformers>=4.56 (pinned in pyproject); older versions do not
+            # consume it and it leaks into Ouro's remote code, which crashes on the kwarg.
             model = AutoModelForCausalLM.from_pretrained(
                 self.model_name, trust_remote_code=True, dtype=torch.float16
             )

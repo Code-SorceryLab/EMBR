@@ -24,9 +24,12 @@ dependencies = []
 ml = [
     "sentence-transformers>=2.2",
     "torch>=2.2",
-    # Upper bound is load-bearing. On transformers 5.x, Ouro's remote code fails twice over:
-    # OuroConfig has no pad_token_id, then the rope-config lookup raises KeyError: 'default'.
-    "transformers>=4.51,<5",
+    # Both bounds are load-bearing for Ouro's remote code (snapshot 574fa66 and later).
+    # Below 4.56 it fails: on 4.54-4.55 the read-only Cache.key_cache property crashes its
+    # cache init, and on 4.53 it imports symbols that do not exist yet. On 5.x it fails twice
+    # over: OuroConfig has no pad_token_id, then the rope-config lookup raises KeyError:
+    # 'default'. Verified working on 4.57.
+    "transformers>=4.56,<5",
     "accelerate>=0.30",
 ]
 # Paper figures. Kept out of the core so the harness stays dependency-light; only the
