@@ -181,6 +181,20 @@ def test_ollama_runner_trims_a_trailing_slash_on_the_host(monkeypatch) -> None:
     assert captured[0].full_url == "http://localhost:11434/api/generate"
 
 
+def test_ollama_runner_can_pin_inference_to_the_cpu(monkeypatch) -> None:
+    """num_gpu=0 keeps a judge model off the GPU, so it cannot fight the generator for
+    VRAM and get evicted into a reload-until-timeout loop mid-sweep."""
+    captured = _capture_ollama_request(monkeypatch)
+    OllamaRunner(model=LOCAL_TEST_MODEL, num_gpu=0).generate("rate this line")
+    assert json.loads(captured[0].data)["options"]["num_gpu"] == 0
+
+
+def test_ollama_runner_leaves_gpu_placement_to_the_daemon_by_default(monkeypatch) -> None:
+    captured = _capture_ollama_request(monkeypatch)
+    OllamaRunner(model=LOCAL_TEST_MODEL).generate("hello")
+    assert "num_gpu" not in json.loads(captured[0].data)["options"]
+
+
 def test_ollama_generate_retries_a_timed_out_call(monkeypatch) -> None:
     """One stalled response must not kill a twelve-hour sweep: the call is retried.
 

@@ -217,12 +217,16 @@ class OllamaRunner:
         api_key: str | None = None,
         settings: GenerationSettings = DEFAULT_GENERATION_SETTINGS,
         timeout_seconds: float = 300.0,
+        num_gpu: int | None = None,
     ) -> None:
         self.model = model
         self.host = host.rstrip("/")  # so a trailing slash cannot double up in the URL
         self.api_key = api_key
         self.settings = settings
         self.timeout_seconds = timeout_seconds
+        # None leaves layer placement to the daemon; 0 pins the model to the CPU, which is
+        # how a judge shares a box with an in-process generator that owns the whole GPU.
+        self.num_gpu = num_gpu
 
     @property
     def label(self) -> str:
@@ -255,6 +259,8 @@ class OllamaRunner:
                 "seed": self.settings.seed,
             },
         }
+        if self.num_gpu is not None:
+            payload["options"]["num_gpu"] = self.num_gpu
         headers = {"Content-Type": "application/json"}
         if self.api_key:
             headers["Authorization"] = f"Bearer {self.api_key}"

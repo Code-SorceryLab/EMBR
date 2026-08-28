@@ -258,7 +258,11 @@ def _judge_runner(spec: JudgeSpec):
                 f"key is set. Put OLLAMA_API_KEY in the environment or a gitignored .env."
             )
         return OllamaRunner(model=spec.model, host=OLLAMA_CLOUD_HOST, api_key=key)
-    return OllamaRunner(model=spec.model, host=DEFAULT_OLLAMA_HOST)
+    # num_gpu=0: a local judge rates on the CPU. During a sweep the generator owns the
+    # GPU, and two judges fighting it for VRAM get evicted and reloaded until a reload
+    # outlasts the timeout and kills a run hours in. A rating is a short completion, so
+    # the CPU cost per call is small and the placement is deterministic.
+    return OllamaRunner(model=spec.model, host=DEFAULT_OLLAMA_HOST, num_gpu=0)
 
 
 def build_judge_panel(

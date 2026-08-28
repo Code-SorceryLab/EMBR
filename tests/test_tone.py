@@ -19,6 +19,16 @@ def test_lexicon_rater_satisfies_the_protocol() -> None:
     assert isinstance(LexiconToneRater(), ToneRater)
 
 
+def test_local_judges_are_pinned_to_the_cpu() -> None:
+    """The generator owns the GPU during a sweep. A local judge that fights it for VRAM
+    gets evicted and reloaded until a timeout kills the run, so local judges rate on the
+    CPU. Cloud judges have no such flag; the hosted endpoint does its own placement."""
+    from eval.tone import JudgeSpec, _judge_runner
+
+    runner = _judge_runner(JudgeSpec(model="llama3.1:8b", family="llama"))
+    assert runner.num_gpu == 0
+
+
 def test_warm_welcome_reads_as_positive_valence() -> None:
     valence, _ = LexiconToneRater().rate("Welcome back, friend! Always glad to see you.")
     assert valence > 0.0
