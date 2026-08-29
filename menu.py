@@ -87,6 +87,7 @@ _MENU_ITEMS = [
     ("11", "Generate Paper Assets", "figures, tables and the results page, from the run"),
     ("12", "Interactive Demo", "the node brain, flat and in 3D: press play, then drive"),
     ("13", "Latest Results", "summarise the newest run directory"),
+    ("V", "Research Dashboard", "read-only: quest path, state timeline, evidence status"),
     ("14", "Reckoning Reveal", "six sources shaded by exact Banzhaf weight, both estimators"),
     ("15", "Mood Slider", "one line, three moods: retrieval, tone and attribution re-flow"),
     ("16", "Defence Dial", "anchor weight vs poisoning, with its failure condition"),
@@ -104,7 +105,7 @@ _SECTIONS = [
     ("PLAY", ("R", "Q", "1", "2", "W")),
     ("MEASURE", ("3", "4", "5", "6")),
     ("MECHANISM", ("7", "8", "9", "10")),
-    ("PAPER", ("11", "12", "13")),
+    ("PAPER", ("11", "12", "13", "V")),
     ("DEMO SUITE", ("14", "15", "16", "17", "18", "19")),
     ("SYSTEM", ("S", "L", "M", "C")),
 ]
@@ -541,6 +542,108 @@ def _do_quests() -> None:
         print(_GRN(f"    Removed {quest_id}/{slot}."))
 
 
+def _dashboard_report(
+    saves_root: Any = Path("data/saves"),
+    attribution_root: Any = Path("data/runs/attribution"),
+    experiments_dir: Any = Path("data/experiments"),
+    runs_dir: Any = None,
+) -> list[str]:
+    """The read-only research dashboard, as printable lines.
+
+    Every row is read from disk artefacts and the saved path; nothing is computed fresh
+    and nothing is written. Absence is a word (not run, no save), never a number, and the
+    v2 attack corpus is always labelled the extension, apart from the published v1.
+    """
+    from embr.saves import latest_slot, list_slots
+    from embr.walkthrough import DAWN_ARC
+
+    saves_root, attribution_root = Path(saves_root), Path(attribution_root)
+    experiments_dir = Path(experiments_dir)
+    runs = sorted((Path(runs_dir) if runs_dir is not None else RUNS_DIR).glob("*/results.json"))
+    lines: list[str] = [f"    {_BOLD('QUEST PATH')}"]
+
+    found = latest_slot(root=saves_root)
+    payload_history: list[dict] = []
+    if found is None:
+        lines.append(_DIM("      no save yet: the path below is unplayed"))
+        played = 0
+    else:
+        quest_id, slot = found
+        row = next(r for r in list_slots(quest_id, root=saves_root) if r["slot"] == slot)
+        played = int(row["beats_played"] or 0)
+        lines.append(f"      resumes at {_WHT(f'{quest_id}/{slot}')}, scene {played + 1}")
+        import json as _json
+
+        payload_history = _json.loads(
+            (saves_root / quest_id / f"{slot}.json").read_text(encoding="utf-8")
+        ).get("history", [])
+    for index, beat in enumerate(DAWN_ARC):
+        mark = _GRN("x") if index < played else (_EMBER(">") if index == played else _DIM("-"))
+        lines.append(f"      [{mark}] {beat.id}")
+
+    lines.append(f"\n    {_BOLD('STATE TIMELINE')}")
+    if not payload_history:
+        lines.append(_DIM("      no saved turns yet"))
+    for turn in payload_history:
+        lines.append(
+            f"      #{turn['turn_index']} {turn['beat_id'] or 'free-play'}  "
+            f"mood {turn['mood_before']['valence']:+.2f} to {turn['mood_after']['valence']:+.2f}  "
+            f"trust {turn['trust_before']:+.2f} to {turn['trust_after']:+.2f}  "
+            f"recalled {turn['retrieved_ids']}"
+        )
+
+    lines.append(f"\n    {_BOLD('ATTRIBUTION')}")
+    newest_by_estimator: dict[str, dict] = {}
+    for path in sorted(attribution_root.glob("*/results.json")):
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        block = payload.get("results", {})
+        newest_by_estimator[block.get("estimator", "?")] = {
+            "stamp": path.parent.name,
+            "readings": len(block.get("readings", [])),
+            "rho": (block.get("position_bias") or {}).get("mean_rho"),
+            "model": payload.get("metadata", {}).get("model", "?"),
+        }
+    for estimator in ("likelihood", "behavioural"):
+        run = newest_by_estimator.get(estimator)
+        if run is None:
+            lines.append(f"      {estimator}: {_DIM('not run')}")
+            continue
+        scale = "measured" if run["readings"] >= 20 else "pilot only"
+        rho = f"  position-bias rho {run['rho']:+.2f}" if run["rho"] is not None else ""
+        lines.append(
+            f"      {estimator}: {_GRN(scale) if scale == 'measured' else _YEL(scale)}"
+            f" · {run['readings']} readings · {run['model']} · {run['stamp']}{rho}"
+        )
+    if len(newest_by_estimator) >= 2:
+        lines.append(_DIM("      paired readings available: likelihood vs behavioural"))
+
+    lines.append(f"\n    {_BOLD('ATTACKS')}")
+    v1 = f"{_GRN('measured')} in {len(runs)} evaluation runs" if runs else _DIM("not run")
+    lines.append(f"      v1 corpus: {v1}")
+    v2_present = (experiments_dir / "attacks_v2.json").exists()
+    v2 = _YEL("staged, results on disk") if v2_present else _DIM("not run")
+    lines.append(f"      v2 corpus: {v2} (the extension; never blended into v1)")
+
+    lines.append(f"\n    {_BOLD('EVIDENCE')}")
+    lines.append(f"      full evaluation: {_GRN('measured') if runs else _DIM('not run')}")
+    defended = (experiments_dir / "provenance.json").exists()
+    lines.append(
+        f"      defence sweep: {_GRN('measured') if defended else _DIM('demo-only (computed live)')}"
+    )
+    lines.append(f"      web demo tabs: {_DIM('demo-only (presentation, not evidence)')}")
+    return lines
+
+
+def _do_dashboard() -> None:
+    """Print the read-only research dashboard. Looking at it changes nothing."""
+    print()
+    for line in _dashboard_report():
+        print(line)
+
+
 def _do_maintenance() -> None:
     """The destructive operations, out of the main menu, each behind its own confirmation."""
     choice = ask_index(
@@ -877,6 +980,7 @@ _ACTIONS: dict[str, Callable[[], None]] = {
     "11": _do_generate_assets,
     "12": _do_demo,
     "13": _do_latest_results,
+    "V": _do_dashboard,
     "14": _do_reckoning_reveal,
     "15": _do_mood_slider,
     "16": _do_defence_dial,

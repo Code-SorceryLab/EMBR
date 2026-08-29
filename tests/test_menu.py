@@ -245,3 +245,70 @@ def test_destructive_delete_lives_in_maintenance_not_the_top_level() -> None:
     assert "D" not in top_level_keys
     assert "M" in top_level_keys
     assert "M" in menu._ACTIONS
+
+
+# ----------------------------------------------------------------- research dashboard
+
+
+def _fixture_attribution_run(root, stamp: str, estimator: str, readings: int) -> None:
+    import json as _json
+
+    run_dir = root / stamp
+    run_dir.mkdir(parents=True)
+    (run_dir / "results.json").write_text(_json.dumps({
+        "results": {
+            "estimator": estimator,
+            "readings": [
+                {"attack_id": f"attack_{i}", "inert": False,
+                 "sources": [{"source": "mood_sentence", "banzhaf": 0.5, "is_poison": False}]}
+                for i in range(readings)
+            ],
+            "position_bias": {"mean_rho": 0.66},
+        },
+        "metadata": {"model": "ouro", "generated_at": "2026-01-01T00:00:00+00:00"},
+    }), encoding="utf-8")
+
+
+def test_dashboard_on_a_fresh_clone_is_honest_about_absence(tmp_path) -> None:
+    report = "\n".join(menu._dashboard_report(
+        saves_root=tmp_path / "saves", attribution_root=tmp_path / "attr",
+        experiments_dir=tmp_path / "exp",
+    ))
+    lower = report.lower()
+    assert "no save" in lower
+    assert "not run" in lower
+    assert "%" not in report  # absence is words, never a number
+
+
+def test_dashboard_shows_the_saved_path_and_pairs_the_estimators(tmp_path) -> None:
+    from embr.saves import save_slot
+
+    save_slot(_saved_session(3), slot="slot-1", root=tmp_path / "saves")
+    _fixture_attribution_run(tmp_path / "attr", "20260101-000000", "likelihood", 20)
+    _fixture_attribution_run(tmp_path / "attr", "20260102-000000", "behavioural", 20)
+
+    report = "\n".join(menu._dashboard_report(
+        saves_root=tmp_path / "saves", attribution_root=tmp_path / "attr",
+        experiments_dir=tmp_path / "exp",
+    ))
+    assert "the-slip" in report  # a played beat appears on the path
+    assert "the-reckoning" in report  # and the upcoming one
+    assert "likelihood" in report and "behavioural" in report
+    assert "measured" in report.lower()
+
+
+def test_dashboard_labels_a_pilot_and_separates_v1_from_v2(tmp_path) -> None:
+    import json as _json
+
+    _fixture_attribution_run(tmp_path / "attr", "20260101-000000", "behavioural", 2)
+    exp = tmp_path / "exp"
+    exp.mkdir(parents=True)
+    (exp / "attacks_v2.json").write_text(_json.dumps({"attacks": []}), encoding="utf-8")
+    report = "\n".join(menu._dashboard_report(
+        saves_root=tmp_path / "saves", attribution_root=tmp_path / "attr",
+        experiments_dir=exp,
+    ))
+    lower = report.lower()
+    assert "pilot" in lower
+    assert "v1" in lower and "v2" in lower
+    assert "extension" in lower  # v2 is the extension, never blended into v1
