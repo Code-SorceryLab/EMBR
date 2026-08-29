@@ -10,6 +10,7 @@ which kind of label set they are scored against.
 from __future__ import annotations
 
 import json
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -70,8 +71,17 @@ def test_the_two_kinds_of_label_set_rank_the_two_kinds_of_scorer_in_opposite_ord
     relevant set the ordering reverses, and the mood-blind scorer wins, because moving
     retrieval away from that one set is all a state-coupled signal can do.
     """
-    warm_memory = Memory(text="warm", valence=0.8, arousal=0.5, id="warm_memory")
-    cold_memory = Memory(text="cold", valence=-0.8, arousal=0.5, id="cold_memory")
+    # Explicit timestamps an hour apart. Defaulted timestamps land microseconds apart,
+    # and at that gap the float noise in decay**hours (read off the live clock per score
+    # call) outweighs the real age difference, so the blind ranking becomes a coin flip
+    # on a fast machine. An hour makes recency decisive and the premise deterministic.
+    # The warm memory is the newer one, so the blind (recency-only) scorer returns it in
+    # both states, which is what the fixed label set below rewards.
+    born = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    warm_memory = Memory(text="warm", valence=0.8, arousal=0.5, id="warm_memory",
+                         timestamp=born + timedelta(hours=1))
+    cold_memory = Memory(text="cold", valence=-0.8, arousal=0.5, id="cold_memory",
+                         timestamp=born)
     memories = [warm_memory, cold_memory]
 
     congruent = CompositeScorer(weights={"mood": 1.0}, signals=[MoodCongruence()])
