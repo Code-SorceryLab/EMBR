@@ -141,3 +141,107 @@ def test_bakeoff_action_explains_itself_when_not_built(monkeypatch, capsys) -> N
 @pytest.mark.parametrize("action", sorted(menu._ACTIONS))
 def test_every_action_is_callable(action: str) -> None:
     assert callable(menu._ACTIONS[action])
+
+
+# ------------------------------------------------------------ saves, status, and hints
+
+
+def _saved_session(beats: int):
+    from embr import StubRunner
+    from embr.walkthrough import WalkthroughSession, build_walkthrough_conversation
+
+    session = WalkthroughSession(build_walkthrough_conversation(model=StubRunner()))
+    for _ in range(beats):
+        session.step()
+    return session
+
+
+def test_error_hints_name_the_next_step() -> None:
+    from embr.model import ModelUnavailableError
+
+    assert "ollama serve" in menu._error_hint(ModelUnavailableError("gone"))
+    assert "4" in menu._error_hint(FileNotFoundError("data/runs/x/results.json"))
+    assert "pip install" in menu._error_hint(ImportError("no matplotlib"))
+    assert menu._error_hint(ValueError("anything")) is None  # no invented guidance
+
+
+def test_a_failing_action_prints_its_hint(monkeypatch, capsys) -> None:
+    from embr.model import ModelUnavailableError
+
+    def _boom() -> None:
+        raise ModelUnavailableError("daemon gone")
+
+    monkeypatch.setitem(menu._ACTIONS, "2", _boom)
+    answers = iter(["2", "", "0"])
+    monkeypatch.setattr("builtins.input", lambda *a: next(answers))
+    menu.run_menu()
+    out = capsys.readouterr().out
+    assert "daemon gone" in out
+    assert "ollama serve" in out
+
+
+def test_status_lines_on_a_fresh_clone_say_so(tmp_path) -> None:
+    lines = "\n".join(menu._status_lines(saves_root=tmp_path, attribution_root=tmp_path))
+    assert "no save" in lines.lower()
+    assert "not computed" in lines.lower()
+    assert "%" not in lines  # no fabricated percentages, ever
+
+
+def test_status_lines_reflect_the_latest_save_and_attribution(tmp_path) -> None:
+    import json as _json
+
+    from embr.saves import save_slot
+
+    save_slot(_saved_session(2), slot="slot-1", root=tmp_path / "saves")
+    run_dir = tmp_path / "attr" / "20260101-000000"
+    run_dir.mkdir(parents=True)
+    (run_dir / "results.json").write_text(_json.dumps({
+        "results": {"estimator": "likelihood", "readings": [{}] * 20},
+        "metadata": {"model": "stub"},
+    }), encoding="utf-8")
+
+    lines = "\n".join(menu._status_lines(
+        saves_root=tmp_path / "saves", attribution_root=tmp_path / "attr"
+    ))
+    assert "2 / 5" in lines
+    assert "slot-1" in lines
+    assert "likelihood" in lines
+
+
+def test_a_pilot_attribution_run_is_labelled_pilot_not_complete(tmp_path) -> None:
+    import json as _json
+
+    run_dir = tmp_path / "attr" / "20260101-000000"
+    run_dir.mkdir(parents=True)
+    (run_dir / "results.json").write_text(_json.dumps({
+        "results": {"estimator": "behavioural", "readings": [{}] * 2},
+        "metadata": {"model": "ouro"},
+    }), encoding="utf-8")
+    lines = "\n".join(menu._status_lines(saves_root=tmp_path, attribution_root=tmp_path / "attr"))
+    assert "pilot" in lines.lower()
+
+
+def test_step_and_save_writes_only_after_a_successful_turn(tmp_path) -> None:
+    session = _saved_session(0)
+    result = menu._step_and_save(session, None, slot="slot-1", root=tmp_path)
+    assert result.turn_index == 1
+    assert (tmp_path / "dawn-whitmore" / "slot-1.json").is_file()
+
+    class Boom:
+        label = "boom"
+
+        def generate(self, prompt):
+            raise RuntimeError("mid-take death")
+
+    crashing = _saved_session(0)
+    crashing.conversation.model = Boom()
+    with pytest.raises(RuntimeError):
+        menu._step_and_save(crashing, None, slot="slot-2", root=tmp_path)
+    assert not (tmp_path / "dawn-whitmore" / "slot-2.json").exists()
+
+
+def test_destructive_delete_lives_in_maintenance_not_the_top_level() -> None:
+    top_level_keys = {key for _, keys in menu._SECTIONS for key in keys}
+    assert "D" not in top_level_keys
+    assert "M" in top_level_keys
+    assert "M" in menu._ACTIONS

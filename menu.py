@@ -71,8 +71,10 @@ _RULE = "    " + "─" * 56
 
 # Key, label, hint. The renderer groups rows by _SECTIONS; the dispatch table is _ACTIONS.
 _MENU_ITEMS = [
+    ("R", "Continue", "resume the newest save right where it stopped"),
+    ("Q", "Quest Slots", "start, resume, restart or delete a named save slot"),
     ("1", "Conversation Turn", "one demo turn: watch the lie resurface"),
-    ("2", "Tavern-Keeper Walkthrough", "play Dawn's trust, betrayal, reconciliation arc"),
+    ("2", "Walkthrough (legacy)", "play Dawn's arc without saving, the research pass"),
     ("W", "Web Demo", "the visual-novel demo in a browser, research tabs and all"),
     ("3", "Quick Scoreboard", "RQ3 at published defaults, answers instantly"),
     ("4", "Full Evaluation", "RQ1 + RQ2 + RQ3, writes a run directory"),
@@ -93,18 +95,18 @@ _MENU_ITEMS = [
     ("19", "Record Walk (1-4)", "capture-ready pass through the first four demos"),
     ("S", "Settings", "weights, top-k, backends, model runner"),
     ("L", "Fetch Tone Lexicon", "NRC VAD v2.1, research use, stays out of git"),
-    ("D", "Delete All Data", "wipe runs, figures and tables, requires DELETE"),
+    ("M", "Maintenance", "destructive operations live here, behind confirmations"),
     ("C", "Clear Screen", "clear terminal output"),
     ("0", "Exit", "quit EMBR"),
 ]
 
 _SECTIONS = [
-    ("PLAY", ("1", "2", "W")),
+    ("PLAY", ("R", "Q", "1", "2", "W")),
     ("MEASURE", ("3", "4", "5", "6")),
     ("MECHANISM", ("7", "8", "9", "10")),
     ("PAPER", ("11", "12", "13")),
     ("DEMO SUITE", ("14", "15", "16", "17", "18", "19")),
-    ("SYSTEM", ("S", "L", "D", "C")),
+    ("SYSTEM", ("S", "L", "M", "C")),
 ]
 
 
@@ -144,6 +146,57 @@ def _run_model(run_dir: Path | None) -> str:
         return "?"
 
 
+def _attribution_status(attribution_root: Path) -> str:
+    """One honest phrase for the newest attribution run: estimator, size, and stamp.
+
+    'not computed' when nothing is on disk. A run below the full 20 readings is a pilot
+    and says so; no percentage is ever shown, because a partial sweep writes no file at
+    all and a fabricated number would claim knowledge nothing recorded.
+    """
+    runs = sorted(Path(attribution_root).glob("*/results.json"))
+    if not runs:
+        return _DIM("not computed")
+    try:
+        payload = json.loads(runs[-1].read_text(encoding="utf-8"))
+        block = payload.get("results", {})
+        readings = block.get("readings", [])
+        estimator = block.get("estimator", "?")
+    except (OSError, ValueError):
+        return _YEL("unreadable newest run")
+    scale = _GRN(f"{len(readings)} readings") if len(readings) >= 20 else _YEL("pilot")
+    return f"{_WHT(estimator)} · {scale} · {runs[-1].parent.name}"
+
+
+def _save_status_line(saves_root: Path) -> str:
+    """The newest save's position, or an honest 'no save yet'."""
+    from embr.saves import latest_slot, list_slots
+
+    found = latest_slot(root=saves_root)
+    if found is None:
+        return _DIM("no save yet · Q starts a quest")
+    quest_id, slot = found
+    row = next(
+        r for r in list_slots(quest_id, root=saves_root) if r["slot"] == slot
+    )
+    progress = f"{row['beats_played']} / {row['beats_total']}"
+    return f"{_WHT(quest_id)}/{_WHT(slot)} · {_GRN(progress)} · updated {_DIM(str(row['updated_at'])[:16])}"
+
+
+def _status_lines(
+    saves_root: Path | str = Path("data/saves"),
+    attribution_root: Path | str = Path("data/runs/attribution"),
+) -> list[str]:
+    """The project-status panel rows: where play stopped, and what evidence exists.
+
+    Every value is read from disk artefacts; a missing artefact reads as its honest
+    absence ('no save yet', 'not computed'), never as a made-up zero or percentage.
+    """
+    return [
+        f"    Save {_save_status_line(Path(saves_root))}",
+        f"    Attribution {_attribution_status(Path(attribution_root))}",
+    ]
+
+
 def _print_header() -> None:
     """Logo, tagline, and a live stats bar: runs on disk, the model behind the newest one,
     figures built, and the configured model runner."""
@@ -169,7 +222,23 @@ def _print_header() -> None:
         f"    Runs {r_str}  │  Latest {_WHT(_run_model(_latest_run()))}"
         f"  │  Figures {f_str}  │  Runner {_WHT(runner)}  │  Tone {t_str}"
     )
+    for line in _status_lines():
+        print(line)
     print(_DIM(_RULE))
+
+
+#: Exception type -> the next step a stranded user should take. Only hints that are true
+#: for every instance of the type; anything else stays a bare error.
+def _error_hint(error: BaseException) -> str | None:
+    from embr.model import ModelUnavailableError
+
+    if isinstance(error, ModelUnavailableError):
+        return "Start the daemon with `ollama serve`, or switch to the stub in Settings."
+    if isinstance(error, FileNotFoundError):
+        return "A run artefact is missing. Option 4 (Full Evaluation) creates one."
+    if isinstance(error, ImportError):
+        return 'An optional extra is missing. `pip install -e ".[figures]"` or ".[ml]".'
+    return None
 
 
 def _menu_item(key: str, label: str, hint: str = "") -> str:
@@ -349,6 +418,139 @@ def _do_walkthrough() -> None:
         final = session.history[-1]
         print(f"\n    {_BOLD('Where she ended:')} trust {final.trust_after:+.2f},"
               f" mood {final.mood_after.valence:+.2f}")
+
+
+def _step_and_save(session: Any, line: str | None, slot: str, quest_id: str = "dawn-whitmore",
+                   root: Any = None) -> Any:
+    """Play one scripted beat, then persist the slot. A turn that raises saves nothing,
+    so the previous turn stays resumable (the save-after-success rule)."""
+    from embr.saves import SAVES_ROOT, save_slot
+
+    result = session.step(line)
+    save_slot(session, slot=slot, quest_id=quest_id, root=root if root is not None else SAVES_ROOT)
+    return result
+
+
+def _play_saved(session: Any, slot: str) -> None:
+    """The interactive loop for a saved quest: every completed turn is written to the slot."""
+    from embr.saves import SAVES_ROOT, save_slot
+
+    print(_DIM("    Enter accepts the suggested line, or type your own. Every turn saves."))
+    while not session.is_finished:
+        beat = session.next_beat
+        print(_DIM(f"\n    {'=' * 66}"))
+        if beat.narration:
+            print(_DIM(f"    {beat.narration}"))
+        print(f"\n    {_DIM('suggested:')} {beat.suggested_player_line}")
+        typed = input("    You: ").strip()
+        _render_step(_step_and_save(session, typed or None, slot=slot))
+
+    print(_EMBER("\n    The arc is done. Keep talking, or press Enter to stop."))
+    while True:
+        line = input("\n    You: ").strip()
+        if not line:
+            break
+        _render_step(session.free_play(line))
+        save_slot(session, slot=slot, root=SAVES_ROOT)
+
+    if session.history:
+        final = session.history[-1]
+        print(f"\n    {_BOLD('Where she ended:')} trust {final.trust_after:+.2f},"
+              f" mood {final.mood_after.valence:+.2f}")
+
+
+def _do_continue() -> None:
+    """Resume the newest loadable save, or say plainly that there is nothing to resume."""
+    from embr.saves import latest_slot, load_slot
+
+    found = latest_slot()
+    if found is None:
+        print(_YEL("\n    No save to continue. Use Q to start a quest."))
+        return
+    quest_id, slot = found
+    session, payload = load_slot(slot, quest_id=quest_id, model=_choose_model())
+    played, total = session.progress
+    print(f"\n    {_BOLD('Resuming')} {quest_id}/{slot} at scene {played + 1} of {total}.")
+    history = payload.get("history", [])
+    if history:
+        last = history[-1]
+        print(_DIM(f"    Previously: you said {last['player_input']!r}"))
+        print(_DIM(f"    and Dawn replied {last['reply']!r}"))
+    _play_saved(session, slot)
+
+
+def _do_quests() -> None:
+    """List every slot with its state; start, resume, restart, or delete one."""
+    from embr.saves import QUEST_DAWN, delete_slot, list_slots, load_slot
+
+    rows = list_slots()
+    print(f"\n    {_BOLD('Save slots')}")
+    if not rows:
+        print(_DIM("    none yet"))
+    for row in rows:
+        state = _RED("cannot load: " + " ".join(row["problems"])) if row["problems"] else _GRN("ok")
+        print(f"      {row['quest_id']}/{_WHT(row['slot'])}  "
+              f"{row['beats_played']} / {row['beats_total']}  {state}")
+
+    choice = ask_index(
+        f"\n    {_BOLD('Quest slots')}",
+        ["Start a new slot", "Resume a slot", "Restart a slot from scene one", "Delete a slot"],
+    )
+    if choice is None:
+        print(_DIM("    Cancelled."))
+        return
+
+    if choice.startswith("Start"):
+        slot = input("    Name the new slot (lowercase-and-dashes): ").strip() or "slot-1"
+        from embr.walkthrough import WalkthroughSession, build_walkthrough_conversation
+
+        session = WalkthroughSession(build_walkthrough_conversation(model=_choose_model()))
+        print(f"\n    {_BOLD('Dawn Whitmore')}, keeper of the Ember Hearth."
+              f"  {_DIM(f'{session.progress[1]} scenes.')}")
+        _play_saved(session, slot)
+        return
+
+    loadable = [row for row in rows if not row["problems"]]
+    if not loadable:
+        print(_YEL("    No loadable slot for that."))
+        return
+    names = [f"{row['quest_id']}/{row['slot']}" for row in loadable]
+    picked = ask_index("    Which slot?", names)
+    if picked is None:
+        print(_DIM("    Cancelled."))
+        return
+    quest_id, slot = picked.split("/", 1)
+
+    if choice.startswith("Resume"):
+        session, _payload = load_slot(slot, quest_id=quest_id, model=_choose_model())
+        _play_saved(session, slot)
+    elif choice.startswith("Restart"):
+        if input(f"    Type RESTART to wipe {quest_id}/{slot} and begin again: ").strip() != "RESTART":
+            print(_DIM("    Cancelled."))
+            return
+        delete_slot(slot, quest_id=quest_id)
+        from embr.walkthrough import WalkthroughSession, build_walkthrough_conversation
+
+        session = WalkthroughSession(build_walkthrough_conversation(model=_choose_model()))
+        _play_saved(session, slot)
+    else:
+        if input(f"    Type DELETE to remove {quest_id}/{slot}: ").strip() != "DELETE":
+            print(_DIM("    Cancelled."))
+            return
+        delete_slot(slot, quest_id=quest_id)
+        print(_GRN(f"    Removed {quest_id}/{slot}."))
+
+
+def _do_maintenance() -> None:
+    """The destructive operations, out of the main menu, each behind its own confirmation."""
+    choice = ask_index(
+        f"\n    {_BOLD('Maintenance')}",
+        ["Delete all generated data (runs, figures, tables)"],
+    )
+    if choice is None:
+        print(_DIM("    Cancelled."))
+        return
+    _do_delete_run_data()
 
 
 def _do_quick_scoreboard() -> None:
@@ -659,6 +861,8 @@ def _do_delete_run_data() -> None:
 
 # Key to handler. One table, so adding an option cannot drift from its dispatch.
 _ACTIONS: dict[str, Callable[[], None]] = {
+    "R": _do_continue,
+    "Q": _do_quests,
     "1": _do_conversation_turn,
     "2": _do_walkthrough,
     "W": _do_web_demo,
@@ -681,7 +885,7 @@ _ACTIONS: dict[str, Callable[[], None]] = {
     "19": _do_record_walk,
     "S": _do_settings,
     "L": _do_fetch_lexicon,
-    "D": _do_delete_run_data,
+    "M": _do_maintenance,
     "C": _clear,
 }
 
@@ -712,6 +916,9 @@ def run_menu() -> None:
             print(_DIM("\n    Interrupted."))
         except Exception as error:  # an error boundary: one bad option must not kill the menu
             print(_RED(f"\n    ✖  {type(error).__name__}: {error}"))
+            hint = _error_hint(error)
+            if hint:
+                print(_DIM(f"    {hint}"))
         if action is not _clear:
             _pause()
 
