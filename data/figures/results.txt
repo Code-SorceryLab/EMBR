@@ -4,8 +4,8 @@ EMBR figure notes
 Prose for the figures in this directory. The figures carry data only; every
 caveat, statistic and provenance line lives here.
 
-run 20260822-110218  |  commit 0c24cfaf7899  |  model ByteDance/Ouro-1.4B (cuda)  |  labels dawn-whitmore v1  |  built by assets/build_figures.py
-PRELIMINARY: model ByteDance/Ouro-1.4B (cuda), deterministic lexical embedder, v1 single author labels, 10 queries. No RQ3 comparison is significant and every RQ3 interval spans zero: read direction, not ranking. The results that do reach significance are stated in docs/findings.md.
+run 20260828-000824  |  commit cd867f53a1d7 (dirty tree)  |  model stub  |  labels dawn-whitmore v1  |  built by assets/build_figures.py
+PRELIMINARY: model stub, deterministic lexical embedder, v1 single author labels, 10 queries. No RQ3 comparison is significant and every RQ3 interval spans zero: read direction, not ranking. The results that do reach significance are stated in docs/findings.md.
 
 ------------------------------------------------------------------------
 rq3_retrieval.png / rq3_retrieval.pdf
@@ -43,9 +43,9 @@ rq2_latency.png / rq2_latency.pdf
 
 RQ2: choosing the memories is not what makes a turn slow
 
-The memory layer's worst case is about 0.0 percent of the model's: choosing the memories is not what makes a turn slow.
+Log axis: fastest to slowest spans about 1510x.
 
-Each dumbbell spans p50 to p95. Latency times the evaluated configuration: the full Dawn Whitmore store with the shared deterministic embedder on both the write and query paths. Nearest rank percentiles over 10 timed retrievals per system, wall clock on one machine. This is the one measurement in the run that is not deterministic, and the store holds a single scenario's memories, so read the ratio between systems rather than the absolute durations. The model stage times whichever runner the run was made with; under the stub it is microseconds and the comparison is meaningless, so build this figure from a real-model run.
+Each dumbbell spans p50 to p95. Latency times the evaluated configuration: the full Dawn Whitmore store with the shared deterministic embedder on both the write and query paths. Nearest rank percentiles over 100 timed retrievals per system, wall clock on one machine. This is the one measurement in the run that is not deterministic, and the store holds a single scenario's memories, so read the ratio between systems rather than the absolute durations. The model stage times whichever runner the run was made with; under the stub it is microseconds and the comparison is meaningless, so build this figure from a real-model run.
 
 ------------------------------------------------------------------------
 rq1_divergence.png / rq1_divergence.pdf
@@ -116,27 +116,3 @@ content_tag_grid
 The tag is what gets attacked, not the words
 
 Ten injected texts held fixed under four affect-tag conditions against every arm. Counts are exact, not estimates: retrieval and appraisal never call a model. The mood shift row is identical in every arm because one appraisal serves them all, which is the state channel the retrieval counts cannot show. relevance_only and Mnemosyne read 0/10 because the probe shares no words with any memory, so they retrieve nothing at all: immune by silence, not by defence. Reproduce with python -m eval.grid.
-
-========================================================================
-Model bake-off
-========================================================================
-
-Source: data\bakeoff\20260818-002518
-Probe turns per arm: 9 (3 queries x 3 mood conditions)
-Generated: 2026-08-18T00:33:12.342189+00:00
-
-Every arm saw identical prompts, memories, retrieval and sampling. Latency is wall clock on one machine and includes network time for cloud arms, so local and cloud latencies are not like for like.
-
-Latency is wall clock and includes network time for cloud arms, so cloud and local
-numbers are not like for like. Grounding is a word overlap screen for replies that
-ignore the memory block entirely, not a semantic entailment check. Mood spread is
-the range of mean rated warmth across the pinned moods: a model that answers the
-same way in every mood scores zero and makes the affect signal inert.
-
-Per arm:
-  Ouro-1.4B                  p50   32.4 s   p95   46.9 s   grounded   89%   mood spread 0.333   persona breaks 0%
-  mistral-large-3:675b (cloud) p50    7.4 s   p95   10.9 s   grounded  100%   mood spread 0.378   persona breaks 0%
-  gemma4:31b (cloud)         p50    3.9 s   p95    7.2 s   grounded  100%   mood spread 1.278   persona breaks 0%
-  llama3.2:3b (local)        p50    3.9 s   p95    7.2 s   grounded   89%   mood spread 0.333   persona breaks 0%
-  gpt-oss:120b (cloud)       p50    2.2 s   p95    4.3 s   grounded  100%   mood spread 0.762   persona breaks 0%
-  stub                       p50   1.7 ms   p95   1.8 ms   grounded    0%   mood spread 0.000   persona breaks 0%

@@ -1,6 +1,6 @@
-% EMBR table rq2_robustness: run_dir=data\runs\20260822-110218, git_commit=0c24cfaf78999d5a4048c68a0061d13e685de21f, label_version=v1, model=ByteDance/Ouro-1.4B (cuda)
-% label_set=dawn-whitmore, label_sha256=5d5f38bc31c6230b8805964de2b56866cbcbb4c422133ca91aa68584e2ad1b82, results generated_at=2026-08-22T11:02:18.495415+00:00
-% Requires \usepackage{booktabs}. Flat twin: rq2_robustness.csv. Rebuild: python assets/build_tables.py data\runs\20260822-110218
+% EMBR table rq2_robustness: run_dir=data\runs\20260828-000824, git_commit=cd867f53a1d7e11ed56d383352bd59be2d1dfb52 (dirty working tree), label_version=v1, model=stub
+% label_set=dawn-whitmore, label_sha256=5d5f38bc31c6230b8805964de2b56866cbcbb4c422133ca91aa68584e2ad1b82, results generated_at=2026-08-28T00:08:24.795158+00:00
+% Requires \usepackage{booktabs}. Flat twin: rq2_robustness.csv. Rebuild: python assets/build_tables.py data\runs\20260828-000824
 % If the tabular overflows the text block, make the float a table* or wrap the tabular in \resizebox{\linewidth}{!}{...}.
 % results.json rq2.metadata.note: Reply tone is rated on the deterministic stub model, which only
 % echoes the player's line; these VA numbers exercise the pipeline end to end and become
@@ -38,11 +38,10 @@
     \toprule
     System & Poison retrieved & Retrieval drift & Prompt identical & $p_{95}$ (ms) \\
     \midrule
-    \texttt{embr} & 9 / 10 & 0.419 & 10 / 10 & 2.174 \\
-    \texttt{park} & 2 / 10 & 0.067 & 10 / 10 & 1.755 \\
-    \texttt{emo\_rag} & 4 / 10 & 0.698 & 10 / 10 & 1.888 \\
-    \texttt{recency\_only} & 10 / 10 & 0.333 & 10 / 10 & 0.115 \\
-    \texttt{park\_llm} & 10 / 10 & 0.333 & 10 / 10 & 1.885 \\
+    \texttt{embr} & 9 / 10 & 0.419 & 10 / 10 & 2.929 \\
+    \texttt{park} & 2 / 10 & 0.067 & 10 / 10 & 2.769 \\
+    \texttt{emo\_rag} & 4 / 10 & 0.698 & 10 / 10 & 3.171 \\
+    \texttt{recency\_only} & 10 / 10 & 0.333 & 10 / 10 & 0.093 \\
     \bottomrule
   \end{tabular}
 \end{table}
