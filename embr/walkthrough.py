@@ -383,6 +383,30 @@ class WalkthroughSession:
         self.written_memories: dict[str, Memory] = {}
         self._next_beat_index = 0
 
+    @classmethod
+    def resumed(
+        cls,
+        conversation: Conversation,
+        played: int,
+        written: dict[str, Memory],
+        beats: Sequence[Beat] = DAWN_ARC,
+    ) -> "WalkthroughSession":
+        """A session restored mid-arc: the store and state arrive already rebuilt.
+
+        `played` beats are treated as done and are never replayed (their memories are in
+        the store; replay would double-write them). `written` maps beat id to the store's
+        own Memory objects, so a later recall claim still checks identity, not text.
+        `history` starts empty: the save keeps the display record of earlier turns.
+        """
+        session = cls(conversation, beats=beats)
+        if not 0 <= played <= len(session.beats):
+            raise ValueError(
+                f"cannot resume at beat {played} of a {len(session.beats)}-beat arc."
+            )
+        session._next_beat_index = played
+        session.written_memories = dict(written)
+        return session
+
     # ----------------------------------------------------------------- where we are
 
     @property
