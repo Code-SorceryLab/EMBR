@@ -567,6 +567,36 @@ def _readings_payload(readings: Sequence[ProbeAttribution]) -> list[dict[str, An
     ]
 
 
+def newest_run_by_estimator(
+    root: str | Path = "data/runs/attribution",
+) -> dict[str, dict[str, Any]]:
+    """The newest run per estimator, as the compact facts a status panel or figure needs.
+
+    Lives beside `write_run` on purpose: this reads the exact `context_attribution` block
+    that writes, so a rename there breaks the reader in the same file instead of silently
+    zeroing a status display three modules away. Unreadable files are skipped; an absent
+    estimator is simply absent from the dict, and the caller words that honestly.
+    """
+    newest: dict[str, dict[str, Any]] = {}
+    for path in sorted(Path(root).glob("*/results.json")):
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        block = payload.get("context_attribution", {})
+        estimator = block.get("estimator")
+        if estimator is None:
+            continue
+        newest[estimator] = {
+            "stamp": path.parent.name,
+            "readings": len(block.get("readings", [])),
+            "mean_rho": (block.get("position_bias") or {}).get("mean_rho"),
+            "model": payload.get("metadata", {}).get("model", "?"),
+            "label_sha256": payload.get("metadata", {}).get("label_sha256"),
+        }
+    return newest
+
+
 def write_run(
     readings: Sequence[ProbeAttribution],
     out_root: str | Path = "data/runs/attribution",

@@ -196,7 +196,7 @@ def test_status_lines_reflect_the_latest_save_and_attribution(tmp_path) -> None:
     run_dir = tmp_path / "attr" / "20260101-000000"
     run_dir.mkdir(parents=True)
     (run_dir / "results.json").write_text(_json.dumps({
-        "results": {"estimator": "likelihood", "readings": [{}] * 20},
+        "context_attribution": {"estimator": "likelihood", "readings": [{}] * 20},
         "metadata": {"model": "stub"},
     }), encoding="utf-8")
 
@@ -214,7 +214,7 @@ def test_a_pilot_attribution_run_is_labelled_pilot_not_complete(tmp_path) -> Non
     run_dir = tmp_path / "attr" / "20260101-000000"
     run_dir.mkdir(parents=True)
     (run_dir / "results.json").write_text(_json.dumps({
-        "results": {"estimator": "behavioural", "readings": [{}] * 2},
+        "context_attribution": {"estimator": "behavioural", "readings": [{}] * 2},
         "metadata": {"model": "ouro"},
     }), encoding="utf-8")
     lines = "\n".join(menu._status_lines(saves_root=tmp_path, attribution_root=tmp_path / "attr"))
@@ -256,7 +256,7 @@ def _fixture_attribution_run(root, stamp: str, estimator: str, readings: int) ->
     run_dir = root / stamp
     run_dir.mkdir(parents=True)
     (run_dir / "results.json").write_text(_json.dumps({
-        "results": {
+        "context_attribution": {
             "estimator": estimator,
             "readings": [
                 {"attack_id": f"attack_{i}", "inert": False,

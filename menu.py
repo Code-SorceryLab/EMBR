@@ -148,24 +148,22 @@ def _run_model(run_dir: Path | None) -> str:
 
 
 def _attribution_status(attribution_root: Path) -> str:
-    """One honest phrase for the newest attribution run: estimator, size, and stamp.
+    """One honest phrase per estimator with a run on disk: name, scale, and stamp.
 
     'not computed' when nothing is on disk. A run below the full 20 readings is a pilot
     and says so; no percentage is ever shown, because a partial sweep writes no file at
     all and a fabricated number would claim knowledge nothing recorded.
     """
-    runs = sorted(Path(attribution_root).glob("*/results.json"))
-    if not runs:
+    from eval.context_attribution import newest_run_by_estimator
+
+    newest = newest_run_by_estimator(attribution_root)
+    if not newest:
         return _DIM("not computed")
-    try:
-        payload = json.loads(runs[-1].read_text(encoding="utf-8"))
-        block = payload.get("results", {})
-        readings = block.get("readings", [])
-        estimator = block.get("estimator", "?")
-    except (OSError, ValueError):
-        return _YEL("unreadable newest run")
-    scale = _GRN(f"{len(readings)} readings") if len(readings) >= 20 else _YEL("pilot")
-    return f"{_WHT(estimator)} · {scale} · {runs[-1].parent.name}"
+    phrases = []
+    for estimator, run in sorted(newest.items()):
+        scale = _GRN(f"{run['readings']} readings") if run["readings"] >= 20 else _YEL("pilot")
+        phrases.append(f"{_WHT(estimator)} · {scale} · {run['stamp']}")
+    return "  |  ".join(phrases)
 
 
 def _save_status_line(saves_root: Path) -> str:
@@ -593,26 +591,16 @@ def _dashboard_report(
         )
 
     lines.append(f"\n    {_BOLD('ATTRIBUTION')}")
-    newest_by_estimator: dict[str, dict] = {}
-    for path in sorted(attribution_root.glob("*/results.json")):
-        try:
-            payload = json.loads(path.read_text(encoding="utf-8"))
-        except (OSError, ValueError):
-            continue
-        block = payload.get("results", {})
-        newest_by_estimator[block.get("estimator", "?")] = {
-            "stamp": path.parent.name,
-            "readings": len(block.get("readings", [])),
-            "rho": (block.get("position_bias") or {}).get("mean_rho"),
-            "model": payload.get("metadata", {}).get("model", "?"),
-        }
+    from eval.context_attribution import newest_run_by_estimator
+
+    newest_by_estimator = newest_run_by_estimator(attribution_root)
     for estimator in ("likelihood", "behavioural"):
         run = newest_by_estimator.get(estimator)
         if run is None:
             lines.append(f"      {estimator}: {_DIM('not run')}")
             continue
         scale = "measured" if run["readings"] >= 20 else "pilot only"
-        rho = f"  position-bias rho {run['rho']:+.2f}" if run["rho"] is not None else ""
+        rho = f"  position-bias rho {run['mean_rho']:+.2f}" if run["mean_rho"] is not None else ""
         lines.append(
             f"      {estimator}: {_GRN(scale) if scale == 'measured' else _YEL(scale)}"
             f" · {run['readings']} readings · {run['model']} · {run['stamp']}{rho}"
@@ -770,8 +758,9 @@ def _do_generate_assets() -> None:
         "figures from the run",
         "figures from the experiments",
         "results page (refuses to write if a number drifted)",
+        "questline map (from the arc, plus attribution status)",
     ]
-    chosen = toggle_select("ASSETS", options, default_indices=[0, 1, 2, 3])
+    chosen = toggle_select("ASSETS", options, default_indices=[0, 1, 2, 3, 4])
     if not chosen:
         print(_DIM("    Cancelled."))
         return
@@ -798,6 +787,10 @@ def _do_generate_assets() -> None:
         except DriftError as error:
             print(_RED("\n    Results page refused to build:"))
             print(_DIM(f"    {error}"))
+    if options[4] in chosen:
+        from assets.build_questline import build_questline
+
+        written += list(build_questline())
     print(f"    {_GRN(f'✓ Wrote {len(written)} files.')}")
     for path in written:
         print(_DIM(f"      {path}"))

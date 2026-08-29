@@ -1,0 +1,6 @@
+== questline_evidence ==
+The playable arc as authored content: node shape and colour carry each beat's affect tag redundantly, trust movement is the appraisal's own delta on a stub playthrough, dots mark memory writes, and curved arrows mark recall claims that landed. The starred beat is the attribution demonstration. The side panel is status, not results: likelihood measured (20 readings, ByteDance/Ouro-1.4B (cuda), 20260828-002117); behavioural measured (20 readings, ByteDance/Ouro-1.4B (cuda), 20260829-073908).
+Final numbers from both full sweeps on the current label set: likelihood rho +0.66, behavioural rho +0.11.
+content_hash 3c2d2c88bce23e5ca0339b9eaf7944d23fb07ab4402996d53677cfc676ab8d37
+git_commit 4f2a9196fecc5456d67d53554bb9fecbdfc525ce (dirty)
+label_sha256 5d5f38bc31c6230b8805964de2b56866cbcbb4c422133ca91aa68584e2ad1b82
