@@ -79,7 +79,12 @@ class SentenceTransformerEmbedder:
             from sentence_transformers import SentenceTransformer  # lazy: needs [ml] extra
 
             self._model = SentenceTransformer(self.model_name)
-            self.dim = self._model.get_sentence_embedding_dimension()
+            # sentence-transformers 5.x renamed this and deprecated the old spelling, but
+            # the `ml` extra allows 2.2 upward, so both names have to work.
+            dimension = getattr(self._model, "get_embedding_dimension", None) or (
+                self._model.get_sentence_embedding_dimension
+            )
+            self.dim = dimension()
 
     def encode(self, text: str) -> list[float]:
         self._ensure_model()

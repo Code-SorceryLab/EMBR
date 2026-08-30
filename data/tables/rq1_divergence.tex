@@ -1,0 +1,37 @@
+% EMBR table rq1_divergence: run_dir=data\runs\20260828-000824, git_commit=cd867f53a1d7e11ed56d383352bd59be2d1dfb52 (dirty working tree), label_version=v1, model=stub
+% label_set=dawn-whitmore, label_sha256=5d5f38bc31c6230b8805964de2b56866cbcbb4c422133ca91aa68584e2ad1b82, results generated_at=2026-08-28T00:08:24.795158+00:00
+% Requires \usepackage{booktabs}. Flat twin: rq1_divergence.csv. Rebuild: python assets/build_tables.py data\runs\20260828-000824
+% If the tabular overflows the text block, make the float a table* or wrap the tabular in \resizebox{\linewidth}{!}{...}.
+% results.json rq1.metadata.divergence_note: retrieval_divergence_jaccard is the mean of the
+% per-query top-5 jaccard distances and retrieval_divergence_ci95 is a fixed-seed percentile
+% bootstrap over that same per-query vector. No test against zero is reported: jaccard distance is
+% non-negative, so a sign-flip null of symmetry about zero is degenerate and would mechanically
+% return its own floor. mood_ablated_divergence_jaccard is the attribution control, the same
+% comparison with the mood weight zeroed, where every pair reads exactly 0.0
+% results.json rq1.metadata.note: Reply tone is rated on the deterministic stub model, which only
+% echoes the player's line; these VA numbers exercise the pipeline end to end and become
+% meaningful once the real model runner lands.
+\begin{table}[tb]
+  \centering
+  \caption{%
+    RQ1 retrieval divergence between the pinned mood conditions: the mean per-query Jaccard distance
+    between the retrieved top-five sets, with a fixed-seed percentile bootstrap interval over that
+    same per-query vector. No test against zero is reported, because Jaccard distance is
+    non-negative and a symmetry-about-zero null would mechanically return its own floor. The final
+    column is the attribution control: the identical comparison with the mood weight zeroed, where a
+    divergence of 0.000 is what attributes the effect to the mood term rather than to run-to-run
+    noise. Reply tone is not tabulated here because the stub model echoes the player, so its valence
+    and arousal are flat by construction.
+  }
+  \label{tab:embr-rq1-divergence}
+  \small
+  \begin{tabular}{lrrr}
+    \toprule
+    Condition pair & Mean divergence & 95\% CI & Mood ablated \\
+    \midrule
+    warm vs neutral & 0.142 & [0.000, 0.308] & 0.000 \\
+    warm vs suspicious & 0.388 & [0.207, 0.562] & 0.000 \\
+    neutral vs suspicious & 0.271 & [0.124, 0.419] & 0.000 \\
+    \bottomrule
+  \end{tabular}
+\end{table}

@@ -54,6 +54,24 @@ class CharacterState:
     persona: str  # authored, stable personality description, read-only at runtime
     mood: Mood = field(default_factory=Mood)
     trust: float = 0.0  # -1 (hostile) .. +1 (devoted); moves slowly, unlike mood
+    #: The mood as it stood before this turn's appraisal, or None before any turn began.
+    #: Read through `mood_at_turn_start`, never directly.
+    _mood_at_turn_start: Mood | None = field(default=None, repr=False)
+
+    @property
+    def mood_at_turn_start(self) -> Mood:
+        """The mood this turn opened with, falling back to the live mood.
+
+        `take_turn` appraises the incoming event before it retrieves, so by scoring time the
+        live mood already carries this turn's event. A signal that wants the mood the
+        character brought into the turn, rather than the one the current utterance just
+        produced, has to read it from here.
+        """
+        return self._mood_at_turn_start if self._mood_at_turn_start is not None else self.mood
+
+    def begin_turn(self) -> None:
+        """Snapshot the current mood as this turn's starting point."""
+        self._mood_at_turn_start = self.mood
 
     def feel(self, valence_delta: float, arousal_delta: float, inertia: float = 0.5) -> None:
         """Shift the fast-changing mood in response to an event."""

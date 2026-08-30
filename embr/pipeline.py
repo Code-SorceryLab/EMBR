@@ -63,6 +63,11 @@ class Conversation:
 
     def take_turn(self, player_input: str, event: Memory | None = None) -> Turn:
         """Run one full turn and return the reply plus the memories that informed it."""
+        # 0. remember the mood this turn opened with, before any appraisal moves it. A
+        # signal that scores against the live mood is scoring against a value the current
+        # utterance may have just set; `MoodCongruence(lagged=True)` reads this instead.
+        self.state.begin_turn()
+
         # 1. log the new event, if this turn produced one worth remembering
         if event is not None:
             self.store.add(event)

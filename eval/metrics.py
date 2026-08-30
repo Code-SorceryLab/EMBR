@@ -9,10 +9,9 @@ files label ground truth.
 from __future__ import annotations
 
 import math
-from collections.abc import Hashable, Sequence
+from collections.abc import Hashable, Iterable, Mapping, Sequence
 from typing import AbstractSet
 
-from embr.vectors import cosine
 
 
 def precision_at_k(
@@ -76,14 +75,58 @@ def jaccard_distance(a: AbstractSet[Hashable], b: AbstractSet[Hashable]) -> floa
     return 1.0 - len(a & b) / len(a | b)
 
 
-def va_drift(a: tuple[float, float], b: tuple[float, float]) -> float:
-    """How far a valence-arousal reading drifted, as 1 minus cosine similarity.
+def va_drift(a: tuple[float, float], b: tuple[float, float]) -> float | None:
+    """How far a valence-arousal reading drifted: Euclidean distance in Russell's (1980)
+    circumplex, divided by the plane's diameter so it lies in [0, 1].
 
-    0.0 means the same affective direction, 2.0 means the exact opposite. Two
-    all-zero readings are both neutral, so drift is 0.0. When only one side is
-    zero, cosine's zero-vector return of 0.0 pins the drift at 1.0: a move
-    between neutral and any charged state counts as maximal directionless drift.
+    Valence spans -1..1 and arousal 0..1, so the farthest two readings are sqrt(5) apart.
+    Euclidean rather than cosine because a reply that goes from mildly warm to intensely
+    warm has moved, and cosine reads angle only and called that zero.
+
+    Returns None when exactly one side is (0, 0). The raters report (0, 0) for a line they
+    could not read at all, so that pair is an undefined reading, not a measurement of
+    maximal calm, and it must be counted rather than averaged. Two (0, 0) readings did not
+    move, so they drift 0.0.
     """
     if not any(a) and not any(b):
         return 0.0
-    return 1.0 - cosine(a, b)
+    if not any(a) or not any(b):
+        return None
+    return math.dist(a, b) / math.sqrt(5.0)
+
+
+def state_conditioned_ndcg(
+    rankings: Mapping[str, Sequence[Hashable]],
+    relevant: Mapping[str, AbstractSet[Hashable]],
+    k: int,
+) -> dict[str, float]:
+    """nDCG@k scored per state against that state's own relevant set, plus the mean.
+
+    This is the metric the measurement critique asks for. Ordinary nDCG compares one
+    ranking against one fixed gold set, so a signal that moves retrieval as the character's
+    state moves can only ever be penalised by it: any departure from the single relevant set
+    costs score, whatever the state. That is why RQ3 cannot see mood-congruent recall and
+    why RQ1 has to measure divergence instead of accuracy (docs/findings.md 3.1).
+
+    Here each state carries its own gold set, so a scorer is asked the question the system
+    is actually built to answer: at *this* state, did you surface what belongs to it? A
+    state-independent scorer returns the same ranking everywhere and therefore scores the
+    average of the per-state golds, which it cannot beat. A state-coupled scorer can.
+
+    `rankings` and `relevant` are keyed by state name and must cover the same states.
+    """
+    if set(rankings) != set(relevant):
+        raise ValueError(
+            f"rankings cover {sorted(rankings)} but the labels cover {sorted(relevant)}; "
+            "scoring a state against another state's gold set is never what is meant"
+        )
+    per_state = {
+        name: ndcg_at_k(rankings[name], relevant[name], k) for name in sorted(rankings)
+    }
+    per_state["mean"] = _mean(per_state.values())
+    return per_state
+
+
+def _mean(values: Iterable[float]) -> float:
+    collected = list(values)
+    return sum(collected) / len(collected) if collected else 0.0

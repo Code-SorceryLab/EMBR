@@ -137,6 +137,56 @@ def test_relevance_uses_embeddings_to_break_a_lexical_tie() -> None:
     assert ranked == [near]
 
 
+def test_relevance_reuses_the_index_when_corpus_and_query_repeat() -> None:
+    # The tuning grid rescores one corpus and one query under 243 weight maps, and only the
+    # weights differ. Rebuilding the BM25 statistics each time is pure waste: they depend on
+    # the corpus alone. This is the single hot spot, 96 percent of retrieval cost at scale.
+    relevance = Relevance()
+    memories = [Memory(text="the tavern burned down"), Memory(text="a merchant paid in silver")]
+    state = _state()
+
+    relevance.prepare(memories, "tavern", state)
+    first = dict(relevance._bm25)
+    relevance.prepare(memories, "tavern", state)
+
+    assert relevance._bm25 == first
+    assert relevance._index_builds == 1  # the second call was served from the cache
+
+
+def test_relevance_rebuilds_when_the_query_or_the_corpus_changes() -> None:
+    # The cache must never outlive what it was computed from, or a rescore silently returns
+    # another query's ranking. Both axes are checked because both are cache key components.
+    relevance = Relevance()
+    memories = [Memory(text="the tavern burned down"), Memory(text="a merchant paid in silver")]
+    state = _state()
+
+    relevance.prepare(memories, "tavern", state)
+    relevance.prepare(memories, "merchant", state)
+    assert relevance._index_builds == 2
+
+    relevance.prepare(memories + [Memory(text="a stranger asked for a room")], "merchant", state)
+    assert relevance._index_builds == 3
+
+
+def test_caching_leaves_the_ranking_identical() -> None:
+    # The optimisation is only allowed if it changes nothing. Same corpus, same query, two
+    # scorers: one that has been prepared repeatedly, one freshly built.
+    memories = [
+        Memory(text="the tavern burned down in the storm"),
+        Memory(text="a merchant paid in silver coins"),
+        Memory(text="the player lied about the king"),
+    ]
+    state = _state()
+    warm = CompositeScorer(weights={"relevance": 1.0}, signals=[Relevance()])
+    cold = CompositeScorer(weights={"relevance": 1.0}, signals=[Relevance()])
+
+    for _ in range(5):
+        warm_result = warm.top_k(memories, "tavern storm", state, 3)
+    cold_result = cold.top_k(memories, "tavern storm", state, 3)
+
+    assert [m.text for m in warm_result] == [m.text for m in cold_result]
+
+
 def test_relevance_scores_a_lexical_match_without_a_prior_prepare() -> None:
     # score()/breakdown() are sometimes called directly (e.g. building an ablation figure),
     # not via top_k(). The relevance term must still reflect a real lexical match, not

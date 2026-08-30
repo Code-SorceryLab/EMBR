@@ -9,7 +9,33 @@ from __future__ import annotations
 
 import pytest
 
-from eval.stats import bootstrap_ci, holm_bonferroni, paired_permutation_pvalue
+from eval.stats import (
+    bootstrap_ci,
+    holm_bonferroni,
+    mcnemar_exact,
+    paired_permutation_pvalue,
+)
+
+
+def test_mcnemar_exact_matches_hand_computed_binomial() -> None:
+    # Exact two-sided binomial on the discordant pairs. 7 versus 0 is RQ2's own EMBR-vs-Park
+    # comparison, and the value is checkable by hand: 2 * (1/2)**7 = 0.015625.
+    assert mcnemar_exact(7, 0) == pytest.approx(0.015625)
+    assert mcnemar_exact(5, 0) == pytest.approx(0.0625)
+    assert mcnemar_exact(0, 1) == pytest.approx(1.0)
+
+
+def test_mcnemar_is_symmetric_and_defined_with_no_disagreement() -> None:
+    # Direction is carried by which count is larger, never by the p value, and two systems
+    # that never disagree are not evidence of a difference.
+    assert mcnemar_exact(3, 6) == pytest.approx(mcnemar_exact(6, 3))
+    assert mcnemar_exact(0, 0) == 1.0
+
+
+def test_mcnemar_never_exceeds_one_when_counts_are_balanced() -> None:
+    # The doubling in a two-sided exact test can push a naive implementation past 1.0.
+    for count in range(0, 6):
+        assert 0.0 <= mcnemar_exact(count, count) <= 1.0
 
 
 def test_bootstrap_ci_is_deterministic_and_ordered() -> None:
@@ -62,3 +88,38 @@ def test_holm_bonferroni_caps_at_one() -> None:
     adjusted = holm_bonferroni({"a": 0.9, "b": 0.8})
     assert adjusted["a"] == 1.0
     assert adjusted["b"] == 1.0
+
+
+def test_spearman_reads_rank_agreement_not_linearity() -> None:
+    from eval.stats import spearman
+
+    assert spearman([1, 2, 3, 4], [10, 100, 1000, 10000]) == 1.0  # monotone, not linear
+    assert spearman([1, 2, 3, 4], [4, 3, 2, 1]) == -1.0
+    assert spearman([1, 2, 3], [1, 2, 3]) == 1.0
+
+
+def test_spearman_handles_ties_and_degenerate_input() -> None:
+    from eval.stats import spearman
+
+    assert spearman([1, 1, 1], [1, 2, 3]) is None  # no variance on one side: undefined
+    assert spearman([1], [2]) is None
+    # Average ranks for ties: (1, 2.5, 2.5, 4) against (1, 2, 3, 4) is still strongly positive.
+    assert spearman([1, 2, 2, 3], [1, 2, 3, 4]) > 0.9
+
+
+def test_spearman_pvalue_separates_a_real_correlation_from_noise() -> None:
+    from eval.stats import spearman_pvalue
+
+    ordered = list(range(12))
+    assert spearman_pvalue(ordered, ordered, resamples=2000) < 0.01
+    # Deterministically interleaved, so rho is near zero without needing a random fixture.
+    scrambled = [6, 0, 7, 1, 8, 2, 9, 3, 10, 4, 11, 5]
+    assert spearman_pvalue(ordered, scrambled, resamples=2000) > 0.1
+    assert spearman_pvalue([1, 1, 1], [1, 2, 3]) is None  # undefined rho, undefined p
+
+
+def test_spearman_pvalue_never_reports_exactly_zero() -> None:
+    from eval.stats import spearman_pvalue
+
+    ordered = list(range(8))
+    assert spearman_pvalue(ordered, ordered, resamples=100) > 0.0

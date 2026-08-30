@@ -72,6 +72,18 @@ class Query:
     query: str
     relevant: set[int]  # global memory indices judged relevant, fixed before any runs
     note: str
+    #: Optionally, one relevant set per named state. A label set that fills this in is
+    #: saying "at this mood, a different memory is the right one to surface", which is the
+    #: only shape of ground truth that a mood-congruent signal can be rewarded for matching.
+    #: Absent (the v1 Dawn labels) means the gold set does not depend on state, and nDCG
+    #: against it can only ever penalise a state-coupled signal. See docs/findings.md 3.1.
+    relevant_by_state: dict[str, set[int]] | None = None
+
+    def relevant_for(self, state_name: str) -> set[int]:
+        """The gold set for one named state, falling back to the state-independent one."""
+        if not self.relevant_by_state:
+            return self.relevant
+        return self.relevant_by_state.get(state_name, self.relevant)
 
 
 @dataclass
@@ -85,6 +97,16 @@ class Scenario:
     queries: list[Query]
     mood_conditions: dict[str, Mood]
     version: str = "unknown"  # the label-set revision, so a run can name what it scored
+
+    @property
+    def is_state_conditioned(self) -> bool:
+        """Whether any query's gold set depends on the character's state.
+
+        The ceiling on RQ3: against state-independent labels a mood-congruent signal can
+        only lose, because moving retrieval away from one fixed relevant set can only lower
+        the score. A label set that answers True here is one where the signal can win.
+        """
+        return any(query.relevant_by_state for query in self.queries)
 
 
 def label_sha256(path: Path | str = DAWN_JSON) -> str:
@@ -147,6 +169,11 @@ def load_scenario(
             query=item["query"],
             relevant=set(item["relevant"]),
             note=item["note"],
+            relevant_by_state=(
+                {name: set(ids) for name, ids in item["relevant_by_state"].items()}
+                if item.get("relevant_by_state")
+                else None
+            ),
         )
         for item in raw["queries"]
     ]

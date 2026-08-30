@@ -1,0 +1,118 @@
+EMBR figure notes
+========================================================================
+
+Prose for the figures in this directory. The figures carry data only; every
+caveat, statistic and provenance line lives here.
+
+run 20260828-000824  |  commit cd867f53a1d7 (dirty tree)  |  model stub  |  labels dawn-whitmore v1  |  built by assets/build_figures.py
+PRELIMINARY: model stub, deterministic lexical embedder, v1 single author labels, 10 queries. No RQ3 comparison is significant and every RQ3 interval spans zero: read direction, not ranking. The results that do reach significance are stated in docs/findings.md.
+
+------------------------------------------------------------------------
+rq3_retrieval.png / rq3_retrieval.pdf
+------------------------------------------------------------------------
+
+RQ3: no variant separates from the baselines (nDCG@5)
+
+Whiskers are marginal 95% bootstrap intervals. Overlap is not a test of a difference: the paired deltas figure carries the quantity actually tested.
+
+Bars are nDCG@5 over the 10 pre-registered queries, grouped into published default weights, weights tuned leave one query out, and ablations of tuned EMBR. The three families are not interchangeable: only the tuned rows saw the label set, so a default row and a tuned row are not a fair head to head. Rows marked with a dagger carry a mood term that is rank invariant under this protocol: RQ3 scores in the neutral zero-mood condition, where mood congruence returns the same value for every memory and therefore cannot reorder a result. This matters most for Emotional RAG, whose published score is relevance plus mood: scored here it reduces to relevance alone, so those rows are not a comparison against the system its paper describes. It is also why no mood ablation is reported, and why the mood term is measured by RQ1 instead. The gold labels do not vary with mood, so re-scoring under a live mood would not fix this: a mood term could then only move retrieval away from a fixed relevant set and lower the metric.
+
+------------------------------------------------------------------------
+rq3_ablation.png / rq3_ablation.pdf
+------------------------------------------------------------------------
+
+RQ3: only relevance measurably changes the ranking
+
+Positive means removing the signal cost accuracy. 4 of 4 intervals include zero (ringed on the zero line), so no ablation is conclusive.
+
+Paired mean difference in nDCG@5, EMBR tuned † minus ablation. Whiskers are 95% bootstrap intervals on the per query paired difference, the quantity the sign flip test asks about. A zero width interval means that ablation never reordered a held out top 5, so it is uninformative on this label set rather than switched off. Holm corrected p values, each against its own attainable floor (a floor at or above 0.05 could not have reached significance under any arrangement of its own data): relevance zeroed p=0.75 floor=0.031; recency zeroed p=1.00 floor=0.500; affect zeroed p=1.00 floor=1.000; event gate zeroed p=1.00 floor=1.000.
+
+------------------------------------------------------------------------
+rq2_poisoning.png / rq2_poisoning.pdf
+------------------------------------------------------------------------
+
+RQ2: only an anchor the attacker cannot write resists poisoning
+
+10 injection attacks per system (2 categories of 5); a bar counts the attacks whose planted memory entered the probe's top 5. A flat stub on the baseline is a measured zero, not a missing bar.
+
+The other 10 attacks (role override, persona dissolution) are absent here by construction, not zero by measurement: they write nothing to the store, so no poison exists to retrieve. Drawing them as zero bars would claim a defended result where the architecture has nothing to defend. The measurement that establishes it is probe_prompt_identical, true for all 10 of them in every system and false for every injection.
+
+------------------------------------------------------------------------
+rq2_latency.png / rq2_latency.pdf
+------------------------------------------------------------------------
+
+RQ2: choosing the memories is not what makes a turn slow
+
+Log axis: fastest to slowest spans about 1510x.
+
+Each dumbbell spans p50 to p95. Latency times the evaluated configuration: the full Dawn Whitmore store with the shared deterministic embedder on both the write and query paths. Nearest rank percentiles over 100 timed retrievals per system, wall clock on one machine. This is the one measurement in the run that is not deterministic, and the store holds a single scenario's memories, so read the ratio between systems rather than the absolute durations. The model stage times whichever runner the run was made with; under the stub it is microseconds and the comparison is meaningless, so build this figure from a real-model run.
+
+------------------------------------------------------------------------
+rq1_divergence.png / rq1_divergence.pdf
+------------------------------------------------------------------------
+
+RQ1: mood alone changes which memories come back
+
+Zeroing the mood weight collapses all three pairs to exactly 0.000, which is what attributes the divergence to the mood term rather than to run to run noise.
+
+Bars are mean Jaccard distance between the top 5 sets the two moods retrieve. Whiskers are fixed seed 95% bootstrap intervals over the per query top 5 distances. warm vs neutral is the weak pair: its interval reaches zero, and Jaccard distance cannot go below zero, so no test against zero is reported.
+
+========================================================================
+Mechanism experiments
+========================================================================
+
+------------------------------------------------------------------------
+affective_indexing
+------------------------------------------------------------------------
+
+Flip a memory's emotion and its recall inverts; what it means does not move
+
+Deterministic and model independent: relevance and mood congruence are both pure functions of the memory and the state. The 5 memories outside the charged set have |valence| below the 0.2 threshold, so a sign flip barely moves them and their emotional home is set by arousal instead, the axis a valence flip does not touch. Reproduce with python -m eval.emotion_flip.
+
+------------------------------------------------------------------------
+affective_indexing
+------------------------------------------------------------------------
+
+Flip a memory's emotion and its recall inverts; what it means does not move
+
+Deterministic and model independent: relevance and mood congruence are both pure functions of the memory and the state. The 5 memories outside the charged set have |valence| below the 0.2 threshold, so a sign flip barely moves them and their emotional home is set by arousal instead, the axis a valence flip does not touch. Reproduce with python -m eval.emotion_flip.
+
+------------------------------------------------------------------------
+mood_recall
+------------------------------------------------------------------------
+
+The same question asked in three moods (animated)
+
+Built from the reported run rather than drawn: every dot sits at a memory's real affect tag and every lit set is the real top 5 for the king-news query. Animated with SMIL because Blink does not run CSS animations inside an img tag, which is how GitHub embeds an SVG. Reproduce with python assets/build_animations.py.
+
+------------------------------------------------------------------------
+provenance_sweep
+------------------------------------------------------------------------
+
+Poisoning against the share of scoring mass anchored to authored data
+
+Ten injection attacks per point, exact McNemar against the unanchored arm. The second curve is the same sweep with the injected memories given the corpus maximum rating, which models the LLM poignancy rater Park et al. actually use and the attacker reaches through the memory text: the defence does not survive it at any weight. The claim is bounded to exactly that. Reproduce with python -m eval.provenance.
+
+------------------------------------------------------------------------
+provenance_sweep
+------------------------------------------------------------------------
+
+Poisoning against the share of scoring mass anchored to authored data
+
+Ten injection attacks per point, exact McNemar against the unanchored arm. The second curve is the same sweep with the injected memories given the corpus maximum rating, which models the LLM poignancy rater Park et al. actually use and the attacker reaches through the memory text: the defence does not survive it at any weight. The claim is bounded to exactly that. Reproduce with python -m eval.provenance.
+
+------------------------------------------------------------------------
+content_tag_grid
+------------------------------------------------------------------------
+
+The tag is what gets attacked, not the words
+
+Ten injected texts held fixed under four affect-tag conditions against every arm. Counts are exact, not estimates: retrieval and appraisal never call a model. The mood shift row is identical in every arm because one appraisal serves them all, which is the state channel the retrieval counts cannot show. relevance_only and Mnemosyne read 0/10 because the probe shares no words with any memory, so they retrieve nothing at all: immune by silence, not by defence. Reproduce with python -m eval.grid.
+
+------------------------------------------------------------------------
+content_tag_grid
+------------------------------------------------------------------------
+
+The tag is what gets attacked, not the words
+
+Ten injected texts held fixed under four affect-tag conditions against every arm. Counts are exact, not estimates: retrieval and appraisal never call a model. The mood shift row is identical in every arm because one appraisal serves them all, which is the state channel the retrieval counts cannot show. relevance_only and Mnemosyne read 0/10 because the probe shares no words with any memory, so they retrieve nothing at all: immune by silence, not by defence. Reproduce with python -m eval.grid.

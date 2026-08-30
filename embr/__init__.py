@@ -8,10 +8,28 @@ behind these few small contracts.
 from __future__ import annotations
 
 from .affect import APPRAISAL, CharacterState, EventResponse, Mood, appraise
-from .config import EmbrConfig, build_embedder, build_scorer, build_store
+from .config import EmbrConfig, build_embedder, build_model, build_scorer, build_store
 from .embeddings import DeterministicEmbedder, Embedder, SentenceTransformerEmbedder, tokenize
-from .memory import EventType, Memory, MemoryStore, PLOT_BEATS, SQLiteMemoryStore
-from .model import ModelRunner, StubRunner
+from .memory import (
+    EventType,
+    Memory,
+    MemoryStore,
+    PLOT_BEATS,
+    Provenance,
+    SQLiteMemoryStore,
+    TRUSTED_ORIGINS,
+    consolidate,
+)
+from .model import (
+    GenerationSettings,
+    ModelRunner,
+    ScoringRunner,
+    ModelUnavailableError,
+    OllamaRunner,
+    OuroRunner,
+    StubRunner,
+    read_ollama_api_key,
+)
 from .pipeline import Conversation, Turn, build_demo_conversation
 from .prompt import PromptBuilder
 from .scoring import (
@@ -19,10 +37,12 @@ from .scoring import (
     CompositeScorer,
     EventTypeGate,
     MoodCongruence,
+    ProvenanceAnchor,
     Recency,
     Relevance,
     Signal,
     all_signals,
+    defended_embr_scorer,
     embr_scorer,
 )
 from .vectors import cosine
@@ -42,6 +62,9 @@ __all__ = [
     "MemoryStore",
     "SQLiteMemoryStore",
     "PLOT_BEATS",
+    "Provenance",
+    "TRUSTED_ORIGINS",
+    "consolidate",
     # embeddings + vectors
     "Embedder",
     "DeterministicEmbedder",
@@ -50,7 +73,13 @@ __all__ = [
     "cosine",
     # model
     "ModelRunner",
+    "ScoringRunner",
     "StubRunner",
+    "OllamaRunner",
+    "OuroRunner",
+    "GenerationSettings",
+    "ModelUnavailableError",
+    "read_ollama_api_key",
     # pipeline
     "Conversation",
     "Turn",
@@ -63,13 +92,16 @@ __all__ = [
     "EventTypeGate",
     "Relevance",
     "MoodCongruence",
+    "ProvenanceAnchor",
     "CompositeScorer",
     "all_signals",
     "embr_scorer",
+    "defended_embr_scorer",
     # config
     "EmbrConfig",
     "build_embedder",
     "build_store",
     "build_scorer",
+    "build_model",
     "__version__",
 ]

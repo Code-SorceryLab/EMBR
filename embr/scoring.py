@@ -30,7 +30,7 @@ from typing import Protocol, runtime_checkable
 
 from .affect import CharacterState
 from .embeddings import Embedder, tokenize
-from .memory import Memory
+from .memory import TRUSTED_ORIGINS, Memory, Provenance
 from .vectors import cosine
 
 
@@ -148,13 +148,36 @@ class Relevance:
 
     gamma: float = 0.5  # weight on the lexical (BM25) half of the blend
     embedder: Embedder | None = None
+    #: How many (corpus, query) indexes to keep. Comfortably above the query count of any
+    #: one tuning fold, which is the loop this exists to serve.
+    cache_entries: int = 64
     name: str = field(default="relevance", init=False)
 
     def __post_init__(self) -> None:
         self._bm25: dict[int, float] = {}  # id(memory) -> normalised BM25 for the last query
         self._query_embedding: list[float] | None = None
+        # Several entries, not one: the tuning grid loops weight maps on the outside and
+        # queries on the inside, so consecutive prepares alternate queries and a single
+        # slot would be thrashed on every call. One entry per query in flight is enough.
+        self._cache: dict[tuple, tuple[dict[int, float], list[float] | None]] = {}
+        # References to the corpora the cache was built from. Held so those objects cannot
+        # be collected, which is what makes reusing their id() safe: a freed id can be
+        # handed out again to a different memory and produce a hit on the wrong corpus.
+        self._cached_corpora: list[list[Memory]] = []
+        #: Rebuild counter, for tests and profiling. Not used for scoring.
+        self._index_builds = 0
 
     def prepare(self, memories: list[Memory], query: str, state: CharacterState) -> None:
+        # BM25 statistics depend on the corpus and the query, never on the weights, and
+        # relevance is 96 percent of retrieval cost once a corpus is large. The tuning grid
+        # rescores one corpus and one query under 243 weight maps, so without this the
+        # identical index is rebuilt 243 times over.
+        key = (query, len(memories), tuple(id(memory) for memory in memories))
+        cached = self._cache.get(key)
+        if cached is not None:
+            self._bm25, self._query_embedding = cached
+            return
+
         corpus = [tokenize(memory.text) for memory in memories]
         raw = _bm25_scores(corpus, tokenize(query))
         top = max(raw, default=0.0)
@@ -163,6 +186,14 @@ class Relevance:
             id(memory): (value / top if top > 0 else 0.0) for memory, value in zip(memories, raw)
         }
         self._query_embedding = self.embedder.encode(query) if self.embedder is not None else None
+        # Bounded so a long session cannot grow this without limit. Clearing wholesale
+        # rather than evicting one entry keeps it simple and costs one rebuild per query.
+        if len(self._cache) >= self.cache_entries:
+            self._cache.clear()
+            self._cached_corpora.clear()
+        self._cache[key] = (self._bm25, self._query_embedding)
+        self._cached_corpora.append(list(memories))
+        self._index_builds += 1
 
     def score(self, memory: Memory, query: str, state: CharacterState) -> float:
         # A prepared corpus keys every memory (a non-match is stored as 0.0), so a missing
@@ -184,14 +215,59 @@ class Relevance:
 @dataclass
 class MoodCongruence:
     """Memories whose affect matches the character's current mood surface first
-    (Bower 1981's mood-congruent recall; Emotional RAG): cos((v_m, a_m), (v_s, a_s))."""
+    (Bower 1981's mood-congruent recall; Emotional RAG): cos((v_m, a_m), (v_s, a_s)).
 
+    `lagged` scores against the mood the turn opened with rather than the live one, which
+    closes a measured feedback loop. `take_turn` appraises the incoming event before it
+    retrieves, so an attacker who writes an emotionally charged memory moves the mood on the
+    same turn and this term then rewards the memory for matching the mood it just caused:
+    measured cosine between post-attack mood and injected affect is 0.90 to 0.99 across every
+    injection, and zeroing this weight is the single largest defence found (9/10 poisoned
+    down to 6/10). Attenuating the stored affect does not help, because cosine is
+    scale-invariant and the attack aligns the angle, not the magnitude. Reading the mood from
+    before the event is what actually breaks the alignment.
+
+    Off by default: the published numbers were produced without it, and it changes retrieval
+    for every legitimate turn as well, which is the cost this arm exists to measure.
+    """
+
+    lagged: bool = False
     name: str = field(default="mood", init=False)
 
     def score(self, memory: Memory, query: str, state: CharacterState) -> float:
+        mood = state.mood_at_turn_start if self.lagged else state.mood
         # Remap cosine's [-1, 1] to [0, 1]; a zero mood vector lands neutrally at 0.5.
-        raw = cosine((memory.valence, memory.arousal), (state.mood.valence, state.mood.arousal))
+        raw = cosine((memory.valence, memory.arousal), (mood.valence, mood.arousal))
         return (raw + 1) / 2
+
+
+@dataclass
+class ProvenanceAnchor:
+    """Anchored scoring mass: how much of the score reads an input the attacker cannot write.
+
+    Every one of EMBR's five signals reads something the attacker supplies or can move: the
+    text (relevance), the timestamp (recency, and a fresh write is maximally recent), the
+    affect tags (affect intensity), the event type (the gate), and the character's mood (mood
+    congruence, primed by appraisal on the attack turn). That is why poison lands 9 times in
+    10. `eval/provenance.py` measured the fix as a dose-response: raise the share of scoring
+    mass held by a term the attacker cannot reach and the count falls monotonically to zero,
+    and it returns to 10/10 the moment the attacker can influence that term's input.
+
+    This is that term, in the shipped system. It reads `Memory.written_by`, which is stamped
+    at the write boundary and never derived from text, so an attacker holding only natural
+    language cannot move it. The eval's anchor was an authored poignancy rating, a research
+    artefact; write-time origin is the same principle in a form a game actually has.
+
+    **Not part of `embr_scorer()`.** Opt in with `defended_embr_scorer()`. Every published
+    number was measured without it, and turning it on changes retrieval for legitimate turns
+    as well, which is the cost the defended arm exists to measure.
+    """
+
+    trusted: frozenset[Provenance] = TRUSTED_ORIGINS
+    name: str = field(default="provenance", init=False)
+
+    def score(self, memory: Memory, query: str, state: CharacterState) -> float:
+        return 1.0 if memory.written_by in self.trusted else 0.0
 
 
 def all_signals(
@@ -269,3 +345,41 @@ def embr_scorer(
         weights={"recency": 1.0, "affect": 1.0, "event_gate": 1.0, "relevance": 1.0, "mood": 1.0},
         signals=all_signals(embedder=embedder, now=now),
     )
+
+
+#: The anchor weight the defended posture ships at. `eval/provenance.py` swept
+#: (0, 1, 2, 3, 5, 8, 12) against the ten injections and 8.0 is the first weight to reach
+#: 0/10. Below it the defence is partial; above it the anchor starts crowding out relevance
+#: for no further gain. `tests/test_provenance_posture.py` re-derives the curve rather than
+#: trusting this comment.
+DEFAULT_ANCHOR_WEIGHT = 8.0
+
+#: The anchored share of total scoring mass at `DEFAULT_ANCHOR_WEIGHT`: w / (5 + w). Reported
+#: rather than the raw weight, because the weight alone means nothing without the denominator.
+DEFAULT_ANCHORED_SHARE = DEFAULT_ANCHOR_WEIGHT / (5.0 + DEFAULT_ANCHOR_WEIGHT)
+
+
+def defended_embr_scorer(
+    embedder: Embedder | None = None,
+    now: Callable[[], datetime] | None = None,
+    anchor_weight: float = DEFAULT_ANCHOR_WEIGHT,
+) -> CompositeScorer:
+    """EMBR's five signals plus the provenance anchor: the defended posture, opt-in.
+
+    The same shape as `eval/provenance.py`'s swept scorer, so what ships is what was measured
+    rather than a second implementation of the idea: EMBR's own signals with a sixth appended
+    and a weight map over the result.
+
+    **This is not the default and must not become one without a full re-run.** Every number in
+    `findings.md` was produced by `embr_scorer()`, and this project's rule is that a number
+    appears only if it was re-run after the last change to the code that produces it.
+
+    The claim it carries is bounded, and both bounds are measured: anchoring defends exactly
+    as far as the anchor lies outside attacker control, and not one step further. Here that
+    means the write boundary has to be real. If any path lets external content be stamped
+    `AUTHORED` or `APPRAISED`, this term is worth nothing at any weight.
+    """
+    scorer = embr_scorer(embedder=embedder, now=now)
+    scorer.signals.append(ProvenanceAnchor())
+    scorer.weights["provenance"] = anchor_weight
+    return scorer

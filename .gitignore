@@ -19,7 +19,21 @@ env/
 # Runtime data: memory databases, embeddings, run outputs (keep the folder, not the files)
 data/*
 !data/.gitkeep
+# Generated paper assets are the exception: they are deliverables, they are embedded in the
+# README, and a reviewer cloning the repo has to see them without running anything first.
+!data/figures/
+!data/tables/
+# The LLM poignancy ratings behind the park_llm arm: 34 entries, and the only way the
+# reported count reproduces on a machine without the model.
+!data/ratings/
+# The interactive demo is self-contained and is what the paper links to.
+!data/demo/
 
 # OS
 .DS_Store
 .git.broken-backup/
+
+# Local secrets (API keys). Never committed.
+.env
+.env.local
+.venv-*/

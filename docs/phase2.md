@@ -41,7 +41,7 @@ it. Pair this with [`design.md`](design.md) (architecture) and
   like the numbers it describes.
 - **`eval/run.py`**: the runner. `python -m eval.run` executes all three studies against
   a pinned `REFERENCE_TIME` (2026-01-01 UTC) and writes an auditable run directory;
-  `fast_rq3_defaults()` is the sub-second subset the applet calls.
+  `fast_rq3_defaults()` is the sub-second subset the menu calls.
 
 ### Tests (nine new files, 89 tests, plus `conftest.py`)
 
@@ -68,13 +68,15 @@ it. Pair this with [`design.md`](design.md) (architecture) and
 - **`conftest.py`** (repo root): puts the repo root on `sys.path` so tests import the
   `eval` package without installing anything extra.
 
-### The applet
+### The menu
 
-**Run experiment** in the Textual applet is now live: it runs `fast_rq3_defaults()` (the
-three scorers at published default weights, k=5, tuning skipped so it answers instantly)
-and renders the nDCG@5 scoreboard, pointing at `python -m eval.run` for the full
-protocol. The import is lazy and fails with an honest message when the applet is
-launched away from the repo checkout.
+The evaluation went live in the menu: `fast_rq3_defaults()` (the three scorers at published
+default weights, k=5, tuning skipped so it answers instantly) renders an nDCG@5 scoreboard,
+with `python -m eval.run` for the full protocol. The import is lazy, so the core never loads
+the harness that measures it.
+
+Phase 2 shipped this inside a Textual applet, which phase 4 replaced with a Rich menu. The
+wiring described here survived the move; only the renderer changed.
 
 ## 2. What changed in existing files, and why
 
@@ -86,7 +88,8 @@ launched away from the repo checkout.
   months in the past by run day and every recency score had decayed to roughly 1e-11:
   the signal was dead in every variant and the comparison was silently four-signal.
 - **`embr/app/main.py`**: the "not built yet" experiment placeholder was replaced with
-  the live screen described above.
+  the live screen described above. (Phase 4 removed this file with the rest of the Textual
+  applet; the wiring moved to `menu.py` at the repo root.)
 - **`tests/test_scoring.py`**: two new tests pin the injected clock (exact decay from an
   anchor, and `embr_scorer` threading the clock to the recency signal) and that the
   default stays the live clock.
@@ -99,7 +102,7 @@ launched away from the repo checkout.
 source .venv/bin/activate
 pytest -q            # full suite: 130 passed, 1 skipped (main had 40 tests)
 python -m eval.run   # the full protocol; prints the RQ3 summary table when done
-embr                 # applet -> "Run experiment" for the instant defaults-only scoreboard
+embr                 # menu -> "Quick Scoreboard" for the instant defaults-only run
 ```
 
 Each `python -m eval.run` writes a run directory `data/runs/<stamp>/` containing:
@@ -149,9 +152,9 @@ Read these as a harness shakedown, not as results. Everything ran on the stub mo
 echoes the player's line) and the deterministic content-hash embedder, so relevance here
 is lexical rather than semantic; the real model runner and real embeddings land with the
 eval hardware. The labels are the v1 pre-registered set, authored by one person before
-any retrieval was run; the blind multi-annotator pass with agreement statistics is still
-to come, and it re-judges the recorded borderline cases first (see the honesty note in
-`eval/scenarios.py`). Ten queries buy very little power: the CIs are wide, every paired
+any retrieval was run. **The blind multi-annotator pass is not coming**: it was shelved on
+2026-08-24 with the rest of the human-subject work, so the recorded borderline cases (see the
+honesty note in `eval/scenarios.py`) stay unadjudicated and the label set stays single-author. Ten queries buy very little power: the CIs are wide, every paired
 interval spans zero, and no Holm-corrected comparison is significant (the minimum
 corrected p is 0.75, for the no-relevance ablation, whose attainable floor is 0.03125).
 The tuned rows are honest held-out estimates, which is why they sit below the optimistic
@@ -161,8 +164,9 @@ Do not read an ordering off this table. The default-weight gap between Park and 
 0.014, which is smaller than the swing produced by admitting the borderline label
 exclusions the honesty note already records: admitting the four originally recorded ones
 gives EMBR 0.578 against Park 0.577, and admitting all six gives EMBR 0.581 against Park
-0.577. Both orderings reverse, so the direction is inside label-adjudication noise until
-the blind multi-annotator pass lands. `test_borderline_label_admissions_outweigh_the_park_embr_gap`
+0.577. Both orderings reverse, so the direction is inside label-adjudication noise, and with the
+multi-annotator pass shelved it stays there permanently: **the Park and EMBR ordering is not
+reportable in either direction, ever, on this label set.** `test_borderline_label_admissions_outweigh_the_park_embr_gap`
 pins that re-score rather than asserting it in prose.
 
 What the table does say, directionally: relevance carries the most weight, since dropping
@@ -241,4 +245,5 @@ Phase 3 (paper assets) reads `data/runs/<stamp>/` and nothing else:
   wall-clock measurement.
 
 The build scripts themselves (`assets/build_tables.py`, `assets/build_figures.py`, and
-the applet's "Generate paper assets" item) are phase 3's scope.
+the menu's "Generate Paper Assets" option) are phase 3's scope, and shipped: see
+[`phase3-4.md`](phase3-4.md).

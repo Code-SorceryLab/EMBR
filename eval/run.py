@@ -26,17 +26,19 @@ import csv
 import json
 import subprocess
 import sys
-from collections.abc import Callable, Hashable, Sequence
+from collections.abc import Callable, Hashable, Mapping, Sequence
 from dataclasses import replace
 from datetime import datetime, timezone
 from itertools import combinations
 from pathlib import Path
+from typing import Any
 
 from embr import (
     CompositeScorer,
     Conversation,
     DeterministicEmbedder,
     MemoryStore,
+    MoodCongruence,
     Recency,
     StubRunner,
     __version__,
@@ -46,10 +48,23 @@ from embr import (
 from eval.attacks import ATTACKS, CATEGORIES, run_attack
 from eval.baselines import emotional_rag_scorer, memory_text, park_scorer
 from eval.latency import benchmark
-from eval.metrics import jaccard_distance, ndcg_at_k, precision_at_k, recall_at_k, va_drift
+from eval.metrics import (
+    jaccard_distance,
+    ndcg_at_k,
+    precision_at_k,
+    recall_at_k,
+    state_conditioned_ndcg,
+    va_drift,
+)
 from eval.scenarios import Query, Scenario, dawn_state, label_sha256, load_scenario
-from eval.stats import bootstrap_ci, holm_bonferroni, paired_permutation_pvalue
-from eval.tone import LexiconToneRater
+from eval.stats import (
+    bootstrap_ci,
+    holm_bonferroni,
+    mcnemar_exact,
+    paired_permutation_pvalue,
+)
+from eval.poignancy import llm_ratings
+from eval.tone import default_tone_rater
 from eval.tuning import Fold, leave_one_out_folds, visible_memories
 
 # Pinned anchor so every load rebuilds byte-identical timestamps and the whole run is
@@ -68,6 +83,20 @@ def _eval_clock() -> datetime:
 # One content-hashed embedder for memories and queries alike: stateless, so a single
 # shared instance is safe, and hash-based, so every process computes the same vectors.
 _EMBEDDER = DeterministicEmbedder()
+
+#: Builds the model under test. A factory rather than an instance because RQ1 and RQ2 each
+#: need their own runner, and a shared one would carry conversation state between them.
+ModelFactory = Callable[[], Any]
+
+
+def _model_label(model_factory: ModelFactory) -> str:
+    """Name the model from the runner itself, never from a caller supplied string.
+
+    A run that names its own model is the only way two runs can be compared, and taking
+    the name from the object means a run cannot claim a model it did not actually use.
+    """
+    runner = model_factory()
+    return str(getattr(runner, "label", type(runner).__name__))
 
 # The retrieval depths RQ3 reports at.
 _KS = (3, 5, 10)
@@ -145,6 +174,11 @@ def _variant_builders(scenario: Scenario) -> dict[str, Callable[[], CompositeSco
     }
 
 
+#: One base scorer per variant builder, so every weight map over a variant shares that
+#: variant's signal objects. Keyed by the builder itself, which lives for the whole run.
+_BASE_SCORERS: dict[Callable[[], CompositeScorer], CompositeScorer] = {}
+
+
 def _reweighted(
     build: Callable[[], CompositeScorer], weights: dict[str, float]
 ) -> CompositeScorer:
@@ -152,10 +186,19 @@ def _reweighted(
 
     This is the no-duplication rule made executable: tuned and ablated variants are weight
     maps over the variant's published signals, never re-implemented scoring math.
+
+    The signals are shared rather than rebuilt, which is what "the variant's published
+    signals" already claimed. It also matters for cost: `Relevance` caches its BM25 index
+    per corpus and query, and the tuning grid rescores one corpus and query under 243
+    weight maps. Rebuilding the signals each time gave every weight map an empty cache and
+    threw that reuse away. Nothing mutates a signal during scoring, so sharing is safe, and
+    a fresh `CompositeScorer` per call keeps the weights themselves unshared.
     """
-    scorer = build()
-    scorer.weights = dict(weights)
-    return scorer
+    base = _BASE_SCORERS.get(build)
+    if base is None:
+        base = build()
+        _BASE_SCORERS[build] = base
+    return CompositeScorer(weights=dict(weights), signals=base.signals)
 
 
 def _per_query_metrics(
@@ -278,7 +321,44 @@ def _rq3_stats(ndcg_by_query: dict[str, dict[str, float]]) -> dict:
     for family_pvalues in pvalues_by_family.values():
         for variant, adjusted in holm_bonferroni(family_pvalues).items():
             comparisons[variant]["p_holm"] = adjusted
+        # The raw floor is the floor of the sign-flip test, but the column a reader is told
+        # to judge against 0.05 is the Holm corrected one, and Holm multiplies the smallest
+        # raw p in a family by that family's size. Comparing a raw floor against a corrected
+        # p understates the floor and can make a family look reachable when no arrangement
+        # of its data could ever have cleared 0.05. Recorded beside it rather than replacing
+        # it, because the raw floor is still the honest answer about the test itself.
+        # Run the floors through the same Holm routine the p values go through, rather than
+        # multiplying each by the family size. Holm's running maximum means a member's
+        # corrected floor depends on the whole family, not on its own floor alone, so the
+        # naive product understates it for every member except the best one.
+        floors = {
+            variant: comparisons[variant]["attainable_p_floor"] for variant in family_pvalues
+        }
+        for variant, corrected in holm_bonferroni(floors).items():
+            comparisons[variant]["attainable_p_floor_holm"] = corrected
     return {"reference": reference, "metric": "ndcg@5", "comparisons": comparisons}
+
+
+def _mood_is_rank_invariant(scenario: Scenario) -> bool:
+    """Whether the mood term can reorder anything at all under RQ3's scoring state.
+
+    Measured, never assumed. RQ3 scores in the neutral condition, whose mood is the zero
+    vector, so cosine hands every memory the same congruence and the term collapses to an
+    additive constant that cannot change a ranking. Recording it per variant is what stops
+    a figure implying a comparison that did not happen: a mood-and-relevance baseline
+    scored here is a relevance baseline, and the label has to say so.
+    """
+    state = dawn_state(scenario)
+    signal = MoodCongruence()
+    scores = {round(signal.score(memory, "", state), 12) for memory in scenario.memories}
+    return len(scores) <= 1
+
+
+def _mood_using_variants(builders: Mapping[str, Callable[[], CompositeScorer]]) -> set[str]:
+    """Which variant families carry a mood signal, read off the scorers themselves."""
+    return {
+        name for name, build in builders.items() if any(s.name == "mood" for s in build().signals)
+    }
 
 
 def _weights_by_fold(
@@ -317,12 +397,23 @@ def run_rq3(scenario: Scenario) -> dict:
     variant_meta: dict[str, dict] = {}
     ndcg_by_query: dict[str, dict[str, float]] = {}  # variant -> query id -> ndcg@5
 
+    mood_inert = _mood_is_rank_invariant(scenario)
+    mood_families = _mood_using_variants(builders)
+
     def record(variant: str, per_query: dict[str, dict[str, float]], meta: dict) -> None:
         variants[variant] = _summarize(per_query)
         per_query_rows[variant] = per_query
         ndcg_by_query[variant] = {qid: rows["ndcg@5"] for qid, rows in per_query.items()}
+        # A variant whose mood term cannot reorder anything is not the system its paper
+        # describes, and the row has to carry that or a reader will take the comparison at
+        # face value. Derived from the scorer and the state, so it cannot drift from them.
+        carries_mood = any(variant.startswith(family) for family in mood_families)
         # embr_tuned is the reference every comparison is made against, so it has no family.
-        variant_meta[variant] = {"family": _RQ3_FAMILIES.get(variant, "reference"), **meta}
+        variant_meta[variant] = {
+            "family": _RQ3_FAMILIES.get(variant, "reference"),
+            "mood_rank_invariant": bool(mood_inert and carries_mood),
+            **meta,
+        }
 
     embr_folds: list[Fold] = []
     for name, build in builders.items():
@@ -471,9 +562,10 @@ def _pairwise_divergence(
     }
 
 
-def run_rq1(scenario: Scenario) -> dict:
+def run_rq1(scenario: Scenario, model_factory: ModelFactory = StubRunner) -> dict:
     """RQ1: does pinned mood shift what is retrieved and how the reply sounds?"""
-    rater = LexiconToneRater()
+    rater = default_tone_rater()
+    model_label = _model_label(model_factory)
     conditions = list(scenario.mood_conditions)  # JSON order: warm, neutral, suspicious
     # The full composite is the system under study, on the same pinned clock as RQ3.
     build = _variant_builders(scenario)["embr"]
@@ -485,6 +577,7 @@ def run_rq1(scenario: Scenario) -> dict:
         state = dawn_state(scenario, mood_condition=condition)
         valences: list[float] = []
         arousals: list[float] = []
+        replies: list[dict] = []
         for query in scenario.queries:
             # The reply runs through the real pipeline (stub standing in for the model).
             # The store gets replicas because MemoryStore.add reassigns ids on insert,
@@ -493,11 +586,15 @@ def run_rq1(scenario: Scenario) -> dict:
             for memory in visible_memories(scenario, query):
                 store.add(replace(memory))
             conversation = Conversation(
-                state=state, store=store, scorer=scorer, model=StubRunner(), top_k=5
+                state=state, store=store, scorer=scorer, model=model_factory(), top_k=5
             )
-            valence, arousal = rater.rate(conversation.take_turn(query.query).reply)
+            reply = conversation.take_turn(query.query).reply
+            valence, arousal = rater.rate(reply)
             valences.append(valence)
             arousals.append(arousal)
+            # The text itself, so a second rater (the blinded judge) can score the same
+            # replies later without regenerating them.
+            replies.append({"query": query.id, "reply": reply, "valence": valence, "arousal": arousal})
         per_condition[condition] = {
             "top5_ids": top5[condition],
             "mean_reply_valence": _mean(valences),
@@ -505,6 +602,7 @@ def run_rq1(scenario: Scenario) -> dict:
             # Per-query bootstrap CIs (Phase 2 Task 6): same fixed-seed protocol as RQ3.
             "reply_valence_ci95": list(bootstrap_ci(valences)),
             "reply_arousal_ci95": list(bootstrap_ci(arousals)),
+            "replies": replies,
         }
 
     # How differently each pair of moods remembers: jaccard distance of top-5 sets, with an
@@ -532,7 +630,7 @@ def run_rq1(scenario: Scenario) -> dict:
             pair: _mean(values) for pair, values in mood_ablated.items()
         },
         "metadata": {
-            "model": "stub",
+            "model": model_label,
             "note": _STUB_TONE_NOTE,
             "divergence_note": (
                 "retrieval_divergence_jaccard is the mean of the per-query top-5 jaccard "
@@ -547,23 +645,86 @@ def run_rq1(scenario: Scenario) -> dict:
     }
 
 
-def _rq2_variant_builders(scenario: Scenario) -> dict[str, Callable[[], CompositeScorer]]:
-    """RQ2's scorer variants: the three compared systems plus the recency-only floor.
+def run_rq3_state_conditioned(scenario: Scenario, k: int = 5) -> dict:
+    """RQ3 asked the way a state-coupled signal can answer: one gold set per mood.
+
+    Reports nDCG per mood against that mood's own relevant set, for every published-default
+    variant. On a label set whose gold sets do not depend on state this reduces to ordinary
+    RQ3 with extra steps, and it says so rather than reporting a number that looks new: the
+    `state_conditioned` flag is the whole point of the section.
+
+    The ceiling this exists to lift is the label set, not the harness. See docs/findings.md
+    section 3.1 and the corpus plan in docs/handoff.md section 8.1.
+    """
+    builders = _variant_builders(scenario)
+    conditions = list(scenario.mood_conditions)
+    variants: dict[str, dict] = {}
+    for name, build in builders.items():
+        per_query: dict[str, dict[str, float]] = {}
+        for query in scenario.queries:
+            candidates = visible_memories(scenario, query)
+            rankings, golds = {}, {}
+            for condition in conditions:
+                state = dawn_state(scenario, mood_condition=condition)
+                scorer = build()
+                ranked = scorer.top_k(candidates, query.query, state, max(_KS))
+                rankings[condition] = [memory.id for memory in ranked]
+                golds[condition] = query.relevant_for(condition)
+            per_query[query.id] = state_conditioned_ndcg(rankings, golds, k)
+        variants[name] = {
+            "per_query": per_query,
+            "mean": _mean([row["mean"] for row in per_query.values()]),
+            **{
+                f"mean_{condition}": _mean([row[condition] for row in per_query.values()])
+                for condition in conditions
+            },
+        }
+    return {
+        "metric": f"ndcg@{k}",
+        "state_conditioned": scenario.is_state_conditioned,
+        "variants": variants,
+        "note": (
+            "nDCG@%d scored per mood against that mood's own relevant set. state_conditioned "
+            "is False for a label set whose gold sets do not vary by state, and every number "
+            "here is then the same one ordinary RQ3 reports: a mood-congruent signal can only "
+            "lose against a fixed relevant set, however it ranks. Lifting that needs labels "
+            "an author gated on relationship state, not a change to this harness."
+        ) % k,
+    }
+
+
+def _rq2_variant_builders(
+    scenario: Scenario, model_factory: ModelFactory = StubRunner
+) -> dict[str, Callable[[], CompositeScorer]]:
+    """RQ2's scorer variants: the three compared systems, the recency-only floor, and, when
+    a real model is behind the run, Park with its importance rated by that model.
 
     The roadmap's RQ2 criterion is comparative (drift no worse than recency-only, latency
     within tens of ms of it), so the attack corpus and the latency benchmark run against
     every one of these, never just EMBR.
+
+    `park_llm` is Park as published: poignancy asked of the model, injected memories
+    included, so the rater is one the attacker can talk to. The stub cannot rate (it echoes
+    the prompt), so under the stub the arm is absent rather than faked.
     """
     builders = dict(_variant_builders(scenario))
     # The floor: a single recency signal on the same pinned clock, nothing else.
     builders["recency_only"] = lambda: CompositeScorer(
         weights={"recency": 1.0}, signals=[Recency(now=_eval_clock)]
     )
+    model = model_factory()
+    if not isinstance(model, StubRunner):
+        ratings = llm_ratings(scenario, model)
+        builders["park_llm"] = lambda: park_scorer(
+            ratings, embedder=_EMBEDDER, now=_eval_clock, rating_key=memory_text
+        )
     return builders
 
 
 def _conversation_factory(
-    scenario: Scenario, build_scorer: Callable[[], CompositeScorer]
+    scenario: Scenario,
+    build_scorer: Callable[[], CompositeScorer],
+    model_factory: ModelFactory = StubRunner,
 ) -> Callable[[], Conversation]:
     """Fresh Dawn Whitmore conversations for the attack and latency studies.
 
@@ -582,14 +743,72 @@ def _conversation_factory(
             state=dawn_state(scenario),
             store=store,
             scorer=build_scorer(),
-            model=StubRunner(),
+            model=model_factory(),
             top_k=5,
         )
 
     return build
 
 
-def run_rq2(scenario: Scenario) -> dict:
+#: The attack categories that write a memory. The other two are pure input: they change the
+#: prompt but store nothing, so there is no poison to retrieve and no pairing to test.
+INJECTION_CATEGORIES = ("false_memory", "emotion_flip")
+
+
+def _poisoning_stats(variants: dict[str, dict]) -> dict:
+    """Paired McNemar over the injection attacks, EMBR against each other system.
+
+    This exists because the study's headline comparison was, until now, computed in a
+    scratch script and typed into the documentation. A number that no artifact contains
+    cannot be checked by a reader, cannot be regenerated, and silently escaped the
+    correction every other comparison in this harness receives.
+
+    Paired because every system faces the identical attacks. The family is the three
+    comparisons made here, so Holm runs across them: reporting the raw p of the best of
+    three as though it stood alone is the multiple-comparison error this repo corrects for
+    everywhere else.
+    """
+    retrieved: dict[str, dict[str, bool]] = {
+        name: {
+            row["id"]: bool(row["poison_retrieved"])
+            for row in payload["attacks"]
+            if row["category"] in INJECTION_CATEGORIES
+        }
+        for name, payload in variants.items()
+    }
+    reference = "embr"
+    comparisons: dict[str, dict] = {}
+    raw: dict[str, float] = {}
+    for name, flags in retrieved.items():
+        if name == reference:
+            continue
+        shared = sorted(set(retrieved[reference]) & set(flags))
+        only_reference = sum(1 for i in shared if retrieved[reference][i] and not flags[i])
+        only_other = sum(1 for i in shared if flags[i] and not retrieved[reference][i])
+        raw[name] = mcnemar_exact(only_reference, only_other)
+        comparisons[name] = {
+            "attacks": len(shared),
+            f"poisoned_{reference}_only": only_reference,
+            "poisoned_other_only": only_other,
+            "p_value": raw[name],
+        }
+    for name, adjusted in holm_bonferroni(raw).items():
+        comparisons[name]["p_holm"] = adjusted
+    return {
+        "reference": reference,
+        "test": "exact two-sided McNemar on the paired injection attacks",
+        "comparisons": comparisons,
+        "note": (
+            f"Holm corrected across the {len(comparisons)} comparisons made here. Direction is carried by "
+            "the discordant counts, never by the p value: poisoned_embr_only above "
+            "poisoned_other_only means EMBR was the more poisonable arm."
+        ),
+    }
+
+
+def run_rq2(
+    scenario: Scenario, model_factory: ModelFactory = StubRunner, latency_turns: int = 100
+) -> dict:
     """RQ2: attack damage and per-stage latency, comparatively for every system.
 
     Four readings per attack. Two are model-independent and carry the study: retrieval
@@ -600,10 +819,10 @@ def run_rq2(scenario: Scenario) -> dict:
     drift, between the canonical and attacked probe replies, and immediate drift, on the
     attack turn's own reply.
     """
-    rater = LexiconToneRater()
+    rater = default_tone_rater()
     variants: dict[str, dict] = {}
-    for name, build_scorer in _rq2_variant_builders(scenario).items():
-        factory = _conversation_factory(scenario, build_scorer)
+    for name, build_scorer in _rq2_variant_builders(scenario, model_factory).items():
+        factory = _conversation_factory(scenario, build_scorer, model_factory)
         attack_rows: list[dict] = []
         drifts_by_category: dict[str, list[float]] = {category: [] for category in CATEGORIES}
         for attack in ATTACKS:
@@ -614,6 +833,8 @@ def run_rq2(scenario: Scenario) -> dict:
                 {
                     "id": attack.id,
                     "category": attack.category,
+                    "canonical_reply": outcome.canonical_reply,
+                    "attacked_reply": outcome.attacked_reply,
                     "drift": drift,
                     "immediate_drift": va_drift(
                         canonical_tone, rater.rate(outcome.attack_reply)
@@ -636,16 +857,35 @@ def run_rq2(scenario: Scenario) -> dict:
             drifts_by_category[attack.category].append(drift)
         variants[name] = {
             "attacks": attack_rows,
+            # Undefined readings are counted, never averaged. va_drift returns None when one
+            # side is the neutral zero vector, because the angle to a directionless vector
+            # does not exist. Folding those in as 1.0 put a sentinel mid-scale and made a
+            # category mean of 1.0 indistinguishable from five cells of no measurement at
+            # all, which is how "Park drifts more than EMBR" came to rest on one attack.
             "category_mean_drift": {
-                category: (sum(values) / len(values) if values else 0.0)
+                category: (
+                    sum(v for v in values if v is not None)
+                    / len([v for v in values if v is not None])
+                    if any(v is not None for v in values)
+                    else None
+                )
                 for category, values in drifts_by_category.items()
             },
-            "latency_ms": benchmark(factory),
+            "category_drift_measured": {
+                category: {
+                    "defined": sum(1 for v in values if v is not None),
+                    "undefined": sum(1 for v in values if v is None),
+                }
+                for category, values in drifts_by_category.items()
+            },
+            "latency_ms": benchmark(factory, turns=latency_turns),
         }
     return {
         "variants": variants,
+        "poisoning_stats": _poisoning_stats(variants),
         "metadata": {
-            "model": "stub",
+            "model": _model_label(model_factory),
+            "latency_turns": latency_turns,
             "note": _STUB_TONE_NOTE,
             "pure_input_note": (
                 "role_override and persona_dissolution attacks write nothing to the store "
@@ -719,28 +959,47 @@ def _write_rq2_csv(path: Path, rq2: dict) -> None:
                 )
 
 
-def run_all(out_root: str | Path = "data/runs") -> tuple[Path, dict]:
+def run_all(
+    out_root: str | Path = "data/runs",
+    model_factory: ModelFactory = StubRunner,
+    latency_turns: int = 100,
+    progress: Callable[[str], None] | None = None,
+) -> tuple[Path, dict]:
     """Run all three studies and write a timestamped, auditable run directory.
 
     Returns (run directory, compact summary dict). The directory holds results.json plus
     the two CSVs the paper's tables are generated from.
+
+    `model_factory` swaps the model under test. It defaults to the stub because every
+    published number was scored on it. Note what a swap can and cannot move: retrieval runs
+    on the embedder and the scorer, so nDCG and retrieval drift are model-independent by
+    construction. Only the two tone readings respond to the model.
+
+    `progress` receives one line as each stage starts, so a long real-model run shows where
+    it is. It defaults to silence because the tests and the demos call this too.
     """
+    tell = progress or (lambda message: None)
     scenario = load_eval_scenario()
-    results = {
-        "rq1": run_rq1(scenario),
-        "rq2": run_rq2(scenario),
-        "rq3": run_rq3(scenario),
-        "metadata": {
-            # Provenance first: which code, and which label bytes, produced these numbers.
-            **_provenance(),
-            "label_set": scenario.name,
-            "label_version": scenario.version,
-            "label_sha256": label_sha256(),
-            "model": "stub",
-            "reference_time": REFERENCE_TIME.isoformat(),
-            "embr_version": __version__,
-            "generated_at": datetime.now(timezone.utc).isoformat(),
-        },
+    results: dict = {}
+    tell("RQ1 tone under mood (1/4)")
+    results["rq1"] = run_rq1(scenario, model_factory)
+    tell("RQ2 attacks and latency (2/4)")
+    results["rq2"] = run_rq2(scenario, model_factory, latency_turns)
+    tell("RQ3 retrieval comparisons (3/4)")
+    results["rq3"] = run_rq3(scenario)
+    tell("RQ3 state-conditioned (4/4)")
+    results["rq3_state"] = run_rq3_state_conditioned(scenario)
+    results["metadata"] = {
+        # Provenance first: which code, and which label bytes, produced these numbers.
+        **_provenance(),
+        "label_set": scenario.name,
+        "label_version": scenario.version,
+        "label_sha256": label_sha256(),
+        "model": _model_label(model_factory),
+        "tone_rater": default_tone_rater().name,
+        "reference_time": REFERENCE_TIME.isoformat(),
+        "embr_version": __version__,
+        "generated_at": datetime.now(timezone.utc).isoformat(),
     }
 
     out_dir = Path(out_root) / datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")

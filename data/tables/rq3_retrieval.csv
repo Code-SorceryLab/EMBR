@@ -1,0 +1,11 @@
+condition,variant,holm_family,ndcg@5,ndcg@5_ci95_low,ndcg@5_ci95_high,precision@3,recall@5
+default,embr_default,secondary,0.594,0.353,0.806,0.367,0.658
+default,park_default,secondary,0.608,0.368,0.827,0.367,0.683
+default,emo_rag_default,secondary,0.552,0.294,0.797,0.333,0.567
+tuned,embr_tuned,reference,0.556,0.301,0.791,0.333,0.600
+tuned,park_tuned,primary,0.513,0.266,0.747,0.300,0.550
+tuned,emo_rag_tuned,primary,0.552,0.294,0.797,0.333,0.567
+ablation,embr_no_recency,ablation,0.536,0.288,0.775,0.333,0.567
+ablation,embr_no_affect,ablation,0.556,0.301,0.791,0.333,0.600
+ablation,embr_no_event_gate,ablation,0.573,0.311,0.819,0.333,0.600
+ablation,embr_no_relevance,ablation,0.414,0.163,0.667,0.267,0.483

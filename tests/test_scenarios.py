@@ -26,6 +26,10 @@ _JSON_PATH = Path(__file__).resolve().parent.parent / "eval" / "labels" / "dawn_
 # Any fixed anchor works; pinning one makes every timestamp assertion exact.
 _REFERENCE = datetime(2026, 1, 1, 12, 0, tzinfo=timezone.utc)
 
+# The v1 label bytes, LF-normalised. Published numbers are scored against these, so a change
+# here means the labels moved and every recorded result needs re-scoring, not a new constant.
+_LABEL_SHA256_V1 = "5d5f38bc31c6230b8805964de2b56866cbcbb4c422133ca91aa68584e2ad1b82"
+
 
 def _raw() -> dict:
     return json.loads(_JSON_PATH.read_text())
@@ -142,6 +146,18 @@ def test_label_set_declares_its_version_and_a_content_hash() -> None:
     assert scenario.version == "v1"
     assert _raw()["version"] == scenario.version
     assert len(label_sha256()) == 64
+
+
+def test_label_hash_is_the_same_on_every_platform() -> None:
+    # The hash is the reproducibility stamp a reviewer checks a published number against, so
+    # it has to name the labels and nothing else. Hashing raw bytes means a CRLF checkout on
+    # Windows silently produces a different stamp for identical labels, which would make the
+    # stamp unverifiable off the machine that generated it. .gitattributes pins the file to
+    # LF so the bytes are canonical everywhere; this pins the value that produces.
+    assert b"\r\n" not in _JSON_PATH.read_bytes(), (
+        "label file checked out with CRLF, so its content hash will not match other platforms"
+    )
+    assert label_sha256() == _LABEL_SHA256_V1
 
 
 def test_recorded_borderlines_are_machine_readable_and_defensible() -> None:

@@ -13,7 +13,7 @@ eval.tone. The runner wires them together, so the build modules stay decoupled.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Callable
 
 from embr import Conversation, EventType, Memory
@@ -266,6 +266,29 @@ def build_attack_memory(attack: Attack) -> Memory | None:
         arousal=attack.injected_arousal,
         event_type=attack.injected_event_type,
     )
+
+
+def tag_variants(
+    attack: Attack, auto_tag: Callable[[str], tuple[float, float]]
+) -> dict[str, Attack]:
+    """The same injected text under four affect-tag conditions, for the content x tag grid.
+
+    Every built attack is *congruent*: the tag agrees with the text. The other three hold
+    the text fixed and move only what the scoring can read: *incongruent* flips the valence
+    sign ("he was lovely" filed under anger), *untagged* zeroes both axes so only the words
+    carry the emotion, and *auto_tagged* derives the tag from the text with the caller's
+    rater, which is the threat model a shipped system exposes when the attacker controls
+    only natural language. Pure-input attacks write nothing and have no tag to vary.
+    """
+    if attack.injected_memory_text is None:
+        return {}
+    valence, arousal = auto_tag(attack.injected_memory_text)
+    return {
+        "congruent": attack,
+        "incongruent": replace(attack, injected_valence=-attack.injected_valence),
+        "untagged": replace(attack, injected_valence=0.0, injected_arousal=0.0),
+        "auto_tagged": replace(attack, injected_valence=valence, injected_arousal=arousal),
+    }
 
 
 @dataclass

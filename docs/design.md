@@ -21,7 +21,7 @@ runs five steps, then loops (see `assets/figures/architecture.svg`):
 2. **Update state**: move the character's mood (fast) and trust (slow).
 3. **Score memories**: score every stored memory with the five-signal composite.
 4. **Build prompt**: persona + current state + top-k memories + player input.
-5. **Run model**: call the local model for the reply.
+5. **Run model**: call the model for the reply (stub, a local Ollama model, or Ouro 1.4B).
 
 Everything runs locally, no network, no per-token cost.
 
@@ -61,7 +61,13 @@ as weight maps rather than duplicated code, and keeps every signal independently
 ## 5. Baselines & protocol
 
 - **Park et al.**: recency + importance + relevance (field-standard).
-- **Emotional RAG**: mood-biased retrieval (closest prior work).
+- **Emotional RAG**: mood-biased retrieval (closest prior work in the literature). Note that
+  under RQ3's neutral scoring state its mood term is rank invariant, so it reduces to a
+  relevance-only baseline there; those rows are marked with a dagger in the figures.
+
+Closest prior work in practice is not in the literature at all: a cluster of shipped Stardew
+Valley mods already does LLM NPCs with persistent memory and offline local inference. None
+reports a metric. See [`related-work.md`](related-work.md), which the paper must cite.
 
 Both are scorer variants on the same interface, run on the same model and hardware. Every
 system (ours included) is tuned by the same grid search on the same validation set;
@@ -73,23 +79,35 @@ evaluation scenarios and relevance labels are fixed in advance. *(Built in phase
 - **RQ1 Behaviour**: vary only the state; measure retrieval shift (Jaccard), tone shift
   (classifier + blinded judge), and human preference.
 - **RQ2 Robustness & cost**: 20 memory-injection attacks (4 categories), drift via
-  valence-arousal cosine distance; per-turn latency p50/p95 (~600 ms target).
+  valence-arousal cosine distance; score-and-retrieve latency p50/p95. The budget is on the
+  memory layer, which measures 1.8 to 4.3 ms. Generation cost belongs to the model behind the
+  interface and is reported separately by the bake-off, where no local arm reaches a second.
 - **RQ3 Retrieval**: precision/recall/nDCG@k vs. pre-registered labels; ablate signals.
 
 ## 7. Build order
 
 | Phase | Scope |
 |---|---|
-| **0 (done)** | Skeleton, data contracts, applet shell, live demo turn, tests |
+| **0 (done)** | Skeleton, data contracts, menu shell, live demo turn, tests |
 | **1 (done)** | Hybrid relevance (in-tree BM25 + embedding cosine), pluggable embedder, SQLite store, affect-appraisal rules, config + live Settings |
 | **2 (done)** | Eval harness, baselines, metrics, adversarial probes (see `docs/phase2.md`) |
-| 3 | Paper assets: figures & tables generated from results |
-| 4 | Playable tavern-keeper walkthrough (recorded demo is a primary deliverable) |
+| **3 (done)** | Paper figures and tables generated from a run directory (see `docs/phase3-4.md`) |
+| **4 (done)** | Real model runners, the playable walkthrough, the Rich menu (see `docs/phase3-4.md`) |
 
 Phase-1 note: BM25 is implemented in-tree (`embr/scoring.py`) so the core needs no numpy; real
 semantic embeddings live behind the `[ml]` extra, with a deterministic fallback embedder for
 tests. Corpus-aware signals expose an optional `prepare(memories, query, state)` hook the
 scorer calls once before per-memory scoring.
+
+Phase-2 note: `Recency` takes an injectable clock. The default is the live wall clock, so game
+behaviour is unchanged, but the eval pins it to a reference time. Without that, a scenario's
+fixed timestamps decay to nothing by run day and the signal is silently dead.
+
+Phase-4 note: the model seam stayed a single method, which is what let two real runners drop in
+without touching anything above them. Measured cost of the looped thesis model on an M-series
+Mac: about 10 s to load, then roughly 8.5 s for 60 tokens, against about 3.8 s for 80 tokens
+from a conventional llama3.2:3b. Looping buys capability per parameter and spends it in latency,
+which is a live tension with the RQ2 target. Ouro also requires transformers 4.x.
 
 ## 8. Conventions
 

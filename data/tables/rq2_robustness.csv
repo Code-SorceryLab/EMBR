@@ -1,0 +1,5 @@
+system,poison_retrieved,injection_attacks,mean_retrieval_drift_injections,pure_input_prompt_identical,pure_input_attacks,score_retrieve_p95_ms
+embr,9,10,0.419,10,10,2.929
+park,2,10,0.067,10,10,2.769
+emo_rag,4,10,0.698,10,10,3.171
+recency_only,10,10,0.333,10,10,0.093

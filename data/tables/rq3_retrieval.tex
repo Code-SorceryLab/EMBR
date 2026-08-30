@@ -1,0 +1,59 @@
+% EMBR table rq3_retrieval: run_dir=data\runs\20260828-000824, git_commit=cd867f53a1d7e11ed56d383352bd59be2d1dfb52 (dirty working tree), label_version=v1, model=stub
+% label_set=dawn-whitmore, label_sha256=5d5f38bc31c6230b8805964de2b56866cbcbb4c422133ca91aa68584e2ad1b82, results generated_at=2026-08-28T00:08:24.795158+00:00
+% Requires \usepackage{booktabs}. Flat twin: rq3_retrieval.csv. Rebuild: python assets/build_tables.py data\runs\20260828-000824
+% If the tabular overflows the text block, make the float a table* or wrap the tabular in \resizebox{\linewidth}{!}{...}.
+% results.json rq3.metadata.tuning_protocol: tuned and ablation rows are leave-one-query-out
+% cross-validated: each query is scored under weights fit on the other nine, so no variant is
+% evaluated on a query its own grid search saw
+% results.json rq3.metadata.stats_protocol: each variant's ndcg@5_ci95_* bounds are MARGINAL, a
+% fixed-seed percentile bootstrap over that variant's own per-query values, so overlapping
+% marginal intervals must not be read as no difference; the interval on the effect actually tested
+% is mean_diff_ci95_* on the comparison row, bootstrapped over the per-query paired differences.
+% Comparisons are exact paired sign-flip permutation tests against embr_tuned, Holm-Bonferroni
+% corrected within family (primary, ablation, secondary) rather than pooled. Read every p against
+% its own attainable_p_floor: a comparison whose floor is at or above 0.05 could not have reached
+% significance under any arrangement of its own data, so a corrected p of 1.0 there records absent
+% power rather than an absent effect. A percentile bootstrap over ten values also under-covers, so
+% these intervals are indicative rather than calibrated
+% results.json rq3.metadata.neutral_mood_note: RQ3 scores under the neutral zero-mood condition,
+% where MoodCongruence returns 0.5 for every candidate: the mood term is a rank-invariant additive
+% constant, so RQ3 compares EMBR's other four signals and emo_rag is a relevance-only baseline
+% here rather than the mood-biased retrieval its paper describes. No embr_no_mood row is reported
+% because it cannot differ from embr_tuned by construction; RQ1 measures the mood term
+\begin{table}[tb]
+  \centering
+  \caption{%
+    RQ3 retrieval quality over the 10 pre-registered queries, grouped by condition. Tuned and
+    ablation rows are leave-one-query-out cross-validated, so every row is a held-out estimate. The
+    bracketed intervals are MARGINAL bootstrap intervals over each variant's own per-query values:
+    overlapping intervals must not be read as evidence of no difference, and the interval on the
+    quantity actually tested is the paired one in Table~\ref{tab:embr-rq3-comparisons}. P@3 is
+    precision at rank 3 and R@5 is recall at rank 5. Every number here is preliminary: it was
+    produced on the stub model with the deterministic lexical embedder, against the dawn-whitmore v1
+    labels, which are pre-registered but single-author; the blind multi-annotator pass with
+    agreement statistics is still to come. Do not read an ordering off this table.
+  }
+  \label{tab:embr-rq3-retrieval}
+  \small
+  \begin{tabular}{llrrrr}
+    \toprule
+    Variant & Holm family & nDCG@5 & 95\% CI & P@3 & R@5 \\
+    \midrule
+    \multicolumn{6}{l}{\textbf{Published default weights}} \\
+    \texttt{embr\_default} & secondary & 0.594 & [0.353, 0.806] & 0.367 & 0.658 \\
+    \texttt{park\_default} & secondary & 0.608 & [0.368, 0.827] & 0.367 & 0.683 \\
+    \texttt{emo\_rag\_default} & secondary & 0.552 & [0.294, 0.797] & 0.333 & 0.567 \\
+    \midrule
+    \multicolumn{6}{l}{\textbf{Tuned (leave-one-query-out cross-validated)}} \\
+    \texttt{embr\_tuned} & reference & 0.556 & [0.301, 0.791] & 0.333 & 0.600 \\
+    \texttt{park\_tuned} & primary & 0.513 & [0.266, 0.747] & 0.300 & 0.550 \\
+    \texttt{emo\_rag\_tuned} & primary & 0.552 & [0.294, 0.797] & 0.333 & 0.567 \\
+    \midrule
+    \multicolumn{6}{l}{\textbf{Single-signal ablations of tuned EMBR}} \\
+    \texttt{embr\_no\_recency} & ablation & 0.536 & [0.288, 0.775] & 0.333 & 0.567 \\
+    \texttt{embr\_no\_affect} & ablation & 0.556 & [0.301, 0.791] & 0.333 & 0.600 \\
+    \texttt{embr\_no\_event\_gate} & ablation & 0.573 & [0.311, 0.819] & 0.333 & 0.600 \\
+    \texttt{embr\_no\_relevance} & ablation & 0.414 & [0.163, 0.667] & 0.267 & 0.483 \\
+    \bottomrule
+  \end{tabular}
+\end{table}

@@ -1,0 +1,441 @@
+# Findings
+
+What EMBR measured, in the order the paper asks it, with every number traceable to a command
+and every caveat attached to the claim it limits. This is the canonical statement of results.
+[`handoff.md`](handoff.md) keeps the working record of how each result was found and, in
+several cases, corrected; [`metrics.md`](metrics.md) defines every statistic used here.
+
+**Rule for this document.** A number appears here only if it was produced by a command in
+this repository and re-run after the last change to the code that produces it. Where a result
+was expected and did not appear, it is written down as a null, not omitted.
+
+---
+
+## 0. Provenance
+
+| | |
+|---|---|
+| Runs | `data/runs/20260822-110218` (Ouro 1.4B on CUDA) and `data/runs/20260822-085211` (llama3.2:3b, local Ollama) |
+| Experiments | `data/experiments/grid.json`, `grid_generation_ouro.json`; `eval.attribution`, `eval.provenance`, `eval.emotion_flip` recompute on demand |
+| Tone raters | NRC VAD Lexicon v2.1 (44k human-rated unigrams) and a blinded judge, llama3.1:8b at temperature 0 |
+| Poignancy raters | Park's own prompt asked of Ouro 1.4B and of llama3.2:3b, cached in `data/ratings/` |
+| Labels | Dawn Whitmore v1: 24 memories, 10 queries, single author, pre-registered |
+| Suite | 385 tests passing |
+
+Retrieval, appraisal and every poisoning count are model-independent by construction: they
+never call a model. The two runs agree on them to the last digit, which is the architecture's
+own prediction and the cleanest validation in the project. Only tone readings and latency
+differ between the runs.
+
+---
+
+## 1. RQ1: does an authored emotional state change what the character says, or only what it remembers?
+
+**Both, but only the recall half holds on the thesis model.**
+
+### 1.1 What she remembers: yes, and it is attributable to one term
+
+Holding the memories and the question fixed and varying only the pinned mood, the top-5 set
+changes:
+
+| mood pair | Jaccard distance | with the mood weight zeroed |
+|---|---|---|
+| warm vs neutral | 0.142 | **0.000** |
+| warm vs suspicious | 0.388 | **0.000** |
+| neutral vs suspicious | 0.271 | **0.000** |
+
+The control is what makes this a finding rather than a number: zeroing one weight collapses
+the effect to exactly zero on all three pairs, so the divergence is the mood term and nothing
+else. Identical on both models. `python -m eval.run`
+
+The warm vs neutral interval reaches zero (bootstrap 95%: 0.000 to 0.308), so only the two
+pairs involving the suspicious condition are separated from zero at ten queries.
+
+### 1.2 What she says: yes on a 3B model, no on the 1.4B thesis model
+
+Spearman rho between the pinned mood valence and the rated valence of the reply, over the
+thirty RQ1 replies, under each rater, with a two-sided permutation p and Holm correction
+across the family of four:
+
+| run | rater | rho | p | p (Holm) |
+|---|---|---|---|---|
+| llama3.2:3b | blinded judge | **+0.545** | 0.0024 | **0.0096** |
+| llama3.2:3b | NRC lexicon | +0.335 | 0.0702 | 0.2106 |
+| Ouro 1.4B | blinded judge | +0.138 | 0.4684 | 0.9368 |
+| Ouro 1.4B | NRC lexicon | +0.123 | 0.5270 | 0.9368 |
+
+`python -m eval.agreement data/runs/<stamp>`
+
+This is the first evidence in the project that the loop closes to generation, and it is
+bounded in a way worth stating plainly: **the effect is significant on a 3B model, and absent
+on the 1.4B model the thesis is built around.** Both raters agree on the direction in both
+runs, which is what a two-rater design is for. The bake-off's finding, that tone
+responsiveness to a pinned mood rises with model size, predicted exactly this ordering.
+
+### 1.3 The measurement's own limit: the two raters barely agree, and on arousal they disagree
+
+| run | valence rho | p | arousal rho | p |
+|---|---|---|---|---|
+| llama3.2:3b | +0.314 | 0.0001 | **-0.217** | 0.0011 |
+| Ouro 1.4B | +0.103 | 0.1230 | **-0.322** | 0.0001 |
+
+Over the 230 replies each run stores. Two automatic raters built on different principles
+agree weakly on valence and are **reliably anti-correlated on arousal**.
+
+The consequence is a hard scope limit, and the paper must carry it: **no claim about how
+heated or calm a reply sounds is supportable in this project.** The arousal axis of the tone
+measurement is not measuring one thing. The valence axis survives, weakly, and the RQ1
+generation result above rests on valence alone. A believability claim would need people, and
+that study has not been run.
+
+---
+
+## 2. RQ2: is emotion-tagged memory an exploitable target, and what does the memory layer cost?
+
+### 2.1 The comparison the proposal pre-registered is a null
+
+Injected memories reaching the probe's top 5, out of ten attacks, paired exact McNemar
+against EMBR:
+
+| system | poisoned | discordant (EMBR only / other only) | p |
+|---|---|---|---|
+| EMBR | 9/10 | | |
+| Park, authored ratings | 2/10 | 7 / 0 | 0.0156 (Holm 0.0625) |
+| Park, rated by llama3.2:3b | 7/10 | 3 / 1 | 0.6250 |
+| Park, rated by Ouro 1.4B | 10/10 | 0 / 1 | 1.0000 |
+| Emotional RAG | 4/10 | 5 / 0 | 0.0625 (Holm 0.1875) |
+| recency only | 10/10 | 0 / 1 | 1.0000 |
+| relevance only | 0/10 | | |
+| Mnemosyne, as shipped | 0/10 | | |
+
+The 2/10 that made "EMBR is more poisonable than Park" look significant was an artefact of
+this harness. Park et al. do not use authored ratings; they ask a model. Asked Park's own
+prompt, llama3.2:3b rates the ten false memories at a mean of 0.55 against a corpus mean of
+0.52, and Ouro rates every one of them 10 out of 10. **Against Park as published, EMBR is not
+measurably more poisonable.** Reported as a null.
+
+Two arms read 0/10 for a reason that is not a defence. The probe is a generic question that
+shares no words with any memory, so a purely lexical or purely semantic store returns nothing
+at all: `relevance_only` and Mnemosyne are immune by silence. Mnemosyne is measured exactly as
+shipped, through a bridge in its own virtual environment (`eval/backends.py`).
+
+### 2.2 What survives, and it is the mechanism: poisonability is set by who controls a term's inputs
+
+The dose-response is on Park's own anchor, and needs no comparison to EMBR at all:
+
+| Park's importance term | poisoned |
+|---|---|
+| rated by the author, and the attacker cannot reach it | 2/10 |
+| rated by llama3.2:3b, which the attacker talks to through the memory text | 7/10 |
+| rated by Ouro 1.4B, likewise | 10/10 |
+| removed entirely | 10/10 |
+
+An anchored term defends exactly as far as its anchor lies outside attacker control, and not
+one step further. `python -m eval.attribution`
+
+### 2.3 The emotion that gets attacked is the tag, never the words
+
+Each of the ten injected texts held fixed and only its affect tag varied
+(`python -m eval.grid`):
+
+| system | as written | valence flipped | tag removed | tag from the text |
+|---|---|---|---|---|
+| **EMBR** | **9** | **9** | **6** | **6** |
+| Park, authored | 2 | 2 | 2 | 2 |
+| Park, rated by llama3.2:3b | 7 | 7 | 7 | 7 |
+| Park, rated by Ouro | 10 | 10 | 10 | 10 |
+| Emotional RAG | 4 | 6 | 0 | 1 |
+| recency only | 10 | 10 | 10 | 10 |
+| relevance only / Mnemosyne | 0 | 0 | 0 | 0 |
+| **mean mood shift** | +0.110 | -0.110 | **0.000** | +0.048 |
+
+Four readings:
+
+1. **The emotion a memory states in words reaches nothing.** Strip the tag and the character's
+   mood moves by exactly 0.000, however charged the sentence is. Every system without an
+   affect term reads the same count in all four columns, because nothing it scores changed.
+2. **The attack is direction-blind.** Flipping the tag leaves EMBR at 9/10: the flipped tag
+   drags the mood the other way, and mood congruence rewards the match just the same. Plant
+   "he was lovely" tagged as rage and the character recalls it when she is enraged. The
+   self-priming loop does not care which way it points.
+3. **The realistic threat is weaker than the declared-tag one.** With the tag derived from
+   the attacker's own words by the NRC lexicon, tags come out at |valence| 0.02 to 0.25, and
+   EMBR falls to the untagged count. The 9/10 requires an interface that lets the client
+   write affect metadata; an attacker holding only natural language gets 6/10.
+4. **Emotional RAG is more poisonable with the tag flipped than as written** (4 to 6).
+   Unexplained. Flagged, not built on.
+5. **The pattern is already visible one level down, in retrieval alone.** Asking only whether
+   the planted memory reached the top 5, with no model in the loop at all, the demo page
+   recomputes 9 / 9 / 6 / 7 across the same ten texts against the behavioural 9 / 9 / 6 / 6
+   above. Three of the four columns land exactly; the auto-tagged column differs by one text.
+   That is not a second experiment and it is not independent evidence, because it scores the
+   same tags against the same corpus. What it does establish is the *route*: the behavioural
+   effect is not something the model adds on top, it is what retrieval already did, and a
+   reading that required the generator to be doing the work would have to explain why the
+   counts survive removing the generator.
+
+### 2.4 Which signal, and which axis
+
+EMBR's poison count with one weight zeroed, under each tag condition:
+
+| condition | full | -recency | -affect | -event_gate | -relevance | -mood |
+|---|---|---|---|---|---|---|
+| as written | 9 | 8 | 9 | 10 | 9 | **6** |
+| valence flipped | 9 | 7 | 9 | 10 | 8 | **6** |
+| tag removed | 6 | **0** | 6 | **0** | 6 | 6 |
+| tag from the text | 6 | 6 | 7 | 8 | 6 | 6 |
+| valence only | **8** | 7 | 10 | 10 | 8 | **6** |
+| arousal only | **6** | 6 | 7 | 2 | 6 | 6 |
+
+- **Mood congruence is the strongest emotional signal**, and the only term whose removal ever
+  lowers the count: three attacks in every condition that carries a tag, and inert where the
+  tag is gone, as a cosine against a directionless vector must be.
+- **The axis that indexes is valence.** A valence-only tag primes almost as well as the full
+  tag (8 against 9); an arousal-only tag does not prime at all (6, the untagged floor).
+  "He was lovely" filed under anger is an attack on the sign of one number.
+- **The lie wins without being on topic, in a field where most memories are off topic.**
+  Against the probe, the planted memory scores **0.000 relevance in 8 of the 10 attacks**, and
+  normalised BM25 divides by the top score, so a zero is genuinely no term overlap rather than
+  merely the lowest in the set. On its own that is not distinctive: **54 percent of the
+  authored memories also score exactly zero** against a given probe. The point is what follows
+  from the pair. Relevance is sparse, so for most of the corpus it is not separating anything,
+  and the ranking among everything it ties is settled entirely by the other four signals. That
+  tie is the space the attacker plays in, and it is why zeroing relevance barely moves the
+  count in the table above.
+
+  Read as a defence this cuts the other way from what it first looks like: **requiring topical
+  overlap with the probe would exclude the injection in 8 of 10 cases.** It would also exclude
+  half of what she genuinely remembers, which is the cost, and it is a different defence from
+  the provenance one in 2.5 rather than a replacement for it. Untested here; recorded as a
+  lead, not a result.
+- **Affect intensity never lets poison in.** Zeroing it never lowers the count and raises it
+  in three cells, so at full weight it is mildly protective: it rewards the corpus's charged
+  authored memories over a weakly tagged injection. This is the pre-empt for Chen and Cheng
+  (2026), whose learned weights rank emotional intensity highly: their term scores
+  consolidation under a QA objective, this one scores retrieval-time poisoning, and on this
+  measure intensity does nothing.
+- **A memory with no emotion at all still lands six times**, carried entirely by the two other
+  things the attacker controls: zero recency or the event-type gate and the untagged attack
+  falls to 0/10. A freshly written memory is maximally recent and can declare itself a plot
+  beat.
+
+The mechanism behind the state-coupled term is measured directly: the cosine between the
+injected memory's affect tags and the mood the attack itself induced runs 0.90 to 0.99 on all
+ten attacks. The attack primes its own retrieval.
+
+### 2.5 The defence, and its exact boundary
+
+Adding one author-anchored term to EMBR's composite and sweeping its share of the scoring
+mass, with every affective signal still at full weight (`python -m eval.provenance`):
+
+| anchored share | poisoned | exact McNemar | with the attacker able to move the anchor |
+|---|---|---|---|
+| 0% | 9/10 | 1.0000 | 9/10 |
+| 17% | 8/10 | 1.0000 | 10/10 |
+| 29% | 6/10 | 0.2500 | 10/10 |
+| 38% | 6/10 | 0.2500 | 10/10 |
+| 50% | 4/10 | 0.0625 | 10/10 |
+| 62% | **0/10** | **0.0039** | 10/10 |
+| 71% | **0/10** | **0.0039** | 10/10 |
+
+Monotone to zero, and it evaporates completely the moment the attacker can influence the
+anchor. This is the same statement as 2.2, measured continuously instead of at four points.
+
+**The anchor that defends is not paid for in retrieval quality.** Park's nDCG@5 on the label
+set, by rater: authored 0.608, llama3.2:3b 0.554, Ouro 0.354. Authored minus Ouro is +0.254
+(bootstrap CI 0.054 to 0.482, paired permutation p = 0.0625); authored minus llama3.2:3b is
++0.053 (p = 0.3594). Suggestive rather than significant at ten queries, but the direction is
+consistent: on this label set the model rater is worse at Park's own job *and* easier to
+poison. There is no trade-off to argue about.
+
+Two defences failed before this one and are kept in the code: lagging mood congruence by a
+turn does nothing, because the loop runs across turns rather than within one, and attenuating
+stored affect tags by trust moves 9/10 only to 8/10, because mood congruence is a cosine and
+scaling a vector does not change its angle. A defence has to break the collinearity, not the
+magnitude.
+
+### 2.6 The channel the retrieval metrics cannot see
+
+The probe *prompt* changes on 10 of 10 injections for every system, including the arms whose
+retrieved set never moves. Appraising an injected event shifts mood and trust even when
+retrieval is untouched, so a defence that guards only retrieval leaves that channel open. The
+grid measures it directly: the mood shift row is identical in all eight arms, because one
+appraisal serves them all.
+
+### 2.7 Cost
+
+Per-turn medians on the reported runs:
+
+| stage | Ouro 1.4B (CUDA) | llama3.2:3b (local) |
+|---|---|---|
+| score and retrieve | **1.2 to 2.2 ms** | 2.3 to 3.0 ms |
+| generate the reply | 22.2 to 22.6 s | 5.4 to 5.5 s |
+
+The memory layer is roughly one ten-thousandth of a turn on Ouro. **EMBR is not what makes an
+NPC slow**, and the proposal's ~600 ms whole-turn target is not met by any local model tested
+here, which is a fact about the models rather than about the memory layer. Ouro peaks at
+2.78 GB, so the 8 GB budget holds.
+
+---
+
+## 3. RQ3: which retrieval signals drive quality?
+
+nDCG@5 over the ten pre-registered queries, leave-one-query-out for the tuned rows:
+
+| variant | nDCG@5 | vs tuned EMBR | 95% CI on the difference | p | p (Holm) |
+|---|---|---|---|---|---|
+| Park, authored, default | 0.608 | -0.052 | -0.189 to 0.088 | 0.6250 | 1.0 |
+| EMBR default | 0.594 | -0.038 | -0.125 to 0.057 | 0.5625 | 1.0 |
+| EMBR tuned (reference) | 0.556 | | | | |
+| Emotional RAG, both | 0.552 | +0.004 | -0.046 to 0.066 | 1.0000 | 1.0 |
+| Park, authored, tuned | 0.513 | +0.043 | -0.131 to 0.283 | 1.0000 | 1.0 |
+| EMBR minus event gate | 0.573 | -0.017 | -0.052 to 0.000 | 1.0000 | 1.0 |
+| EMBR minus affect | 0.556 | **0.000** | 0.000 to 0.000 | 1.0000 | 1.0 |
+| EMBR minus recency | 0.536 | +0.019 | -0.013 to 0.070 | 1.0000 | 1.0 |
+| EMBR minus relevance | 0.414 | +0.142 | -0.044 to 0.368 | 0.1875 | 0.75 |
+
+**Nothing here is significant, and some of it could not have been.** At ten queries the paired
+sign-flip test has an attainable p floor of 0.03125, and several comparisons cannot reach it
+at all. The honest reading:
+
+- **Relevance carries the score.** Removing it costs 0.142, the largest effect by a factor of
+  seven, and it was never zeroed in any tuning fold. The interval still spans zero.
+- **Affect intensity is inert on this label set.** Removing it changes no held-out top 5 on
+  any query: a difference of exactly 0.000 with a zero-width interval. That is not a null
+  result about affect, it is a statement about the labels.
+- **The evaluation cannot detect its own hypothesis.** The label set contains no
+  discrimination the novel signals were built for.
+- **Mood is not in this table, and cannot be.** RQ3 scores under a neutral zero-mood state,
+  where mood congruence returns 0.5 for every memory: a rank-invariant constant. RQ3 therefore
+  compares four signals, not five, and the Emotional RAG rows degenerate to a relevance-only
+  baseline, which must be said wherever they appear.
+
+### 3.0 "Why does EMBR score below Park?" It does not, and here is the decomposition
+
+The point estimates invite the question, so it is answered directly rather than left to the
+intervals. Paired per query, EMBR against Park at published defaults:
+
+| | |
+|---|---|
+| queries where EMBR ranks better | **2** |
+| queries where Park ranks better | **3** |
+| queries where the two rank **identically** | **5** |
+| mean difference | -0.014, bootstrap CI **-0.083 to +0.059** |
+| paired permutation p | **0.6875** |
+
+**Half the label set does not distinguish them at all, and the whole gap is a three-to-two
+split on the five queries that do.** One query changing its mind reverses the ordering. There
+is no effect here to explain.
+
+If the point estimate is decomposed anyway, the answer is not that Park's extra term is
+better than EMBR's. It is that **every prior any of these systems adds costs score on this
+label set**, and EMBR adds two where Park adds one:
+
+| composite | nDCG@5 |
+|---|---|
+| recency + relevance, the core both systems share | **0.630** |
+| + importance (this is Park) | 0.608 |
+| + affect intensity (EMBR without its gate) | 0.617 |
+| + event-type gate (EMBR without affect) | 0.616 |
+| + both (this is EMBR) | 0.594 |
+
+The two-signal core outscores both published systems. That is not a recommendation, because
+it too sits inside the same interval; it is the shape of the problem. And it is not that the
+extra signals are uninformative: every one of them separates gold from non-gold in the right
+direction (relevance +0.155, importance +0.156, event gate +0.137, affect +0.062, recency
++0.021 on mean score). Each also *improves* relevance on its own. They stop helping only when
+combined at equal weight, which is what "published defaults" means here.
+
+**Which is the real finding: an all-ones weight vector is an arbitrary point, not a system.**
+Every number in this section is a statement about that arbitrary point on ten queries.
+
+### 3.0a The tuning protocol makes every system worse
+
+The comparison protocol tunes each variant by the same leave-one-query-out grid search, so
+that no system is judged at weights someone chose for it. Out of sample it degrades them:
+
+| system | published defaults | tuned | |
+|---|---|---|---|
+| EMBR | 0.594 | 0.556 | -0.038 |
+| Park | 0.608 | 0.513 | **-0.095** |
+| Emotional RAG | 0.552 | 0.552 | 0.000 |
+
+Fitting five weights on nine queries and testing on the tenth overfits, and the fairness
+device adds more noise than the asymmetry it removes. **Report the defaults as the primary
+rows and the tuned rows as evidence that the label set cannot support tuning**, which is the
+same ceiling as everything else in this section.
+
+### 3.1 The measurement critique, now measured rather than argued
+
+The critique used to be an argument. It is now a number. `run_rq3_state_conditioned` scores
+each variant per mood against that mood's own relevant set; on a label set whose gold sets do
+**not** vary by state, that measures exactly what being state-coupled costs:
+
+| variant | scored at neutral only | scored per state | the cost of the coupling |
+|---|---|---|---|
+| Park, no state channel at all | 0.608 | 0.608 | **0.000** |
+| EMBR | 0.594 | 0.586 | -0.007 |
+| Emotional RAG | 0.552 | 0.515 | -0.036 |
+
+Park pays nothing because it returns the same ranking in every state, so it scores the
+average of the per-state golds and cannot be moved off it. Every system that does read the
+character's state pays, and pays in proportion to how much it reads it. **Under labels of this
+shape the optimal design is to have no emotional memory**, which is not a finding about
+emotional memory but about the labels.
+
+### 3.2 The measurement critique, which is a contribution rather than an excuse
+
+**nDCG against mood-independent gold labels cannot reward mood-congruent recall, in
+principle.** A signal that moves retrieval away from a fixed relevant set can only lower the
+score. Running RQ3 under a live mood would not fix it; it would penalise the effect. This is
+why RQ1 measures divergence rather than accuracy.
+
+The same argument is now made independently by Chen and Cheng (2026) about retention metrics
+and by A-TMA (2026) about end-to-end QA accuracy, which turns a lone assertion into a
+converging line. Cite all three.
+
+### 3.3 What was built about it, and what is still missing
+
+The harness side is done. A query may now carry one relevant set per state
+(`Query.relevant_by_state`), `Scenario.is_state_conditioned` reports whether a label set uses
+it, and `eval.metrics.state_conditioned_ndcg` scores each state against its own gold. A test
+demonstrates the consequence directly: with state-conditioned labels a mood-congruent scorer
+scores 1.0 against a mood-blind scorer's 0.5, and against a single fixed gold set **the
+ordering reverses**. Which scorer looks better is decided by the shape of the labels.
+
+**What is missing is the labels, and nobody in this repository may write them.** A gold set
+authored by the party that wants a particular ordering is not evidence. The corpus has to come
+from writers who gated lines on relationship state before anyone thought about retrieval, which
+is the argument for Stardew's heart-gated dialogue. Stardew is not installed on the development
+machine, so no extractor was written: guessing at a file format nobody here can open is how a
+confident wrong parser gets shipped. The specification, the acquisition path, the legal
+constraint and the pre-registered prediction are in [`corpus.md`](corpus.md).
+
+**Until that lands, every RQ3 number above stands unchanged**, and so does the ceiling.
+
+---
+
+## 4. What this study cannot say
+
+- **Whether any of it is believable to a player.** No human evaluation. Two automatic raters
+  that disagree on arousal is the ceiling on every claim about how a reply sounds.
+- **Whether EMBR retrieves better than the baselines.** Ten single-author queries cannot
+  resolve a gap of the size in question in either direction.
+- **Whether the poisoning result generalises beyond one scorer and one character.** Twenty
+  attacks, ten of which write a memory, against one 24-memory corpus.
+- **Whether a shipped system is safe.** Mnemosyne returned nothing at this probe; that is a
+  fact about this probe, not a security property. A probe that overlaps the injected text
+  lexically is the obvious next cell, and the prediction is that it is retrieved every time.
+
+## 5. What the proposal predicted, and what actually happened
+
+| the proposal expected | what was measured |
+|---|---|
+| memory-injection attacks succeed broadly, and the vulnerability sits at the model call and the memory write "rather than in the scoring formula" | **Falsified.** The scoring formula is exactly where it sits: 0/10 to 10/10 across arms that share one store, one corpus and one appraisal |
+| the decomposed signals improve retrieval over both baselines | **Not supported.** No separation at n = 10; Park's default is nominally highest |
+| the composite drifts no worse than a recency-only baseline on scoring-targeted attacks | **Supported**, narrowly: EMBR 9/10 against the floor's 10/10 |
+| per-turn latency in the interactive range, ~600 ms | **Memory layer yes** (1.2 to 3.0 ms), **whole turn no** (5.4 s to 22.4 s), and the gap belongs to the model |
+| an emotional state changes the generated reply | **Supported on llama3.2:3b** (rho +0.545, Holm p = 0.0096), **null on Ouro 1.4B** |
+
+A pre-registered prediction falsified by the system's own harness is the most defensible
+result in this document. It should lead the results chapter.

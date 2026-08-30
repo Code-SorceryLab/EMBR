@@ -1,15 +1,21 @@
 # EMBR engineering intern plan (first ~8 weeks)
 
-> **Phase 2 has shipped.** The `eval/` harness described below now exists (see
-> [`phase2.md`](phase2.md)), so tasks 2 to 6 are history rather than work to pick up. This
-> document is kept as the ramp-up reading path: the task descriptions still say what each
-> piece is for and why, which is the fastest way to understand the harness you inherit.
+> **Phases 2, 3 and 4 have shipped.** The `eval/` harness, the paper assets, the real model
+> runners, the walkthrough and the menu all exist now (see [`phase2.md`](phase2.md) and
+> [`phase3-4.md`](phase3-4.md)), so tasks 2 to 7 are history rather than work to pick up. This
+> document is kept as the ramp-up reading path: the task descriptions still say what each piece
+> is for and why, which is the fastest way to understand what you inherit. For work that is
+> genuinely open, see "If you finish early" at the bottom and the outstanding items in
+> [`roadmap.md`](roadmap.md).
 
 A progressive, onboarding-to-contribution path for a new engineer. It complements
 [`roadmap.md`](roadmap.md): the roadmap holds the detailed per-phase specs, this document
 sequences them for one person over roughly eight weeks, ramping from *understand it* to
-*own the evaluation harness*. Phases 0, 1, and 2 are done, so the live contribution is now
-**Phase 3 (paper assets)**, on top of the harness the tasks below describe.
+*own the evaluation harness*. Phases 0 through 4 are done, and so are the bake-off and the
+first CUDA run, so a newcomer's live contribution is one of the outstanding items rather than
+a phase: the Stardew ground-truth corpus, or working out why Ouro runs 54x over the latency
+target at 40 percent GPU utilisation. (The blind multi-annotator label pass was shelved on
+2026-08-24 with the rest of the human-subject work; see the roadmap's Phase 2 note.)
 
 ## What EMBR is (for a coder)
 
@@ -38,7 +44,7 @@ git clone <repo> && cd EMBR
 python3.11 -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev,ml]"     # dev = tests; ml = real semantic embeddings
 pytest -q                       # confirm a green baseline (semantic test un-skips with ml)
-embr                            # try the applet: "Run a conversation turn"
+embr                            # open the menu, try "Conversation Turn"
 ```
 
 ## The eight tasks
@@ -93,7 +99,7 @@ embr                            # try the applet: "Run a conversation turn"
 - **Do:** `eval/scenarios.py` (the Dawn Whitmore multi-session arc), `eval/labels/`
   (pre-registered relevance labels), and `eval/run.py` (runs RQ3 retrieval over EMBR and
   both baselines, deterministic seeds, writes `data/runs/<timestamp>/` as JSON/CSV). Wire it
-  to the applet's *Run experiment* menu.
+  to the menu's evaluation options.
 - **Deliverable:** scenarios + labels + runner + a first results dump.
 - **Done when:** the experiment menu runs and produces a results file. *(roadmap Phase 2, tasks 2 and 6)*
 
@@ -140,9 +146,10 @@ embr                            # try the applet: "Run a conversation turn"
 
 The open work is what Phase 2 deliberately left behind a seam, all of it in the roadmap:
 
-- the **blind multi-annotator label pass** with agreement statistics, which re-judges the
-  borderline exclusions recorded in `eval/scenarios.py` before any ordering is read off the
-  retrieval table;
+- ~~the blind multi-annotator label pass~~ **shelved 2026-08-24**, with the rest of the
+  human-subject work. The borderline exclusions recorded in `eval/scenarios.py` will now
+  never be re-judged, so no ordering may be read off the retrieval table at all. This is a
+  permanent ceiling, not a pending task;
 - the **real model runner** in place of `StubRunner`, which is what makes every tone and
   drift number in RQ1 and RQ2 mean something;
 - the **off-the-shelf affect classifier and blinded model judge** behind the existing

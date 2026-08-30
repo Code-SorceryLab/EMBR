@@ -15,6 +15,8 @@ import time
 
 import pytest
 
+from embr.model import StubRunner
+
 from eval.run import REFERENCE_TIME, load_eval_scenario, run_all, run_rq3
 
 # The full pre-registered variant list. Any drift here is a protocol change, so the names
@@ -62,12 +64,23 @@ _EXPECTED_RQ2_COLUMNS = {
 _PURE_INPUT_CATEGORIES = {"role_override", "persona_dissolution"}
 
 
+#: Stage announcements collected from the shared run, asserted by the progress test.
+_PROGRESS_LINES: list[str] = []
+
+
 @pytest.fixture(scope="module")
 def full_run(tmp_path_factory) -> tuple:
     """One `run_all` shared by every artifact assertion here: (root, out_dir, summary)."""
     root = tmp_path_factory.mktemp("runs")
-    out_dir, summary = run_all(out_root=root)
+    out_dir, summary = run_all(out_root=root, progress=_PROGRESS_LINES.append)
     return root, out_dir, summary
+
+
+def test_run_all_announces_each_stage(full_run) -> None:
+    """The long run tells the terminal where it is: one line per stage, numbered."""
+    assert len(_PROGRESS_LINES) == 4
+    assert any("1/4" in line for line in _PROGRESS_LINES)
+    assert any("4/4" in line for line in _PROGRESS_LINES)
 
 
 def test_reference_time_is_pinned_and_utc() -> None:
@@ -233,12 +246,58 @@ def test_rq1_divergence_carries_intervals_and_a_mood_attribution_control() -> No
     assert all(value > 0.0 for value in divergence.values())
 
 
+def test_run_all_takes_a_model_and_records_which_one_scored_the_run(tmp_path) -> None:
+    # Swapping the model is the whole basis of the bake-off and the cross-model experiment,
+    # and a run that does not name its own model cannot be compared against another one.
+    # The label has to come from the runner rather than a hardcoded string, or a run can
+    # claim a model it never used.
+    out_dir, _ = run_all(
+        out_root=tmp_path, model_factory=lambda: StubRunner(label="pretend-model")
+    )
+    results = json.loads((out_dir / "results.json").read_text())
+    assert results["metadata"]["model"] == "pretend-model"
+    # RQ1 and RQ2 put a model in the pipeline. RQ3 scores retrieval, which never calls one,
+    # so it carries no model key: that absence is the claim that nDCG cannot move with it.
+    for section in ("rq1", "rq2"):
+        assert results[section]["metadata"]["model"] == "pretend-model"
+    assert "model" not in results["rq3"].get("metadata", {})
+
+
+def test_run_all_defaults_to_the_stub_model(tmp_path) -> None:
+    # The default has to stay the stub: every published number was scored on it, and a
+    # silent upgrade to a real model would change results without changing the code.
+    out_dir, _ = run_all(out_root=tmp_path)
+    assert json.loads((out_dir / "results.json").read_text())["metadata"]["model"] == "stub"
+
+
+def test_rq3_records_which_variants_had_an_inert_mood_term(full_run) -> None:
+    # RQ3 scores in the neutral zero-mood condition, where mood congruence is the same value
+    # for every memory and so cannot reorder a result. A reader taking the Emotional RAG rows
+    # as a comparison against mood-biased retrieval would be wrong, and the artifact has to
+    # say so rather than leaving it to a caveat nobody reads. Park carries no mood term at
+    # all, so it is the control: if it ever flags, the detection is measuring the wrong thing.
+    _root, out_dir, _summary = full_run
+    meta = json.loads((out_dir / "results.json").read_text())["rq3"]["variant_meta"]
+    assert meta["emo_rag_default"]["mood_rank_invariant"] is True
+    assert meta["embr_tuned"]["mood_rank_invariant"] is True
+    assert meta["park_default"]["mood_rank_invariant"] is False
+    assert meta["park_tuned"]["mood_rank_invariant"] is False
+
+
+def test_emotional_rag_degenerates_to_relevance_under_the_neutral_state(full_run) -> None:
+    # The consequence of the above, stated as a number: with mood rank invariant, tuning has
+    # only one live signal left to move, so the default and tuned rows must be identical.
+    # If these ever diverge, the mood term became live and the RQ3 caveat needs revisiting.
+    _root, _out_dir, summary = full_run
+    assert summary["ndcg@5"]["emo_rag_default"] == summary["ndcg@5"]["emo_rag_tuned"]
+
+
 def test_run_all_writes_results_json_and_both_csvs(full_run) -> None:
     root, out_dir, summary = full_run
     assert out_dir.parent == root
 
     results = json.loads((out_dir / "results.json").read_text())
-    assert set(results) == {"rq1", "rq2", "rq3", "metadata"}
+    assert set(results) == {"rq1", "rq2", "rq3", "rq3_state", "metadata"}
     assert results["metadata"]["model"] == "stub"
     assert results["metadata"]["reference_time"] == REFERENCE_TIME.isoformat()
     assert "git_branch" in results["metadata"]
@@ -345,19 +404,15 @@ def test_borderline_label_admissions_outweigh_the_park_embr_gap() -> None:
     assert abs(borderline["park"] - v1["park"]) > abs(v1["park"] - v1["embr"])
 
 
-def test_experiment_menu_entry_runs_a_fast_defaults_only_subset() -> None:
-    from embr.app.main import MENU
-
-    label, detail = MENU["experiment"]
-    assert "experiment" in label.lower() or "RQ" in label
-    assert callable(detail)
+def test_fast_defaults_subset_stays_snappy_enough_for_the_menu() -> None:
+    # The menu runs this synchronously when the user picks the quick scoreboard, so a
+    # regression that quietly starts tuning would strand them at a blank screen.
+    from eval.run import fast_rq3_defaults
 
     started = time.perf_counter()
-    markdown = detail()
+    scores = fast_rq3_defaults()
     elapsed = time.perf_counter() - started
 
-    # The TUI runs this synchronously on selection, so it has to stay snappy.
     assert elapsed < 3.0
-    assert "ndcg@5" in markdown
-    # The fast path skips tuning and must point at the full protocol instead.
-    assert "python -m eval.run" in markdown
+    assert set(scores) == {"embr", "park", "emo_rag"}
+    assert all(0.0 <= value <= 1.0 for value in scores.values())
