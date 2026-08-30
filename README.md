@@ -7,7 +7,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/python-3.10+-4584b6?style=flat-square&logo=python&logoColor=white" alt="Python 3.10+">
   <img src="https://img.shields.io/badge/core-zero%20dependencies-ea580c?style=flat-square" alt="Zero dependencies">
-  <img src="https://img.shields.io/badge/tests-485%20passing-22c55e?style=flat-square" alt="485 tests">
+  <img src="https://img.shields.io/badge/tests-538%20passing-22c55e?style=flat-square" alt="538 tests">
   <img src="https://img.shields.io/badge/runs-byte%20identical-22c55e?style=flat-square" alt="Reproducible">
   <img src="https://img.shields.io/badge/models-Ouro%201.4B%20%C2%B7%20llama3.2%3A3b-1e1e22?style=flat-square" alt="Models">
   <img src="https://img.shields.io/badge/GPU-optional-9a9a9a?style=flat-square" alt="GPU optional">
@@ -39,6 +39,80 @@ each one can be switched off and measured. Then it attacks them.
 > makes the affect tag a write target: **a scoring term's poisonability is set by whoever
 > controls its inputs**, and the emotional term is the worst of them, because an attack can
 > prime the very state it reads.
+
+---
+
+## Meet Dawn Whitmore
+
+<table>
+  <tr>
+    <td width="25%" align="center"><img src="assets/portraits/dawn-warm.png" alt="Dawn, warm" width="100%"><br><sub><b>warm</b> · you carried her firewood in before the rain</sub></td>
+    <td width="25%" align="center"><img src="assets/portraits/dawn-neutral.png" alt="Dawn, neutral" width="100%"><br><sub><b>neutral</b> · a traveller is a traveller</sub></td>
+    <td width="25%" align="center"><img src="assets/portraits/dawn-suspicious.png" alt="Dawn, suspicious" width="100%"><br><sub><b>suspicious</b> · the roads story never added up</sub></td>
+    <td width="25%" align="center"><img src="assets/portraits/dawn-betrayed.png" alt="Dawn, betrayed" width="100%"><br><sub><b>betrayed</b> · she caught the lie about the king</sub></td>
+  </tr>
+</table>
+
+One keeper, one memory store, four faces, and the face is not scripted: the portrait follows
+the live valence and trust the pipeline just computed. Play her arc in the browser:
+
+```bash
+python -m web.server
+```
+
+- **A visual novel with instruments.** The tavern scene on the left, five research tabs on
+  the right: the scored memory store, the mood and trust appraisal, exact Banzhaf
+  attribution, the attack and defence numbers, and the run's provenance line.
+- **Real replies by default.** On a machine with the weights cached and a GPU up, the demo
+  opens on **Ouro 1.4B** in-process. Anywhere else it opens on the instant offline stub,
+  and every model stays one click away in the settings menu.
+- **Models download themselves.** A model the box does not have is marked *will download*,
+  fetched with a progress bar, then switched to. Nothing is ever greyed out without a way
+  forward.
+
+## Pick up where you left off
+
+The terminal front door answers, before any menu choice: what can I play, where did I stop,
+and what evidence exists right now.
+
+```
+    ███████╗ ███╗   ███╗ ██████╗   ██████╗
+    ██╔════╝ ████╗ ████║ ██╔══██╗ ██╔══██╗
+    █████╗   ██╔████╔██║ ██████╔╝ ██████╔╝
+    ██╔══╝   ██║╚██╔╝██║ ██╔══██╗ ██╔══██╗
+    ███████╗ ██║ ╚═╝ ██║ ██████╔╝ ██║  ██║
+    ╚══════╝ ╚═╝     ╚═╝ ╚═════╝  ╚═╝  ╚═╝
+    ────────────────────────────────────────────────────────
+      Emotional Memory for Believable Roleplay   By AL Shifan
+    ────────────────────────────────────────────────────────
+
+    Runs 19  │  Latest stub  │  Figures 14  │  Runner stub  │  Tone nrc-vad-v2.1
+    Save dawn-whitmore/slot-1 · 3 / 5 · updated 2026-08-29 09:14
+    Attribution behavioural · 20 readings · 20260829-073908  |  likelihood · 20 readings · 20260828-002117
+```
+
+- **Durable save slots.** Every completed turn writes an atomic, versioned save under
+  `data/saves/`, with the beat pointer, the memory store with its provenance, and the
+  character state. `R` resumes the newest one; `Q` starts, resumes, restarts, or deletes
+  named slots behind typed confirmations. A save whose schema or content no longer matches
+  is marked and refused with the reasons, never silently loaded.
+- **A read-only research dashboard.** `V` prints the quest path with the save position, the
+  per-turn mood and trust timeline, the newest attribution run per estimator labelled
+  *measured* or *pilot only*, and the v1 corpus kept apart from the staged v2 extension.
+  Absence is a word (*not run*, *no save yet*), never a fabricated percentage.
+- **Destructive operations live in Maintenance**, behind target-naming, typed confirmations.
+
+```bash
+python -m embr save-status      # every slot, its progress, and any problems
+python -m embr validate-saves   # exit 1 if any save cannot load against this build
+```
+
+## The arc, mapped
+
+<p align="center">
+  <img src="data/figures/questline_evidence.png" alt="The Dawn Whitmore arc: questline, state, and evidence map" width="900">
+</p>
+<p align="center"><sub><b>Generated, never drawn.</b> The beats come from the declarative arc, the trust movement is the appraisal's own delta on a deterministic stub playthrough, dots mark memory writes, and curved arrows mark recall claims that landed. Node colour is doubled by marker shape, so the affect classes survive greyscale and colour-blind viewing. The starred beat is the attribution demonstration, and the side panel is status, not results: the run-backed numbers appear only because both estimators have full sweeps on the current label set.</sub></p>
 
 ---
 
@@ -106,32 +180,19 @@ embr                                   # the menu, the front door
 
 The core needs **nothing**: the menu and the entire evaluation run on the standard library.
 `figures` adds matplotlib, `ml` adds real sentence embeddings and the local model. Ouro needs
-transformers 4.x, which the extra pins: on 5.x its remote code does not load.
-
-```
-    ███████╗ ███╗   ███╗ ██████╗   ██████╗
-    ██╔════╝ ████╗ ████║ ██╔══██╗ ██╔══██╗
-    █████╗   ██╔████╔██║ ██████╔╝ ██████╔╝
-    ██╔══╝   ██║╚██╔╝██║ ██╔══██╗ ██╔══██╗
-    ███████╗ ██║ ╚═╝ ██║ ██████╔╝ ██║  ██║
-    ╚══════╝ ╚═╝     ╚═╝ ╚═════╝  ╚═╝  ╚═╝
-    ────────────────────────────────────────────────────────
-      Emotional Memory for Believable Roleplay   By AL Shifan
-    ────────────────────────────────────────────────────────
-
-    Runs 12  │  Latest ByteDance/Ouro-1.4B (cuda)  │  Figures 12  │  Runner stub  │  Tone nrc-vad-v2.1
-```
+transformers 4.56 to 4.x, which the extra pins: below 4.56 its cache code crashes, and on 5.x
+its remote code does not load.
 
 | | Play | | Measure | | Mechanism and paper |
 |--:|---|--:|---|--:|---|
-| 1 | Conversation turn: watch the lie resurface | 3 | Quick scoreboard (RQ3 at defaults) | 7 | Affective indexing: flip every emotion |
-| 2 | Tavern-keeper walkthrough, stub or real model | 4 | Full evaluation (RQ1 + RQ2 + RQ3) | 8 | Poisoning attribution, one ablation each |
-| W | **Web demo**: the visual novel with research tabs | | | | |
-| | | 5 | Seeded runs: replicate, or compare models | 9 | Provenance sweep: the defence |
-| | | 6 | Model bake-off | 10 | Content x tag grid |
-| | | | | 11 | Generate every figure and table |
-| | | | | 12 | **Interactive demo**: the node brain in 2D and 3D, guided, then yours |
+| R | **Continue**: resume the newest save mid-scene | 3 | Quick scoreboard (RQ3 at defaults) | 7 | Affective indexing: flip every emotion |
+| Q | **Quest slots**: start, resume, restart, delete | 4 | Full evaluation (RQ1 + RQ2 + RQ3) | 8 | Poisoning attribution, one ablation each |
+| 1 | Conversation turn: watch the lie resurface | 5 | Seeded runs: replicate, or compare models | 9 | Provenance sweep: the defence |
+| 2 | Walkthrough (legacy), plays without saving | 6 | Model bake-off | 10 | Content x tag grid |
+| W | **Web demo**: the visual novel with research tabs | | | 11 | Generate every figure and table |
+| | | | | 12 | **Interactive demo**: the node brain in 2D and 3D |
 | | | | | 13 | Latest results |
+| | | | | V | **Research dashboard**, read-only |
 
 **Demo suite** &nbsp;·&nbsp; *rows 14 to 19, each runs on the stub, no GPU, and names the run and model behind its numbers*
 
@@ -144,7 +205,7 @@ transformers 4.x, which the extra pins: on 5.x its remote code does not load.
 | 18 | **Estimator divergence** | where likelihood and behaviour disagree (needs both attribution arms) |
 | 19 | **Record walk** | a capture-ready pass through demos 14 to 17 for a screen recording |
 
-`L` Fetch the tone lexicon (NRC VAD v2.1) &nbsp;·&nbsp; `S` Settings &nbsp;·&nbsp; `D` Delete all generated data, types `DELETE`
+`L` Fetch the tone lexicon (NRC VAD v2.1) &nbsp;·&nbsp; `S` Settings &nbsp;·&nbsp; `M` Maintenance, where deletion lives behind a typed `DELETE`
 
 <details>
 <summary><b>Command line equivalents</b></summary>
@@ -168,11 +229,16 @@ python -m eval.consistency             # does she refuse the room after the betr
 python -m eval.context_attribution                       # stub, full 64-mask cube, seconds
 python -m eval.context_attribution --model ouro          # the thesis model on the GPU
 python demos.py --record                                 # a screen-recording walk of the demos
-python -m web.server                                      # the playable visual-novel web demo (stub, no model)
+python -m web.server                                     # the playable visual-novel web demo
+
+# Saves
+python -m embr save-status                         # every slot, progress, problems
+python -m embr validate-saves                      # exit 1 when a save cannot load
 
 # The assets
 python assets/build_figures.py data/runs/<stamp>   # the run's figures and tables
 python assets/build_bakeoff_figures.py             # every experiment figure
+python -m assets.build_questline                   # the questline, state, and evidence map
 python assets/build_animations.py                  # the animated README figure
 python assets/build_demo.py                        # the interactive demo page
 ```
@@ -356,7 +422,8 @@ EMBR/
 │   ├── prompt.py         #   prompt construction
 │   ├── model.py          #   runners: stub, Ollama (local and cloud), Ouro 1.4B
 │   ├── pipeline.py       #   the five-step per-turn loop
-│   └── walkthrough.py    #   Dawn's five-beat playable arc
+│   ├── walkthrough.py    #   Dawn's five-beat playable arc
+│   └── saves.py          #   durable, versioned save slots (game state, not eval data)
 ├── eval/                 # the harness: protocol, attacks, mechanism experiments
 │   ├── run.py            #   RQ1 + RQ2 + RQ3, one run directory
 │   ├── attacks.py        #   twenty adversarial probes, and the tag variants
@@ -374,12 +441,13 @@ EMBR/
 ├── web/                  # the visual-novel web demo (server, bridge, static UI)
 ├── assets/               # hand-authored: branding, portraits, the diagram, every builder
 ├── docs/                 # findings, metrics, design, roadmap, related work, handoff
-├── tests/                # 485 tests
-└── data/                 # generated: runs, figures, tables, ratings, judgements
+├── tests/                # 538 tests
+└── data/                 # generated: runs, figures, tables, saves, ratings, judgements
 ```
 
 Anything under `assets/` is written by a person. Anything under `data/` is written by the
-pipeline and rebuilds from one menu option, which is what the wipe option exists to prove.
+pipeline and rebuilds from one menu option, except `data/saves/`, which is yours: game
+state, never experimental data, and never touched by the wipe option.
 
 ## Where to read next
 
@@ -405,15 +473,19 @@ pipeline and rebuilds from one menu option, which is what the wipe option exists
 | 4 | Real model runners, the playable walkthrough, the menu | done |
 | 5 | Defensible instruments, the content x tag grid, a real third-party system | done |
 | 6 | State-conditioned labels (harness done, corpus outstanding), the interactive demo | **in progress** |
-| 7 | Context attribution (six-source cite view, demo suite), the shipped provenance defence | **in progress** |
+| 7 | Context attribution: both full Ouro sweeps on disk, the write-up pending | **in progress** |
+| 8 | Save slots, the status home screen, the dashboard, the questline map | done |
 
 **What is honestly missing.** There is no human evaluation, so no claim about believability is
 made anywhere; the RQ1 tone result rests on automatic raters, now a family-diverse judge panel
 rather than a single judge. The label set is ten single-author queries, which is the permanent
 ceiling on RQ3 and the reason the Stardew corpus in [`docs/handoff.md`](docs/handoff.md)
-section 8 is the next piece of work. Context attribution has a pilot on Ouro 1.4B; no
-attribution number reaches [`docs/findings.md`](docs/findings.md) until the full real-model
-sweep lands. A recorded playthrough will be linked here.
+section 8 is the next piece of work. Both context-attribution sweeps (likelihood and
+behavioural, Ouro 1.4B on cuda, 1280 model calls each) are now on disk, and the panel's
+valence agreement landed **below the preregistered floor**, which is recorded in the runs and
+bounds what the behavioural readings may claim; no attribution number reaches
+[`docs/findings.md`](docs/findings.md) until that write-up lands. A recorded playthrough will
+be linked here.
 
 ## Authors
 

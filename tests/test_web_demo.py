@@ -126,10 +126,12 @@ def test_the_bridge_reimplements_no_scoring() -> None:
 @pytest.fixture()
 def server():
     # Pinned to the stub: server tests must never load weights or need a daemon.
-    srv = build_server(port=8266, default_model="stub")
+    # Port 0 asks the OS for a free ephemeral port: six tests rebinding one fixed port
+    # in quick succession intermittently connected to the previous test's dying socket.
+    srv = build_server(port=0, default_model="stub")
     thread = threading.Thread(target=srv.serve_forever, daemon=True)
     thread.start()
-    yield "http://127.0.0.1:8266"
+    yield f"http://127.0.0.1:{srv.server_address[1]}"
     srv.shutdown()
     srv.server_close()
 
