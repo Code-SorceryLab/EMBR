@@ -1,80 +1,343 @@
-@article{croissant2024chain,
+% EMBR canonical reference list — merged 2026-09-03 from paper/refs.bib and the
+% SLR sweep (~/Downloads/embr-references.bib), with metadata corrected against
+% publisher/arXiv records. Corrections applied:
+%   - Chain-of-Emotion authors (all four were wrong in the sweep file)
+%   - MemPoison first author (Gao, not Wei) and key
+%   - Four authorless entries got verified authors/titles/venues
+%   - MINJA marked for venue verification (OpenReview bot-walled at check time)
+% Keys are stable; nothing here should be renamed downstream of this file.
+
+% ======================= Affective agents & psychology =======================
+
+@book{Ortony1988CognitiveStructure,
+  author    = {Ortony, Andrew and Clore, Gerald L. and Collins, Allan},
+  title     = {The Cognitive Structure of Emotions},
+  publisher = {Cambridge University Press},
+  year      = {1988},
+  doi       = {10.1017/CBO9780511571299}
+}
+
+@article{Moors2013Appraisal,
+  author  = {Moors, Agn{\`e}s and Ellsworth, Phoebe C. and Scherer, Klaus R. and Frijda, Nico H.},
+  title   = {Appraisal Theories of Emotion: State of the Art and Future Development},
+  journal = {Emotion Review},
+  year    = {2013},
+  volume  = {5},
+  number  = {2},
+  pages   = {119--124},
+  doi     = {10.1177/1754073912468165}
+}
+
+@article{Popescu2014GAMYGDALA,
+  author  = {Popescu, Alexandru and Broekens, Joost and van Someren, Maarten},
+  title   = {{GAMYGDALA}: An Emotion Engine for Games},
+  journal = {IEEE Transactions on Affective Computing},
+  year    = {2014},
+  volume  = {5},
+  number  = {1},
+  pages   = {32--44},
+  doi     = {10.1109/T-AFFC.2013.24}
+}
+
+% Corrected: the sweep file listed wrong given names for all four authors.
+% Verified against journals.plos.org and arXiv:2309.05076.
+@article{Croissant2024ChainEmotion,
   author  = {Croissant, Maximilian and Frister, Madeleine and Schofield, Guy and McCall, Cade},
   title   = {An Appraisal-Based Chain-of-Emotion Architecture for Affective Language Model Game Agents},
   journal = {PLOS ONE},
-  volume  = {19}, number = {5}, pages = {e0301033}, year = {2024},
-  doi     = {10.1371/journal.pone.0301033},
+  year    = {2024},
+  volume  = {19},
+  number  = {5},
+  pages   = {e0301033},
+  doi     = {10.1371/journal.pone.0301033}
 }
 
-@misc{huang2024emotionalrag,
-  author       = {Huang, Le and Lan, Hengzhi and Sun, Zijun and Shi, Chuan and Bai, Ting},
-  title        = {Emotional {RAG}: Enhancing Role-Playing Agents through Emotional Retrieval},
-  year         = {2024}, eprint = {2410.23041}, archivePrefix = {arXiv},
+% ================== LLM NPCs in games (application context) ==================
+
+@inproceedings{Park2023GenerativeAgents,
+  author    = {Park, Joon Sung and O'Brien, Joseph and Cai, Carrie J. and Morris, Meredith Ringel and Liang, Percy and Bernstein, Michael S.},
+  title     = {Generative Agents: Interactive Simulacra of Human Behavior},
+  booktitle = {Proceedings of the 36th Annual ACM Symposium on User Interface Software and Technology},
+  year      = {2023},
+  doi       = {10.1145/3586183.3606763}
 }
 
-@inproceedings{cohenwang2024contextcite,
-  author    = {Cohen-Wang, Benjamin and Shah, Harshay and Georgiev, Kristian and M\k{a}dry, Aleksander},
-  title     = {{ContextCite}: Attributing Model Generation to Context},
-  booktitle = {Advances in Neural Information Processing Systems (NeurIPS)},
-  year      = {2024},
+@article{Wang2023RoleLLM,
+  author  = {Wang, Zekun and Peng, Zhongyuan and Que, Haoran and Liu, Jiaheng and Zhou, Wangchunshu and Wu, Yuhan and Guo, Hongcheng and Gan, Ruitong and Ni, Zehao and Zhang, Man and Zhang, Zhaoxiang and Ouyang, Wanli and Xu, Ke and Chen, Wenhu and Fu, Jie and Peng, Junran},
+  title   = {{RoleLLM}: Benchmarking, Eliciting, and Enhancing Role-Playing Abilities of Large Language Models},
+  journal = {arXiv preprint arXiv:2310.00746},
+  year    = {2023},
+  doi     = {10.48550/arXiv.2310.00746},
+  url     = {https://arxiv.org/abs/2310.00746}
 }
 
-@misc{nematov2025sourceattr,
-  author       = {Nematov, Ikhtiyor and Kalai, Tarik and Kuzmenko, Elizaveta and Fugagnoli, Gabriele and Sacharidis, Dimitris and Hose, Katja and Sagi, Tomer},
-  title        = {Source Attribution in Retrieval-Augmented Generation},
-  year         = {2025}, eprint = {2507.04480}, archivePrefix = {arXiv},
+@article{Huang2024EmotionalRAG,
+  author  = {Huang, Le and Lan, Hengzhi and Sun, Zijun and Shi, Chuan and Bai, Ting},
+  title   = {Emotional {RAG}: Enhancing Role-Playing Agents through Emotional Retrieval},
+  journal = {arXiv preprint arXiv:2410.23041},
+  year    = {2024},
+  doi     = {10.48550/arXiv.2410.23041},
+  url     = {https://arxiv.org/abs/2410.23041}
 }
 
-@misc{tan2025rmm,
-  author       = {Tan, Zhen and others},
-  title        = {In Prospect and Retrospect: Reflective Memory Management for Long-term Personalized Dialogue Agents},
-  year         = {2025}, eprint = {2503.08026}, archivePrefix = {arXiv},
+@article{Figueiredo2025SymbolicallyScaffolded,
+  author  = {Figueiredo, Vanessa and Elumeze, David},
+  title   = {Symbolically Scaffolded Play: Designing Role-Sensitive Prompts for Generative {NPC} Dialogue},
+  journal = {arXiv preprint arXiv:2510.25820},
+  year    = {2025},
+  doi     = {10.48550/arXiv.2510.25820},
+  url     = {https://arxiv.org/abs/2510.25820}
 }
 
-% TODO verify before use: OpenReview page is bot-walled in this environment.
-% Confirm venue + author order against the NeurIPS 2025 proceedings.
-@inproceedings{dong2025minja,
-  author    = {Dong, Shen and Xu, Shaochen and He, Pengfei and Li, Yige and Tang, Jiliang and Liu, Tianming and Liu, Hui and Xiang, Zhen},
-  title     = {Memory Injection Attacks on {LLM} Agents via Query-Only Interaction},
-  booktitle = {Advances in Neural Information Processing Systems (NeurIPS)},
-  year      = {2025},
-  note      = {Poster. arXiv:2503.03704},
+@article{Zargham2026Dialogs,
+  author  = {Zargham, Nima and Tonini, Leandro and Alexandrovsky, Dmitry and Ruthven, Emma Grace and Friehs, Maximilian A. and Dratzidis, Leon Tristan and D{\"a}nekas, Bastian and Bikas, Ioannis and Nacke, Lennart E. and Zebel, Sven and Malaka, Rainer},
+  title   = {Dialogs with {GenAI} {NPC}s: Exploring Player Interactions with Speech Agents in a {VR} Game},
+  journal = {International Journal of Human--Computer Interaction},
+  year    = {2026},
+  doi     = {10.1080/10447318.2026.2620647}
 }
 
-@misc{pulipaka2026sleeper,
-  author       = {Pulipaka, Prem Sidharth and others},
-  title        = {Hidden in Memory: Sleeper Memory Poisoning in {LLM} Agents},
-  year         = {2026}, eprint = {2605.15338}, archivePrefix = {arXiv},
-}
-
-@misc{gao2026mempoison,
-  author       = {Gao, Jifeng and Xia, Kang and Zhang, Yi and Hong, Xiaobin and Lin, Mingkai and Wei, Xingshen and Li, Wenzhong and Lu, Sanglu},
-  title        = {{MemPoison}: Uncovering Persistent Memory Threats and Structural Blind Spots in {LLM} Agents},
-  year         = {2026}, eprint = {2607.14651}, archivePrefix = {arXiv},
-}
-
-@inproceedings{lee2025daisy,
+@inproceedings{Lee2025StardewLearnability,
   author    = {Lee, Jungmin and Yoon, Seoyoung and Shim, Hwajin and Yoo, Youngjae},
   title     = {Development of an {LLM}-Based Chatbot to Support Learnability in {Stardew Valley}: A Diary Study Approach},
-  booktitle = {Proceedings of CHI},
-  year      = {2025}, doi = {10.1145/3706598.3713310},
+  booktitle = {Proceedings of the 2025 CHI Conference on Human Factors in Computing Systems},
+  year      = {2025},
+  doi       = {10.1145/3706598.3713310}
 }
 
-@inproceedings{nan2026neighbors,
+@inproceedings{Nan2026DigitalNeighbors,
   author    = {Nan, Han and Han, Yujia and Peng, Yu and Yuan, Xiang and Pan, Xuanyu},
-  title     = {Empower My Digital Neighbors: How {LLM}-Driven {NPCs} Shape Player Interaction in Single-Player and Multiplayer Contexts},
-  booktitle = {Extended Abstracts of CHI},
-  year      = {2026}, doi = {10.1145/3772363.3798665},
+  title     = {Empower My Digital Neighbors: How {LLM}-Driven {NPC}s Shape Player Interaction in Single-Player and Multiplayer Contexts},
+  booktitle = {Extended Abstracts of the 2026 CHI Conference on Human Factors in Computing Systems},
+  year      = {2026},
+  doi       = {10.1145/3772363.3798665}
 }
 
-@inproceedings{park2023generative,
-  author    = {Park, Joon Sung and O'Brien, Joseph and Cai, Carrie Jun and Morris, Meredith Ringel and Liang, Percy and Bernstein, Michael S.},
-  title     = {Generative Agents: Interactive Simulacra of Human Behavior},
-  booktitle = {Proceedings of UIST}, year = {2023}, doi = {10.1145/3586183.3606763},
+% Corrected: was authorless. Verified: Braas & Esterle, AAAI-copyrighted 2026.
+@inproceedings{Braas2025FixedPersonaSLM,
+  author    = {Braas, Martin and Esterle, Lukas},
+  title     = {Fixed-Persona {SLM}s with Modular Memory: Scalable {NPC} Dialogue on Consumer Hardware},
+  booktitle = {Proceedings of the AAAI Conference on Artificial Intelligence},
+  year      = {2026},
+  note      = {also arXiv:2511.10277},
+  url       = {https://arxiv.org/abs/2511.10277}
 }
 
-@misc{zhang2026dualmem,
-  author       = {Zhang, Rongsheng and Hu, Ruofan and others},
-  title        = {From Facts to Insights: A Persona-Driven Dual Memory Framework and Dataset for Role-Playing Agents},
-  year         = {2026}, eprint = {2605.25693}, archivePrefix = {arXiv},
+% Corrected: was authorless. Published at Findings of ACL 2026.
+@inproceedings{Liu2026MemoryDrivenRolePlaying,
+  author    = {Liu, Shichun and others},
+  title     = {Memory-Driven Role-Playing: Evaluation and Enhancement of Persona Knowledge Utilization in {LLMs}},
+  booktitle = {Findings of the Association for Computational Linguistics: ACL 2026},
+  year      = {2026},
+  note      = {also arXiv:2603.19313; confirm full author list from ACL Anthology 2026.findings-acl.1175},
+  url       = {https://aclanthology.org/2026.findings-acl.1175/}
+}
+
+% ===================== LLM/agent memory systems & benchmarks =====================
+
+@inproceedings{Xu2022Goldfish,
+  author    = {Xu, Jing and Szlam, Arthur and Weston, Jason},
+  title     = {Beyond Goldfish Memory: Long-Term Open-Domain Conversation},
+  booktitle = {Proceedings of the 60th Annual Meeting of the Association for Computational Linguistics},
+  year      = {2022},
+  doi       = {10.18653/v1/2022.acl-long.356},
+  url       = {https://aclanthology.org/2022.acl-long.356/}
+}
+
+@article{Packer2023MemGPT,
+  author  = {Packer, Charles and Fang, Vivian and Patil, Shishir G. and Lin, Kevin and Wooders, Sarah and Gonzalez, Joseph E.},
+  title   = {{MemGPT}: Towards {LLM}s as Operating Systems},
+  journal = {arXiv preprint arXiv:2310.08560},
+  year    = {2023},
+  doi     = {10.48550/arXiv.2310.08560},
+  url     = {https://arxiv.org/abs/2310.08560}
+}
+
+@inproceedings{Zhong2024MemoryBank,
+  author    = {Zhong, Wanjun and Guo, Lianghong and Gao, Qiqi and Ye, He and Wang, Yanlin},
+  title     = {{MemoryBank}: Enhancing Large Language Models with Long-Term Memory},
+  booktitle = {Proceedings of the AAAI Conference on Artificial Intelligence},
+  year      = {2024},
+  volume    = {38},
+  number    = {17},
+  doi       = {10.1609/aaai.v38i17.29946}
+}
+
+@article{Maharana2024LoCoMo,
+  author  = {Maharana, Adyasha and Lee, Dong-Ho and Tulyakov, Sergey and Bansal, Mohit and Barbieri, Francesco and Fang, Yuwei},
+  title   = {Evaluating Very Long-Term Conversational Memory of {LLM} Agents},
+  journal = {arXiv preprint arXiv:2402.17753},
+  year    = {2024},
+  doi     = {10.48550/arXiv.2402.17753},
+  url     = {https://arxiv.org/abs/2402.17753}
+}
+
+@article{Lee2024ReadAgent,
+  author  = {Lee, Kuang-Huei and Chen, Xinyun and Furuta, Hiroki and Canny, John and Fischer, Ian S.},
+  title   = {A Human-Inspired Reading Agent with Gist Memory of Very Long Contexts},
+  journal = {arXiv preprint arXiv:2402.09727},
+  year    = {2024},
+  doi     = {10.48550/arXiv.2402.09727},
+  url     = {https://arxiv.org/abs/2402.09727}
+}
+
+@article{Wu2024LongMemEval,
+  author  = {Wu, Di and Wang, Hongwei and Yu, Wenhao and Zhang, Yuwei and Chang, Kai-Wei and Dong, Yu},
+  title   = {{LongMemEval}: Benchmarking Chat Assistants on Long-Term Interactive Memory},
+  journal = {arXiv preprint arXiv:2410.10813},
+  year    = {2024},
+  doi     = {10.48550/arXiv.2410.10813},
+  url     = {https://arxiv.org/abs/2410.10813}
+}
+
+@article{Xu2025AMEM,
+  author  = {Xu, Wujiang and Liang, Zujie and Mei, Kai and Gao, Hang and Tan, Juntao and Zhang, Yongfeng},
+  title   = {{A-MEM}: Agentic Memory for {LLM} Agents},
+  journal = {arXiv preprint arXiv:2502.12110},
+  year    = {2025},
+  doi     = {10.48550/arXiv.2502.12110},
+  url     = {https://arxiv.org/abs/2502.12110}
+}
+
+@article{Li2025MemOS,
+  author  = {Li, Zhiyu and Song, Shichao and Xi, Chenyang and Wang, Hanyu and Tang, Chen and Niu, Simin and Chen, Ding and Yang, Jiawei and Li, Chunyu and Yu, Qingchen and Zhao, Jihao and Liu, Peng and Lin, Zehao and Wang, Pengyuan and Huo, Jiahao and Chen, Tianyi and Chen, Kai and others},
+  title   = {{MemOS}: A Memory {OS} for {AI} System},
+  journal = {arXiv preprint arXiv:2507.03724},
+  year    = {2025},
+  doi     = {10.48550/arXiv.2507.03724},
+  url     = {https://arxiv.org/abs/2507.03724}
+}
+
+@article{Hu2025MemoryAge,
+  author  = {Hu, Yuyang and Liu, Shichun and Yue, Yanwei and Zhang, Guibin and Liu, Boyang and Zhu, Fangyi and Lin, Jiahang and Guo, Honglin and Dou, Shihan and Xi, Zhiheng and Jin, Senjie and Tan, Jiejun and Yin, Yanbin and Liu, Jiongnan and Zhang, Zeyu and Sun, Zhongxiang and Zhu, Yutao and Sun, Hao and Peng, Boci and Cheng, Shihan and others},
+  title   = {Memory in the Age of {AI} Agents},
+  journal = {arXiv preprint arXiv:2512.13564},
+  year    = {2025},
+  doi     = {10.48550/arXiv.2512.13564},
+  url     = {https://arxiv.org/abs/2512.13564}
+}
+
+@article{Liu2023LostMiddle,
+  author  = {Liu, Nelson F. and Lin, Kevin and Hewitt, John and Paranjape, Ashwin and Bevilacqua, Michele and Petroni, Fabio and Liang, Percy},
+  title   = {Lost in the Middle: How Language Models Use Long Contexts},
+  journal = {Transactions of the Association for Computational Linguistics},
+  year    = {2023},
+  volume  = {11},
+  pages   = {157--173},
+  doi     = {10.1162/tacl_a_00638},
+  url     = {https://aclanthology.org/2023.tacl-1.10/}
+}
+
+% ======================= Context attribution =======================
+
+@inproceedings{CohenWang2024ContextCite,
+  author    = {Cohen-Wang, Benjamin and Shah, Harshay and Georgiev, Kristian and M{\=a}dry, Aleksander},
+  title     = {{ContextCite}: Attributing Model Generation to Context},
+  booktitle = {Advances in Neural Information Processing Systems 37},
+  year      = {2024},
+  eprint    = {2409.00729},
+  archivePrefix = {arXiv},
+  url       = {https://arxiv.org/abs/2409.00729}
+}
+
+@article{Nematov2025SourceAttribution,
+  author  = {Nematov, Ikhtiyor and Kalai, Tarik and Kuzmenko, Elizaveta and Fugagnoli, Gabriele and Sacharidis, Dimitris and Hose, Katja and Sagi, Tomer},
+  title   = {Source Attribution in Retrieval-Augmented Generation},
+  journal = {arXiv preprint arXiv:2507.04480},
+  year    = {2025},
+  doi     = {10.48550/arXiv.2507.04480},
+  url     = {https://arxiv.org/abs/2507.04480}
+}
+
+@inproceedings{Xiao2025TokenShapley,
+  author    = {Xiao, Y. and others},
+  title     = {{TokenShapley}: Token Level Context Attribution with {Shapley} Value},
+  booktitle = {Findings of the Association for Computational Linguistics: ACL 2025},
+  year      = {2025},
+  eprint    = {2507.05261},
+  archivePrefix = {arXiv},
+  url       = {https://arxiv.org/abs/2507.05261},
+  note      = {confirm full author list from the ACL Anthology record before camera-ready}
+}
+
+@article{Anand2026ContextFocus,
+  author  = {Anand, Nikhil and Somasundaram, Shwetha and Phukan, Anirudh and Saxena, Apoorv and Mukherjee, Koyel},
+  title   = {{ContextFocus}: Activation Steering for Contextual Faithfulness in Large Language Models},
+  journal = {arXiv preprint arXiv:2601.04131},
+  year    = {2026},
+  doi     = {10.48550/arXiv.2601.04131},
+  url     = {https://arxiv.org/abs/2601.04131}
+}
+
+% ======================= Memory poisoning & defense =======================
+
+% OpenReview page bot-walled at check time; confirm NeurIPS 2025 record before use.
+@inproceedings{Dong2025MINJA,
+  author    = {Dong, S. and others},
+  title     = {{MINJA}: Memory Injection Attacks on {LLM} Agents via Query-Only Interaction},
+  booktitle = {Advances in Neural Information Processing Systems},
+  year      = {2025},
+  url       = {https://openreview.net/forum?id=QINnsnppv8},
+  note      = {verify venue record and author list before submission}
+}
+
+@article{Pulipaka2026SleeperMemory,
+  author  = {Pulipaka, Prem Sidharth and others},
+  title   = {Hidden in Memory: Sleeper Memory Poisoning in {LLM} Agents},
+  journal = {arXiv preprint arXiv:2605.15338},
+  year    = {2026},
+  doi     = {10.48550/arXiv.2605.15338},
+  url     = {https://arxiv.org/abs/2605.15338}
+}
+
+@article{Sunil2026MemoryPoisonDefense,
+  author  = {Sunil, Balachandra Devarangadi and Sinha, Isheeta and Maheshwari, Piyush and Todmal, Shantanu and Mallik, Shreyan and Mishra, S. M.},
+  title   = {Memory Poisoning Attack and Defense on Memory Based {LLM}-Agents},
+  journal = {arXiv preprint arXiv:2601.05504},
+  year    = {2026},
+  doi     = {10.48550/arXiv.2601.05504},
+  url     = {https://arxiv.org/abs/2601.05504}
+}
+
+% Corrected: was authorless with a wrong short title.
+% Verified: Dash, Ge, Jain, Shah, Shang — arXiv:2606.04329.
+@article{Dash2026SystematicMemoryPoisoning,
+  author  = {Dash, Pritam and Ge, Tongyu and Jain, Aditi and Shah, Tanmay and Shang, Zhiwei},
+  title   = {From Untrusted Input to Trusted Memory: A Systematic Study of Memory Poisoning Attacks in {LLM} Agents},
+  journal = {arXiv preprint arXiv:2606.04329},
+  year    = {2026},
+  doi     = {10.48550/arXiv.2606.04329},
+  url     = {https://arxiv.org/abs/2606.04329}
+}
+
+% Corrected: was authorless. Verified: Yedidel Louck, arXiv:2606.24322.
+@article{Louck2026SecuringMemory,
+  author  = {Louck, Yedidel},
+  title   = {Securing {LLM}-Agent Long-Term Memory Against Poisoning: Non-Malleable, Origin-Bound Authority with Machine-Checked Guarantees},
+  journal = {arXiv preprint arXiv:2606.24322},
+  year    = {2026},
+  doi     = {10.48550/arXiv.2606.24322},
+  url     = {https://arxiv.org/abs/2606.24322}
+}
+
+% Corrected: first author is Gao, not Wei (Wei is sixth); key renamed.
+% Verified against arXiv:2607.14651.
+@article{Gao2026MemPoison,
+  author  = {Gao, Jifeng and Xia, Kang and Zhang, Yi and Hong, Xiaobin and Lin, Mingkai and Wei, Xingshen and Li, Wenzhong and Lu, Sanglu},
+  title   = {{MemPoison}: Uncovering Persistent Memory Threats and Structural Blind Spots in {LLM} Agents},
+  journal = {arXiv preprint arXiv:2607.14651},
+  year    = {2026},
+  doi     = {10.48550/arXiv.2607.14651},
+  url     = {https://arxiv.org/abs/2607.14651}
+}
+
+% ======================= Memory management with attribution signals =======================
+
+@article{Tan2025ReflectiveMemory,
+  author  = {Tan, Zhen and Yan, Jun and Hsu, I-Hung and Han, Rujun and Wang, Zifeng and Le, Long T. and Song, Yiwen and Chen, Yanfei and Palangi, Hamid and Lee, George and Iyer, Anand and Chen, Tianlong and Liu, Huan and Lee, Chen-Yu and Pfister, Tomas},
+  title   = {In Prospect and Retrospect: Reflective Memory Management for Long-term Personalized Dialogue Agents},
+  journal = {arXiv preprint arXiv:2503.08026},
+  year    = {2025},
+  doi     = {10.48550/arXiv.2503.08026},
+  url     = {https://arxiv.org/abs/2503.08026}
 }
