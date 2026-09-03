@@ -547,6 +547,14 @@ def build_grid_figure(
 #: carries data and its notes live in results.txt, and these three had no notes at all, which
 #: is how a figure ends up in a slide deck with nothing to stop it being over-read.
 EXPERIMENT_NOTES: dict[str, tuple[str, str]] = {
+    "self_priming_loop": (
+        "The self-priming loop, drawn as the timeline it is, with the harness's own numbers",
+        "A diagram, not a measurement plot: the boxes are the pipeline's five steps and the "
+        "return arrow is the state channel. The three numbers on it (poison count at full "
+        "weights, with the mood weight zeroed, and the post-attack mood to tag cosine range) "
+        "are recomputed from eval.attribution on the stub at build time, so the figure "
+        "cannot drift from the table. Reproduce with python -m eval.attribution.",
+    ),
     "affective_indexing": (
         "Flip a memory's emotion and its recall inverts; what it means does not move",
         "Deterministic and model independent: relevance and mood congruence are both pure "
@@ -605,9 +613,10 @@ def build_experiment_figures(out_dir: Path | str = DEFAULT_OUT_DIR) -> list[Path
     one command rebuilds the whole figure set: a paper with half its assets regenerated from
     a stale cache is the failure mode this exists to prevent.
     """
-    from assets.build_animations import build_recall_animation
+    from assets.build_animations import build_loop_figure, build_recall_animation
 
     written = list(build_affective_indexing_figure(out_dir))
+    written += list(build_loop_figure(out_dir))
     try:
         written += list(build_recall_animation(out_dir=out_dir))
     except FileNotFoundError as error:  # the animation needs a run; the rest do not

@@ -101,7 +101,7 @@ def test_every_experiment_figure_has_a_note_beside_it(tmp_path: Path) -> None:
     with nothing to stop it being over-read."""
     from assets.build_bakeoff_figures import EXPERIMENT_NOTES, write_experiment_notes
 
-    stems = ["affective_indexing", "provenance_sweep", "content_tag_grid", "mood_recall"]
+    stems = ["affective_indexing", "provenance_sweep", "content_tag_grid", "mood_recall", "self_priming_loop"]
     assert set(stems) <= set(EXPERIMENT_NOTES)
     notes = write_experiment_notes(stems, tmp_path)
     text = notes.read_text(encoding="utf-8")
@@ -111,3 +111,16 @@ def test_every_experiment_figure_has_a_note_beside_it(tmp_path: Path) -> None:
     # A rebuild replaces the block rather than stacking a second copy under it.
     write_experiment_notes(stems, tmp_path)
     assert notes.read_text(encoding="utf-8").count("Mechanism experiments") == 1
+
+
+def test_the_loop_figure_prints_the_harness_numbers_not_typed_ones(tmp_path: Path) -> None:
+    from assets.build_animations import build_loop_figure
+    from eval.attribution import attribute_poisoning
+
+    (path,) = build_loop_figure(tmp_path / "out")
+    xml.dom.minidom.parse(str(path))
+    svg = path.read_text(encoding="utf-8")
+    counts = attribute_poisoning()
+    assert f'{counts["baseline"]["embr"]}/10' in svg
+    assert f'{counts["embr_minus"]["mood"]}/10' in svg
+    assert "@keyframes" not in svg and "<animate" not in svg  # a still, on purpose
