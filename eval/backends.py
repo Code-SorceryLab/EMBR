@@ -21,13 +21,18 @@ summaries, which merge memories, so it is not used.
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 from collections.abc import Sequence
 from pathlib import Path
 
 from embr import CharacterState, Memory
 
-MNEMOSYNE_PYTHON = Path(".venv-mnemosyne/Scripts/python.exe")
+MNEMOSYNE_PYTHON = (
+    Path(".venv-mnemosyne/Scripts/python.exe")  # Windows venv layout
+    if os.name == "nt"
+    else Path(".venv-mnemosyne/bin/python")
+)
 WORKER = Path(__file__).with_name("mnemosyne_worker.py")
 
 

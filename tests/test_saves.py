@@ -218,11 +218,38 @@ def test_python_dash_m_embr_imports_and_answers() -> None:
     import subprocess
     import sys
 
+    repo_root = Path(__file__).resolve().parents[1]  # never a hardcoded author path
     done = subprocess.run(
         [sys.executable, "-m", "embr", "save-status"],
-        capture_output=True, text=True, cwd="S:/Master/EMBR", timeout=120,
+        capture_output=True, text=True, cwd=repo_root, timeout=120,
     )
     assert done.returncode == 0, done.stderr
+
+
+def test_every_front_door_opens_the_same_menu() -> None:
+    """The `embr` console script must load menu.run_menu. The menu moved to the repo
+    root once and left other entry points pointing at the old address, which is exactly
+    the "the menu is broken" report this guards against. `python -m embr` is covered
+    by the subprocess test above."""
+    import menu
+    from importlib.metadata import entry_points
+
+    (script,) = entry_points(group="console_scripts", name="embr")
+    assert script.load() is menu.run_menu  # stale install: rerun pip install -e .
+
+
+def test_a_save_with_nan_in_it_refuses_to_load(tmp_path: Path) -> None:
+    """A handcrafted save with a valid hash but NaN in a numeric field must not load;
+    NaN in the scorer poisons every retrieval score silently."""
+    import math
+
+    from embr.saves import validate_payload
+
+    session = WalkthroughSession(build_walkthrough_conversation(model=StubRunner()))
+    path = save_slot(session, slot="slot-1", root=tmp_path)
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    payload["state"]["mood"]["valence"] = math.nan
+    assert any("non-finite" in p for p in validate_payload(payload))
 
 
 def test_content_hash_is_stable_and_sees_beat_edits() -> None:
