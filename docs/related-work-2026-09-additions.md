@@ -95,8 +95,9 @@ ablation is the distinction that blocks an "already done" review comment.
 ### MINJA
 Dong et al. *MINJA: Memory Injection Attacks on LLM Agents via Query-Only
 Interaction.* NeurIPS 2025. openreview.net/forum?id=QINnsnppv8
-(NB: OpenReview page is bot-walled; metadata unverified directly. Check the
-NeurIPS proceedings page before final refs.bib entry.)
+Verified 2026-09-03 against neurips.cc/virtual/2025/poster/118152: poster,
+authors Shen Dong, Shaochen Xu, Pengfei He, Yige Li, Jiliang Tang, Tianming Liu,
+Hui Liu, Zhen Xiang. The published title carries no "MINJA:" prefix.
 
 Boundary: establishes that query-only interaction suffices for persistent-memory
 injection. EMBR assumes the same write channel and asks a different question:
