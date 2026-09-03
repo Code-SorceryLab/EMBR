@@ -26,7 +26,12 @@ from assets.build_demo import PRESETS, build_demo
 @pytest.fixture(scope="module")
 def built(tmp_path_factory) -> list[Path]:
     """Both pages, built once from the same payload."""
-    return build_demo(out_dir=tmp_path_factory.mktemp("demo"))
+    try:
+        return build_demo(out_dir=tmp_path_factory.mktemp("demo"))
+    except FileNotFoundError as missing:
+        if "no run directories" in str(missing):
+            pytest.skip("needs eval run artifacts (python -m eval.run)")
+        raise
 
 
 @pytest.fixture(scope="module")

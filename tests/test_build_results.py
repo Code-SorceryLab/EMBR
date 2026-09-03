@@ -31,12 +31,22 @@ FINDINGS = REPO / "docs" / "findings.md"
 def run_results() -> dict:
     from assets.build_figures import latest_run_dir, load_run_results
 
-    return load_run_results(latest_run_dir())
+    try:
+        return load_run_results(latest_run_dir())
+    except FileNotFoundError as missing:
+        if "no run directories" in str(missing):
+            pytest.skip("needs eval run artifacts (python -m eval.run)")
+        raise
 
 
 @pytest.fixture(scope="module")
 def page(tmp_path_factory) -> str:
-    (path,) = build_results(out_dir=tmp_path_factory.mktemp("results"))
+    try:
+        (path,) = build_results(out_dir=tmp_path_factory.mktemp("results"))
+    except FileNotFoundError as missing:
+        if "no run directories" in str(missing):
+            pytest.skip("needs eval run artifacts (python -m eval.run)")
+        raise
     return path.read_text(encoding="utf-8")
 
 
