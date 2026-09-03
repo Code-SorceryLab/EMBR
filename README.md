@@ -84,6 +84,46 @@ demo opens on Ouro 1.4B in-process. Anywhere else it opens on the instant offlin
 every model is one click away in settings. A model the box does not have is marked, fetched
 with a progress bar, then switched to.
 
+## Use it from your engine
+
+The library is Python. Your game probably is not, so the layer is also a server: one
+`Conversation` per character, persisted under `data/npcs/`, four JSON routes, no dependency.
+
+```bash
+python -m embr serve                    # http://127.0.0.1:8017 on the stub, no model needed
+python -m embr serve --model ollama     # replies from the local Ollama daemon
+python -m embr serve --defended         # score with the provenance anchor, the measured defence
+python -m embr serve --tagger lexicon   # tag untagged runtime events from their own words
+```
+
+```bash
+curl -X PUT localhost:8017/npc/dawn -d '{
+  "persona": "Dawn Whitmore, keeper of the Ember Hearth. Warm but no fool.",
+  "trust": 0.4,
+  "memories": [{"text": "The player claimed an errand for the king and got a cheap room.",
+                "valence": 0.5, "arousal": 0.4, "event_type": "promise"}]}'
+
+curl -X POST localhost:8017/npc/dawn/turn -d '{
+  "player_input": "any news of the king these days?",
+  "event": {"text": "the player asked about the late king", "event_type": "normal"}}'
+```
+
+The turn comes back with the reply, the mood and trust it left behind, the exact prompt the
+model saw, and every retrieved memory with its per-signal score breakdown, so a tools
+engineer can see why a line was said and a researcher can log it. Memories sent at creation
+are stamped as authored. Anything that arrives in a turn is stamped external, and its affect
+tag is recorded as external only if the client supplied the numbers. That stamp is what the
+defended scorer reads, so a client that never writes affect metadata gets the harder-to-poison
+posture without asking for it. The same policy is one method away in Python:
+
+```python
+from embr import Conversation, CharacterState
+
+dawn = Conversation(CharacterState(persona="Dawn Whitmore, keeper of the Ember Hearth."))
+turn = dawn.take_turn("any news of the king?", event=dawn.tag_event("the player asked about the late king"))
+turn.reply, turn.retrieved, turn.breakdown, dawn.state.mood, dawn.state.trust
+```
+
 <p align="center">
   <img src="data/figures/questline_evidence.png" alt="The Dawn Whitmore arc: questline, state, and evidence map" width="900">
 </p>
@@ -271,7 +311,8 @@ python -m eval.consistency             # does she refuse the room after the betr
 python -m eval.context_attribution                       # stub, all 64 masks, seconds
 python -m eval.context_attribution --model ouro          # the thesis model on the GPU
 
-# Play
+# Play, and integrate
+python -m embr serve                               # NPCs over JSON for your engine
 python -m web.server                               # the visual novel
 python demos.py --record                           # a screen-recording walk of the demos
 python -m embr save-status                         # every slot, progress, problems
@@ -338,7 +379,8 @@ EMBR/
 │   ├── model.py          #   runners: stub, Ollama (local and cloud), Ouro 1.4B
 │   ├── pipeline.py       #   the five-step per-turn loop
 │   ├── walkthrough.py    #   Dawn's five-beat playable arc
-│   └── saves.py          #   durable, versioned save slots
+│   ├── saves.py          #   durable, versioned save slots
+│   └── serve.py          #   NPCs over JSON for a game engine, persisted per character
 ├── eval/                 # the harness: protocol, attacks, mechanism experiments
 │   ├── run.py            #   RQ1, RQ2, RQ3, one run directory
 │   ├── attacks.py        #   twenty adversarial probes, and the tag variants

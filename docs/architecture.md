@@ -45,7 +45,7 @@ mood that then scores that tag's own memory.
 
 | Path | Role | Do not |
 |---|---|---|
-| embr/ | The library. Scoring, memory store, appraisal, models, saves, walkthrough session | Put UI or eval code here |
+| embr/ | The library. Scoring, memory store, appraisal, models, saves, walkthrough session, and `serve.py`, the JSON server a game engine calls | Put UI or eval code here |
 | eval/ | The research harness: scenarios, attacks, baselines, attribution, stats, the bakeoff | Ship in the demo |
 | web/ | The playable demo: server, the visual-novel game, research tabs | Add game logic; the game is embr.walkthrough |
 | menu.py | Top-level front door (console script + `python -m embr` + `python menu.py`) | Move it again without updating all three doors (tests/test_saves.py guards this) |
@@ -55,7 +55,7 @@ mood that then scores that tag's own memory.
 | tests/ | pytest suite. Anything touching data/runs belongs behind a fixture, not a bare FileNotFoundError | Hand-maintain a test count anywhere |
 
 Hard rules: web/ may read eval results but must not import eval code at game
-time (it currently pokes five private APIs via deferred imports — deferred
+time (it currently pokes five private APIs via deferred imports; deferred
 breakage, flagged for cleanup after the paper freeze). eval/ never imports
 web/.
 

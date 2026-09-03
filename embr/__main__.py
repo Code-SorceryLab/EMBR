@@ -3,6 +3,7 @@
     python -m embr                  # the menu
     python -m embr save-status      # every slot, its progress, and any problems
     python -m embr validate-saves   # exit 1 if any save cannot load against this build
+    python -m embr serve            # NPCs over JSON for a game engine; see embr/serve.py
 """
 
 from __future__ import annotations
@@ -51,10 +52,14 @@ def validate_saves(root: Path | str = SAVES_ROOT) -> int:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="embr", description=__doc__.splitlines()[0])
     parser.add_argument(
-        "command", nargs="?", choices=("save-status", "validate-saves"),
+        "command", nargs="?", choices=("save-status", "validate-saves", "serve"),
         help="omit to open the menu",
     )
-    args = parser.parse_args(argv)
+    args, rest = parser.parse_known_args(argv)
+    if args.command == "serve":
+        from embr.serve import main as serve_main
+
+        return serve_main(rest)
     if args.command == "save-status":
         return save_status()
     if args.command == "validate-saves":

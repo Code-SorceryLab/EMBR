@@ -15,9 +15,10 @@ the real model and the eval harness unchanged.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import Callable
 
 from .affect import CharacterState, Mood, appraise
-from .memory import EventType, Memory, MemoryStore
+from .memory import EventType, Memory, MemoryStore, Provenance
 from .model import ModelRunner, StubRunner
 from .prompt import PromptBuilder
 from .scoring import CompositeScorer, embr_scorer
@@ -36,6 +37,10 @@ class Turn:
     reply: str
     retrieved: list[Memory] = field(default_factory=list)
     prompt: str = ""
+    #: One dict per retrieved memory, in the same order: each signal's weighted contribution
+    #: to that memory's score. This is the "why" a researcher or a tools engineer wants
+    #: beside every reply, and it costs nothing extra because the scorer already has it.
+    breakdown: list[dict[str, float]] = field(default_factory=list)
 
 
 class Conversation:
@@ -53,13 +58,50 @@ class Conversation:
         prompt_builder: PromptBuilder | None = None,
         model: ModelRunner | None = None,
         top_k: int = 3,
+        tagger: Callable[[str], tuple[float, float]] | None = None,
     ) -> None:
         self.state = state
-        self.store = store or MemoryStore()
+        # `is not None`, not `or`: an empty store has len 0 and would be dropped.
+        self.store = store if store is not None else MemoryStore()
         self.scorer = scorer or embr_scorer()
         self.prompt_builder = prompt_builder or PromptBuilder()
         self.model = model or StubRunner()
         self.top_k = top_k
+        #: How `tag_event` reads affect off an untagged runtime event: any text to
+        #: (valence, arousal) function, a lexicon rater for instance. None means neutral.
+        self.tagger = tagger
+
+    def tag_event(
+        self,
+        text: str,
+        *,
+        event_type: EventType = EventType.NORMAL,
+        valence: float | None = None,
+        arousal: float | None = None,
+    ) -> Memory:
+        """Build a runtime event with the write-boundary policy applied, ready for `take_turn`.
+
+        Everything that arrives during play is `written_by=EXTERNAL`. The affect tag is the
+        attacked input (findings 2.3), so where it came from is recorded honestly: numbers the
+        caller supplies are `tagged_by=EXTERNAL`, and a tag this layer derived from the text
+        (through `tagger`, or neutral when there is none) is `tagged_by=APPRAISED`. Under the
+        defended scorer that stamp is what the provenance anchor reads, so a client that never
+        writes affect metadata gets the 6/10 posture by default and the 9/10 one only on
+        request. Values are clamped to the circumplex before they can move anything.
+        """
+        if valence is None and arousal is None:
+            valence, arousal = self.tagger(text) if self.tagger else (0.0, 0.0)
+            tagged_by = Provenance.APPRAISED
+        else:
+            tagged_by = Provenance.EXTERNAL
+        return Memory(
+            text=text,
+            valence=max(-1.0, min(1.0, float(valence or 0.0))),
+            arousal=max(0.0, min(1.0, float(arousal or 0.0))),
+            event_type=event_type,
+            written_by=Provenance.EXTERNAL,
+            tagged_by=tagged_by,
+        )
 
     def take_turn(self, player_input: str, event: Memory | None = None) -> Turn:
         """Run one full turn and return the reply plus the memories that informed it."""
@@ -78,12 +120,17 @@ class Conversation:
 
         # 3. + 4. score every memory and keep the most relevant few
         retrieved = self.scorer.top_k(self.store.all(), player_input, self.state, self.top_k)
+        breakdown = [self.scorer.breakdown(m, player_input, self.state) for m in retrieved]
         prompt = self.prompt_builder.build(self.state, retrieved, player_input)
 
         # 5. generate the reply
         reply = self.model.generate(prompt)
         return Turn(
-            player_input=player_input, reply=reply, retrieved=retrieved, prompt=prompt
+            player_input=player_input,
+            reply=reply,
+            retrieved=retrieved,
+            prompt=prompt,
+            breakdown=breakdown,
         )
 
 

@@ -10,7 +10,7 @@ DESIGN (true by construction of the code, present it as architecture), WITHDRAWN
 - **C1. State-mediated self-priming**: an attacker-written affect tag changes
   the NPC's appraised mood, and mood-congruent retrieval then raises that same
   memory's retrieval score. Status: SUPPORTED. Evidence: eval/provenance.py
-  dose-response; measured post-attack mood–affect cosine 0.90–0.99
+  dose-response; measured post-attack mood to affect cosine 0.90 to 0.99
   (eval/scoring.py docstring); intervention = zeroing the mood weight
   (9/10 → 6/10 poisoned). Framing: a mechanism case study, not a benchmark.
   Boundary vs MemPoison L3 and Sleeper: no semantic trigger, no dormancy; the
@@ -29,7 +29,8 @@ DESIGN (true by construction of the code, present it as architecture), WITHDRAWN
   architectural property that makes the attack legible, never as an empirical
   result. (The −0.998 is cosine arithmetic, not a measurement.)
 - **C4. Middleware artifact**: engine-neutral layer, usable via menu, web demo,
-  or import. Status: SUPPORTED as an artifact claim only. "Plug-and-play" is
+  import, or JSON over HTTP (`python -m embr serve`, one persisted conversation per
+  NPC, with the write-boundary provenance policy applied to every runtime event). Status: SUPPORTED as an artifact claim only. "Plug-and-play" is
   not an academic novelty claim (Mem0/Letta/Zep occupy that space).
 
 ## Withdrawn and unsafe
