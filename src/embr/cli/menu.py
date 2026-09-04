@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import sys
 from collections.abc import Sequence
 from pathlib import Path
@@ -100,6 +101,35 @@ _MENU_ITEMS = [
     ("C", "Clear Screen", "clear terminal output"),
     ("0", "Exit", "quit EMBR"),
 ]
+
+#: The shell spelling of each row, shown beside it on a wide terminal and used by the
+#: command line in `app.py`. A row with no entry is interactive by nature.
+_COMMANDS: dict[str, str] = {
+    "R": "embr continue",
+    "1": "embr turn",
+    "2": "embr play",
+    "W": "embr web",
+    "3": "embr eval quick",
+    "4": "embr eval run",
+    "5": "embr eval replicate",
+    "6": "embr eval bakeoff",
+    "7": "embr mechanism flip",
+    "8": "embr mechanism attribution",
+    "9": "embr mechanism provenance",
+    "10": "embr mechanism grid",
+    "11": "embr assets build",
+    "12": "embr demo page",
+    "13": "embr results",
+    "V": "embr dashboard",
+    "14": "embr demo reckoning",
+    "15": "embr demo mood",
+    "16": "embr demo defence",
+    "17": "embr demo tagflip",
+    "18": "embr demo divergence",
+    "19": "embr demo record",
+    "S": "embr settings",
+    "L": "embr lexicon",
+}
 
 _SECTIONS = [
     ("PLAY", ("R", "Q", "1", "2", "W")),
@@ -241,7 +271,10 @@ def _error_hint(error: BaseException) -> str | None:
 
 
 def _menu_item(key: str, label: str, hint: str = "") -> str:
-    """One menu row: yellow key, label, dimmed hint."""
+    """One menu row: yellow key, label, dimmed hint, and the shell spelling when it fits."""
+    command = _COMMANDS.get(key)
+    if command and shutil.get_terminal_size((80, 24)).columns >= 110:
+        return f"  {_YEL(f'[{key}]'.rjust(4))}  {label.ljust(26)}{_DIM(hint.ljust(62))}{_DIM(command)}"
     return f"  {_YEL(f'[{key}]'.rjust(4))}  {label.ljust(26)}{_DIM(hint) if hint else ''}"
 
 
@@ -738,48 +771,30 @@ def _do_grid() -> None:
     main()
 
 
-def _do_generate_assets() -> None:
-    """Rebuild figures and tables from the newest run."""
-    run_dir = _latest_run()
-    if run_dir is None:
-        print(_YEL("\n    No run found. Use option 4 first."))
-        return
+#: The asset steps in build order. The results page comes after the figures it embeds,
+#: and it reads the run rather than trusting anything typed, so a drift between the run
+#: and docs/findings.md stops the build loudly.
+ASSET_STEPS = ("tables", "figures", "experiments", "results", "questline")
 
-    try:
-        from eval.report.build_figures import build_all_figures
-        from eval.report.build_tables import build_all_tables
-    except ImportError as error:  # matplotlib lives in the optional figures extra
-        print(_RED(f"\n    Cannot import the asset builders: {error}"))
-        print(_DIM('    Install them with: pip install -e ".[figures]"'))
-        return
 
-    options = [
-        "tables (LaTeX + CSV)",
-        "figures from the run",
-        "figures from the experiments",
-        "results page (refuses to write if a number drifted)",
-        "questline map (from the arc, plus attribution status)",
-    ]
-    chosen = toggle_select("ASSETS", options, default_indices=[0, 1, 2, 3, 4])
-    if not chosen:
-        print(_DIM("    Cancelled."))
-        return
-    print(_DIM(f"\n    Building from {run_dir}..."))
+def build_assets(run_dir: Path, steps: Sequence[str] = ASSET_STEPS) -> list[Path]:
+    """Rebuild the chosen paper assets from `run_dir`. Shared by the menu and the CLI."""
     written: list[Path] = []
-    if options[0] in chosen:
+    if "tables" in steps:
+        from eval.report.build_tables import build_all_tables
+
         written += list(build_all_tables(run_dir))
-    if options[1] in chosen:
+    if "figures" in steps:
+        from eval.report.build_figures import build_all_figures
+
         written += list(build_all_figures(run_dir))
-    if options[2] in chosen:
+    if "experiments" in steps:
         # The mechanism figures recompute from the harness rather than from the run, and
         # leaving them out is how half a figure set goes stale without anyone noticing.
         from eval.report.build_bakeoff_figures import build_experiment_figures
 
         written += list(build_experiment_figures())
-    if options[3] in chosen:
-        # Last, because it embeds the figures the two steps above write, and it reads the
-        # run rather than trusting anything typed. A drift here is a real disagreement
-        # between the run and docs/findings.md, so it stops the build loudly.
+    if "results" in steps:
         from eval.report.build_results import DriftError, build_results
 
         try:
@@ -787,10 +802,40 @@ def _do_generate_assets() -> None:
         except DriftError as error:
             print(_RED("\n    Results page refused to build:"))
             print(_DIM(f"    {error}"))
-    if options[4] in chosen:
+    if "questline" in steps:
         from eval.report.build_questline import build_questline
 
         written += list(build_questline())
+    return written
+
+
+def _do_generate_assets() -> None:
+    """Rebuild figures and tables from the newest run."""
+    run_dir = _latest_run()
+    if run_dir is None:
+        print(_YEL("\n    No run found. Use option 4 first."))
+        return
+    try:
+        import matplotlib  # noqa: F401  the figures extra
+    except ImportError:
+        print(_RED("\n    The figure builders need matplotlib."))
+        print(_DIM("    Install it with: uv sync --extra figures"))
+        return
+
+    labels = [
+        "tables (LaTeX + CSV)",
+        "figures from the run",
+        "figures from the experiments",
+        "results page (refuses to write if a number drifted)",
+        "questline map (from the arc, plus attribution status)",
+    ]
+    chosen = toggle_select("ASSETS", labels, default_indices=[0, 1, 2, 3, 4])
+    if not chosen:
+        print(_DIM("    Cancelled."))
+        return
+    steps = [step for step, label in zip(ASSET_STEPS, labels) if label in chosen]
+    print(_DIM(f"\n    Building from {run_dir}..."))
+    written = build_assets(run_dir, steps)
     print(f"    {_GRN(f'✓ Wrote {len(written)} files.')}")
     for path in written:
         print(_DIM(f"      {path}"))

@@ -41,7 +41,7 @@ dev = [
 ]
 
 [project.scripts]
-embr = "embr.cli:run_menu"
+embr = "embr.cli:main"
 
 [project.urls]
 Repository = "https://github.com/Code-SorceryLab/EMBR"

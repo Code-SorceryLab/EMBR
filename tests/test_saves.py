@@ -227,15 +227,15 @@ def test_python_dash_m_embr_imports_and_answers() -> None:
 
 
 def test_every_front_door_opens_the_same_menu() -> None:
-    """The `embr` console script must load menu.run_menu. The menu moved to the repo
-    root once and left other entry points pointing at the old address, which is exactly
-    the "the menu is broken" report this guards against. `python -m embr` is covered
-    by the subprocess test above."""
-    from embr.cli import menu
+    """The `embr` console script must load the applet's main. The menu moved once and
+    left other entry points pointing at the old address, which is exactly the "the menu
+    is broken" report this guards against. `python -m embr` is covered by the subprocess
+    test above, and the root menu.py imports the same function."""
+    from embr.cli import main
     from importlib.metadata import entry_points
 
     (script,) = entry_points(group="console_scripts", name="embr")
-    assert script.load() is menu.run_menu  # stale install: rerun uv sync
+    assert script.load() is main  # stale install: rerun uv sync
 
 
 def test_a_save_with_nan_in_it_refuses_to_load(tmp_path: Path) -> None:
