@@ -23,7 +23,7 @@ A local middleware layer that gives a game NPC an emotion-grounded, persistent m
 each turn it logs an event, updates the character's mood and trust, scores every stored
 memory with five weighted signals, retrieves the top few, and prompts a local model. The
 whole spine already runs and is tested; you build the harness that *measures* it against the
-two baselines. Read [`design.md`](design.md) for the architecture and the thesis proposal
+two baselines. Read [`design.md`](../design.md) for the architecture and the thesis proposal
 for the why.
 
 ## How this works

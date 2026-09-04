@@ -4,7 +4,7 @@ Phase 2 builds the measurement layer: everything needed to run RQ1 (behaviour), 
 (robustness and cost), and RQ3 (retrieval quality) against the Park and Emotional RAG
 baselines under the pre-registered protocol. The harness lives in `src/eval/` at the repo
 root, deliberately outside `src/embr/`: it measures the system, so the system never imports
-it. Pair this with [`design.md`](design.md) (architecture) and
+it. Pair this with [`design.md`](../design.md) (architecture) and
 [`roadmap.md`](roadmap.md) (the phase brief this delivers on).
 
 ## 1. What phase 2 added, file by file

@@ -2,8 +2,8 @@
 
 Written on the PC, 2026-08-18, superseding the Mac migration handoff. Everything here was
 run and measured rather than remembered. Pair with [`design.md`](design.md) (architecture),
-[`roadmap.md`](roadmap.md) (the plan), [`related-work.md`](related-work.md) (prior art the
-paper must cite), and [`phase2.md`](phase2.md) / [`phase3-4.md`](phase3-4.md) (what shipped).
+[`roadmap.md`](history/roadmap.md) (the plan), [`related-work.md`](related-work.md) (prior art the
+paper must cite), and [`phase2.md`](history/phase2.md) / [`phase3-4.md`](history/phase3-4.md) (what shipped).
 
 **For what the project found, read [`findings.md`](findings.md).** That is the canonical
 statement of results, in RQ order, with every number traceable to a command. This document is
@@ -56,21 +56,18 @@ stale relative to the branch.
 ```bash
 git clone https://github.com/Code-SorceryLab/EMBR.git
 cd EMBR
-git switch phase-5-affect-attacks
-
-uv venv --python 3.11 .venv          # see the launcher note in section 5
-.venv\Scripts\activate               # Windows; source .venv/bin/activate elsewhere
-
-uv uv sync --extra figures   # core, tests, paper figures
-pytest -q                            # expect 385 passed (1 skip if Ollama is down)
-embr                                 # the menu
+uv sync --extra figures              # the applet, the harness, the tests, the paper figures
+uv run pytest -q                     # the expected counts live in data/release-manifest.json
+uv run embr                          # the menu; `uv run embr --help` lists every command
 ```
 
-For the real models, read section 5 first, then:
+uv creates `.venv` itself and pins every version from `uv.lock`; there is no separate
+venv or pip step. For the real models, read section 5 first, then:
 
 ```bash
-uv pip install --index-url https://download.pytorch.org/whl/cu130 torch
-uv uv sync --extra ml
+uv sync --extra ml                                        # sentence embeddings, torch, transformers
+uv pip install --index-url https://download.pytorch.org/whl/cu130 torch   # Windows CUDA build, after the sync
+scripts/fetch_models.sh                                   # every model the project uses; --fresh re-downloads
 ```
 
 Verified working combination on this machine:

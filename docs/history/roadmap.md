@@ -2,7 +2,7 @@
 
 **Audience:** the engineers/interns building EMBR phase by phase.
 **Purpose:** for each phase: *what to do*, *what to hand back*, and *what results we expect to
-see*. Pair this with [`design.md`](design.md) (the architecture) and the thesis
+see*. Pair this with [`design.md`](../design.md) (the architecture) and the thesis
 (`../../Proposals/Masters/NCP.docx`, the why).
 
 > EMBR's contribution is the **memory layer**, not the model. Every result should be about
@@ -167,7 +167,7 @@ produce the numbers the paper reports. **This phase carries the contribution.**
   > 2. **The attribution sweep's behavioural estimator**, which measures causally whether the
   >    mood sentence drives the reply. This is now RQ1's strongest evidence, and arguably a
   >    better design than a ten-person preference study. Already built; hypotheses fixed in
-  >    [`preregistration-attribution.md`](preregistration-attribution.md).
+  >    [`preregistration-attribution.md`](../preregistration-attribution.md).
   > 3. **A behavioural consistency check** as a task-like proxy: after the betrayal beat, does
   >    the keeper refuse the discounted room? Binary, scriptable, no raters, and closer to what
   >    a player actually experiences than any tone score.
@@ -275,7 +275,7 @@ Branch `phase-5-affect-attacks`. What it delivered, and why each piece exists:
 | `src/eval/backends.py` and the Mnemosyne arm | a baseline that is a weight map over our own scorer is not a comparison against a real system |
 | `src/eval/report/build_animations.py` | the RQ1 result is a change over time, and no static figure shows a change |
 
-**Two results changed what the paper claims**, and both are in [`findings.md`](findings.md):
+**Two results changed what the paper claims**, and both are in [`findings.md`](../findings.md):
 the EMBR-against-Park headline is a null once Park is rated the way Park et al. rate, and RQ1
 gained its first generation result (significant on llama3.2:3b, null on Ouro 1.4B).
 
@@ -292,7 +292,7 @@ Not started. Two pieces, in order:
    a query may carry one relevant set per state, and `state_conditioned_ndcg` scores each
    state against its own gold, which is the only shape of measurement a mood-congruent signal
    can win under. The labels themselves are the blocker, and deliberately cannot be written
-   here: see [`corpus.md`](corpus.md) for the schema, the acquisition path, the legal
+   here: see [`corpus.md`](../corpus.md) for the schema, the acquisition path, the legal
    constraint, and the pre-registered prediction.
 2. **The interactive demo.** Done, in two readings of one payload, both built by
    `src/eval/report/build_demo.py` from a named run and both openable from a `file://` path.
@@ -323,8 +323,8 @@ Not started. Two pieces, in order:
 
 ## Phase 7: power, the shipped defence, and the causal step
 
-**Direction set 2026-08-24.** The branch is `cite-view-test`. Method in [`cite.md`](cite.md),
-hypotheses fixed in [`preregistration-attribution.md`](preregistration-attribution.md).
+**Direction set 2026-08-24.** The branch is `cite-view-test`. Method in [`cite.md`](../cite.md),
+hypotheses fixed in [`preregistration-attribution.md`](../preregistration-attribution.md).
 
 The organising judgement: RQ3 is the weakest contribution and the corpus only rescues that;
 the security mechanism and its defence are the strongest and are already model-independent.

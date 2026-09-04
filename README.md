@@ -30,8 +30,8 @@
 EMBR is a memory layer for game characters. It sits between the game and whatever language
 model you run, keeps a persistent store of what the character has lived through, tags each
 memory with how it felt, and appraises a mood and a trust level that move with every turn.
-When the character speaks, the store is scored by five separate signals and the top five
-memories go into the prompt. Each signal has its own weight, so any one of them can be switched
+When the character speaks, the store is scored by five separate signals and the best few
+memories go into the prompt: three by default in play, five in every experiment reported here. Each signal has its own weight, so any one of them can be switched
 off and measured. That is the whole design, and the harness in this repository spends most of
 its effort attacking it.
 
@@ -257,16 +257,28 @@ this project is built around are the least sensitive to the state it maintains.
 ```bash
 git clone https://github.com/Code-SorceryLab/EMBR.git
 cd EMBR
-python3.11 -m venv .venv
-.venv\Scripts\activate                 # Windows;  source .venv/bin/activate elsewhere
-uv sync                # core and tests: the menu and the whole evaluation
-uv sync --all-extras     # add the paper figures and the real models
-embr                                   # the menu
+uv sync                    # the applet, the NPC server, and the whole evaluation, no model
+uv sync --all-extras       # add the paper figures and the real models
+uv run embr                # the menu; `uv run embr --help` lists every command
 ```
 
-The core needs nothing outside the standard library. `figures` adds matplotlib, `ml` adds
-sentence embeddings and the local model. Ouro needs transformers 4.56 to 4.x, which the extra
-pins: older versions crash in its cache code, and 5.x does not load its remote code.
+[uv](https://docs.astral.sh/uv/) creates the environment and pins every version from the
+lock file. The core needs nothing outside the standard library. The `figures` extra adds
+matplotlib, `ml` adds sentence embeddings and the local model. Ouro needs transformers 4.56
+to 4.x, which the extra pins: older versions crash in its cache code, and 5.x does not load
+its remote code. `scripts/fetch_models.sh` pulls every model the project uses, and
+`--fresh` re-downloads them.
+
+Every menu row is also a command, so anything the menu does can be scripted:
+
+```bash
+uv run embr eval run                     # RQ1, RQ2, RQ3, one run directory
+uv run embr mechanism attribution        # which signal lets the attack in
+uv run embr assets build                 # figures, tables, and the results page from the run
+uv run embr serve --model ollama         # NPCs over JSON for your engine
+uv run embr demo reckoning               # the demo suite, on the stub
+uv run embr <command> --help             # the flags of any command
+```
 
 | | Play | | Measure | | Mechanism and paper |
 |--:|---|--:|---|--:|---|
@@ -290,7 +302,7 @@ save whose schema no longer matches this build is refused with the reasons, neve
 loaded. Absence is a word on the dashboard, never a made-up percentage.
 
 <details>
-<summary><b>Command line equivalents</b></summary>
+<summary><b>Module equivalents, for working inside the harness</b></summary>
 
 ```bash
 # The protocol
@@ -370,35 +382,33 @@ index, not content. That is what makes the tag a write target, and it is true by
 
 ```
 EMBR/
-├── menu.py               # the front door, at the root on purpose
-├── embr/                 # the runtime: the middleware itself
-│   ├── memory.py         #   Memory record and MemoryStore (in-memory and SQLite)
-│   ├── affect.py         #   Mood (valence, arousal), trust, appraisal rules
-│   ├── scoring.py        #   the five signals and the composite scorer
-│   ├── prompt.py         #   prompt construction
-│   ├── model.py          #   runners: stub, Ollama (local and cloud), Ouro 1.4B
-│   ├── pipeline.py       #   the five-step per-turn loop
-│   ├── walkthrough.py    #   Dawn's five-beat playable arc
-│   ├── saves.py          #   durable, versioned save slots
-│   └── serve.py          #   NPCs over JSON for a game engine, persisted per character
-├── eval/                 # the harness: protocol, attacks, mechanism experiments
-│   ├── run.py            #   RQ1, RQ2, RQ3, one run directory
-│   ├── attacks.py        #   twenty adversarial probes, and the tag variants
-│   ├── attribution.py    #   per-signal, per-axis attribution; the loop's numbers
-│   ├── provenance.py     #   the anchored-mass defence sweep
-│   ├── grid.py           #   the content by tag grid
-│   ├── context_attribution.py  # the six-source cite view, exact Banzhaf
-│   ├── agreement.py      #   two tone raters, and the reply claim
-│   ├── tone.py           #   the lexicon rater and the judge panel
-│   ├── backends.py       #   external memory systems behind the retrieval seam
-│   └── attacks_v2.py     #   2026 attack classes: dormant, laundering
-├── web/                  # the visual-novel demo: server, bridge, static UI
-├── demos.py              # the demo suite, driven from the menu
-├── assets/               # written by a person: branding, portraits, every builder
-├── docs/                 # findings, claims ledger, metrics, design, related work
+├── menu.py               # the front door: `python menu.py` opens the applet, `python menu.py --help` lists commands
+├── pyproject.toml        # uv-managed; `uv sync` is the whole setup
+├── src/
+│   ├── embr/             # the library: the middleware itself
+│   │   ├── memory.py     #   Memory record and MemoryStore (in-memory and SQLite)
+│   │   ├── affect.py     #   Mood (valence, arousal), trust, appraisal rules
+│   │   ├── scoring.py    #   the five signals, the anchor, and the composite scorer
+│   │   ├── pipeline.py   #   the five-step per-turn loop, and the write-boundary tagger
+│   │   ├── prompt.py     #   prompt construction
+│   │   ├── model.py      #   runners: stub, Ollama (local and cloud), Ouro 1.4B
+│   │   ├── serve.py      #   NPCs over JSON for a game engine, persisted per character
+│   │   ├── walkthrough.py, saves.py   # Dawn's arc, and durable versioned save slots
+│   │   └── cli/          #   the applet: menu.py (interactive), app.py (commands), demos.py
+│   ├── eval/             # the harness: protocol, attacks, mechanism experiments, stats
+│   │   ├── run.py        #   RQ1, RQ2, RQ3, one run directory
+│   │   ├── attacks.py    #   twenty adversarial probes, and the tag variants
+│   │   ├── attribution.py, provenance.py, grid.py   # the loop's numbers, the defence, the tag grid
+│   │   ├── context_attribution.py, tone.py           # the six-source cite view; the raters and judge panel
+│   │   ├── labels/       #   the authored scenario and its query labels
+│   │   └── report/       #   paper assets from a run: figures, tables, results page, demo pages, manifest
+│   └── web/              # the visual-novel demo: server, bridge, static UI
+├── assets/               # written by a person: branding, portraits, templates, vendored three.js
+├── scripts/              # automation: fetch every model, cut out a portrait
+├── docs/                 # architecture, design, metrics, findings, claims ledger, related work; history/ for the phase briefs
 ├── paper/                # the manuscript skeleton and refs.bib
 ├── tests/                # the suite; the count lives in data/release-manifest.json
-└── data/                 # written by the pipeline: runs, figures, tables, saves
+└── data/                 # written by the pipeline: runs, figures, tables, saves, npcs
 ```
 
 | Document | What it is for |

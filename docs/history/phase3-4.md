@@ -3,7 +3,7 @@
 Two phases, documented together because they shipped together and the menu spans both.
 Phase 3 turns a run directory into the paper's figures and tables. Phase 4 gives the system
 real models to talk through, a playable arc to show it off, and a front door to reach all of
-it. Pair this with [`design.md`](design.md) (architecture), [`roadmap.md`](roadmap.md) (the
+it. Pair this with [`design.md`](../design.md) (architecture), [`roadmap.md`](roadmap.md) (the
 briefs these deliver on), and [`phase2.md`](phase2.md) (the harness that produces the data).
 
 ## 1. Phase 3: paper assets
@@ -127,7 +127,7 @@ Neither phase is a clean sweep, and the gaps matter more than the tick marks:
 - **The latency target is missed by a wide margin.** The bake-off has since run on CUDA and
   the hand measurements in section 2 are superseded: Ouro takes 32.4 s per realistic turn
   against a roughly 600 ms target. The VRAM budget, by contrast, holds at 2.78 GB. See
-  section 6 of [`handoff.md`](handoff.md). This needs a response in the paper, not a footnote.
+  section 6 of [`handoff.md`](../handoff.md). This needs a response in the paper, not a footnote.
 
 The bake-off gap is closed: `src/eval/bakeoff.py` holds prompts, memories, retrieval and sampling
 equal and varies only the model, and `src/eval/experiments.py` replicates a run to show the

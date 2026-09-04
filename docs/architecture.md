@@ -45,14 +45,15 @@ mood that then scores that tag's own memory.
 
 | Path | Role | Do not |
 |---|---|---|
-| embr/ | The library. Scoring, memory store, appraisal, models, saves, walkthrough session, and `serve.py`, the JSON server a game engine calls | Put UI or eval code here |
-| eval/ | The research harness: scenarios, attacks, baselines, attribution, stats, the bakeoff | Ship in the demo |
-| web/ | The playable demo: server, the visual-novel game, research tabs | Add game logic; the game is embr.walkthrough |
-| menu.py | Top-level front door (console script + `python -m embr` + `python menu.py`) | Move it again without updating all three doors (tests/test_saves.py guards this) |
-| demos.py | Standalone figures/tour demos | Confuse with the web demo |
-| assets/ | Asset builders: figures, tables, demo pages, the release manifest | Commit outputs; commit the builders |
+| src/embr/ | The library. Scoring, memory store, appraisal, models, saves, the walkthrough session, `serve.py` (NPCs over JSON), and `cli/` (the applet: menu, commands, demo suite) | Put eval code in it; the applet is the one layer that may import everything |
+| src/eval/ | The research harness: scenarios, attacks, baselines, attribution, stats, the bakeoff, and `report/`, the paper asset builders (figures, tables, results page, demo pages, manifest) | Ship it in the demo; import web/ |
+| src/web/ | The playable demo: server, the visual-novel game, research tabs | Add game logic; the game is embr.walkthrough |
+| menu.py | The front door at the root, a shim onto `embr.cli.main` (console script `embr` and `python -m embr` hit the same function) | Put logic in it; tests/test_saves.py guards the three doors |
+| assets/ | Written by a person: branding, portraits, the demo and results templates, vendored three.js | Put builders or generated files here |
+| scripts/ | Automation: `fetch_models.sh`, the portrait cutout tool | Import from it |
 | data/ | Inputs and generated artifacts. data/runs is gitignored; tests depending on it need the eval box or a fixture | Commit 14 MB of regenerables |
 | tests/ | pytest suite. Anything touching data/runs belongs behind a fixture, not a bare FileNotFoundError | Hand-maintain a test count anywhere |
+| docs/ | The live description: architecture, design, metrics, findings, claims ledger, related work, preregistration. `history/` holds the phase briefs | Update history/ |
 
 Hard rules: web/ may read eval results but must not import eval code at game
 time (it currently pokes five private APIs via deferred imports; deferred

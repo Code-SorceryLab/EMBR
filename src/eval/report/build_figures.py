@@ -1,6 +1,6 @@
 """Paper ready figures for the EMBR evaluation, built from one run directory.
 
-Phase 3 reads `data/runs/<stamp>/results.json` and nothing else (docs/phase2.md section
+Phase 3 reads `data/runs/<stamp>/results.json` and nothing else (docs/history/phase2.md section
 6), so every figure here is a pure function of one run directory plus this file. Each
 figure emits three files: a `.pdf` for the paper, a `.png` for the README, and a
 `.svg` for the results page, which embeds them inline.

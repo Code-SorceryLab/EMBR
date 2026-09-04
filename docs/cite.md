@@ -4,7 +4,7 @@
 **Framing paper:** ContextCite, Cohen-Wang, Shah, Georgiev and Madry, [arXiv:2409.00729](https://arxiv.org/abs/2409.00729).
 
 Pair this with [`findings.md`](findings.md) (the canonical results), [`metrics.md`](metrics.md)
-(every statistic defined) and [`phase2.md`](phase2.md) (the harness this extends).
+(every statistic defined) and [`phase2.md`](history/phase2.md) (the harness this extends).
 
 > **Naming, because it matters for the citation.** What this computes is the **exact Banzhaf
 > value** of each prompt source. It is not "ContextCite with more ablations", and the code and
