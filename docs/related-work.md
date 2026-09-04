@@ -147,7 +147,7 @@ attacks, paired statistics), isolating the *affect term* as the lever. MPBench c
 agent frameworks; AgentPoison optimizes attacks against a fixed system. Neither varies the
 scoring function while holding everything else constant, neither touches emotional weighting,
 and neither observes the state channel (mood and trust shifting while retrieval stays put).
-The per-term attribution experiment (`eval/attribution.py`, handoff 6.1) is exactly the study
+The per-term attribution experiment (`src/eval/attribution.py`, handoff 6.1) is exactly the study
 that cements the mechanism claim, and this literature makes it more valuable, not less: it
 locates the vulnerability in the state-coupled mood term rather than asserting it of the
 system, which is the granularity no prior poisoning work reaches.

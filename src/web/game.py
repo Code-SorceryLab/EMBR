@@ -346,7 +346,7 @@ class GameSession:
         step = self._latest
         if step is None:
             return {"available": False}
-        from demos import _live_reading
+        from embr.cli.demos import _live_reading
 
         return {
             "available": True,
@@ -357,7 +357,7 @@ class GameSession:
 
     def _cached_attribution(self) -> dict[str, Any] | None:
         """The cheap pointer to a cached real-model attribution run on disk, if one exists."""
-        from demos import _latest_attribution_run
+        from embr.cli.demos import _latest_attribution_run
 
         cached = _latest_attribution_run()
         if cached is None:

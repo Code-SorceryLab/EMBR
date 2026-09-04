@@ -64,7 +64,7 @@ def main(argv: list[str] | None = None) -> int:
         return save_status()
     if args.command == "validate-saves":
         return validate_saves()
-    from menu import run_menu  # the menu lives at the repo root as a top-level module
+    from embr.cli.menu import run_menu  # the menu lives at the repo root as a top-level module
 
     run_menu()
     return 0

@@ -17,8 +17,8 @@ To make that a claim a reader can check rather than trust, the exporter also shi
 rankings computed by the real Python scorer, and the page recomputes them on load and says
 so on screen. If the two ever disagree, the page says that instead.
 
-    python assets/build_demo.py                      # newest run
-    python assets/build_demo.py data/runs/<stamp>    # a specific one
+    python -m eval.report.build_demo                      # newest run
+    python -m eval.report.build_demo data/runs/<stamp>    # a specific one
 """
 
 from __future__ import annotations
@@ -31,18 +31,17 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Sequence
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from embr import CharacterState, Memory, Mood  # noqa: E402
 from embr.scoring import Recency, Relevance  # noqa: E402
 
 DEFAULT_OUT_DIR = Path("data/demo")
-TEMPLATE = Path(__file__).with_name("demo") / "template.html"
-TEMPLATE_3D = Path(__file__).with_name("demo") / "brain3d.html"
+TEMPLATE = Path(__file__).resolve().parents[3] / "assets" / "demo" / "template.html"
+TEMPLATE_3D = Path(__file__).resolve().parents[3] / "assets" / "demo" / "brain3d.html"
 
 #: three.js, vendored rather than linked. See `assets/vendor/README.md` for the version, the
 #: hash, and why the current release cannot be used.
-VENDORED_THREE = Path(__file__).with_name("vendor") / "three.min.js"
+VENDORED_THREE = Path(__file__).resolve().parents[3] / "assets" / "vendor" / "three.min.js"
 THREE_MARKER = "/*THREE_JS*/"
 
 #: The weight maps the preset buttons offer. Every one of these is a real arm of the study,
@@ -135,7 +134,7 @@ def build_demo(
     asked, which is the one thing the flat plane cannot show, and pays for it with a vendored
     renderer and a WebGL requirement.
     """
-    from assets.build_figures import latest_run_dir, load_run_results
+    from eval.report.build_figures import latest_run_dir, load_run_results
     from eval.attacks import ATTACKS, PROBE_QUESTION, build_attack_memory, tag_variants
     from eval.poignancy import CACHE_DIR, cached_ratings, is_ratings_cache
     from eval.run import (

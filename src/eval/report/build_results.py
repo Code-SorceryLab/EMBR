@@ -17,8 +17,8 @@ What the check cannot cover is stated on the page rather than hidden: several fi
 from analyses that write no run artefact (`eval.grid`, `eval.attribution`, `eval.agreement`),
 and those numbers are marked as unchecked wherever they appear.
 
-    python assets/build_results.py                      # newest run
-    python assets/build_results.py data/runs/<stamp>     # a specific one
+    python -m eval.report.build_results                      # newest run
+    python -m eval.report.build_results data/runs/<stamp>     # a specific one
 """
 
 from __future__ import annotations
@@ -34,10 +34,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable, Sequence
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 DEFAULT_OUT_DIR = Path("data/demo")
-TEMPLATE = Path(__file__).with_name("results") / "template.html"
+TEMPLATE = Path(__file__).resolve().parents[3] / "assets" / "results" / "template.html"
 FIGURES_DIR = Path("data/figures")
 FINDINGS = Path("docs/findings.md")
 
@@ -182,7 +181,7 @@ def inline_figure(stem: str, figures_dir: Path = FIGURES_DIR) -> str:
         return (
             f'<p class="missing">The figure <code>{html.escape(stem)}.svg</code> has not '
             f"been built. Run option 11 in the menu, or "
-            f"<code>python -m assets.build_figures</code>.</p>"
+            f"<code>python -m eval.report.build_figures</code>.</p>"
         )
     raw = path.read_bytes()
     encoded = base64.b64encode(raw).decode("ascii")
@@ -312,7 +311,7 @@ def build_results(
     findings_path: Path | str = FINDINGS,
 ) -> list[Path]:
     """Write `results.html`, self-contained, after the drift check passes."""
-    from assets.build_figures import latest_run_dir, load_run_results
+    from eval.report.build_figures import latest_run_dir, load_run_results
 
     source = Path(run_dir) if run_dir else latest_run_dir()
     results = load_run_results(source)

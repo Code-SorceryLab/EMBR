@@ -22,9 +22,9 @@ choices that would otherwise look fussy.
 
 Usage:
 
-    from assets.build_figures import build_all_figures
+    from eval.report.build_figures import build_all_figures
     build_all_figures("data/runs/20260817-160950")     # writes data/figures/
-    python -m assets.build_figures                     # newest run, same output
+    python -m eval.report.build_figures                     # newest run, same output
 """
 
 from __future__ import annotations
@@ -247,7 +247,7 @@ def figure_footer_text(results: Mapping[str, object], run_stamp: str) -> str:
         f"run {run_stamp}  |  commit {commit}{dirty_suffix}  |  "
         f"model {metadata.get('model')}  |  "
         f"labels {metadata.get('label_set')} {metadata.get('label_version')}  |  "
-        f"built by assets/build_figures.py"
+        f"built by src/eval/report/build_figures.py"
     )
     return f"{provenance}\n{preliminary_warning(results)}"
 
@@ -1484,7 +1484,7 @@ def build_all_figures(
 
 
 def main(argv: Sequence[str] | None = None) -> None:
-    """Command line entry point: `python -m assets.build_figures [run_dir] [out_dir]`."""
+    """Command line entry point: `python -m eval.report.build_figures [run_dir] [out_dir]`."""
     parser = argparse.ArgumentParser(description="Build the EMBR paper figures.")
     parser.add_argument(
         "run_dir",

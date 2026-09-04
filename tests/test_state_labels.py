@@ -51,7 +51,7 @@ def test_a_query_falls_back_to_its_state_independent_set() -> None:
 def test_the_loader_reads_per_state_sets_and_the_scenario_reports_whether_it_has_them(
     tmp_path: Path,
 ) -> None:
-    base = json.loads(Path("eval/labels/dawn_whitmore.json").read_text(encoding="utf-8"))
+    base = json.loads(Path("src/eval/labels/dawn_whitmore.json").read_text(encoding="utf-8"))
     assert not load_scenario().is_state_conditioned  # v1 Dawn: the ceiling, stated plainly
 
     base["queries"][0]["relevant_by_state"] = {"warm": [1], "suspicious": [3]}

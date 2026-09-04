@@ -15,7 +15,7 @@ from pathlib import Path
 
 import pytest
 
-from assets.build_results import (
+from eval.report.build_results import (
     CLAIMS,
     DriftError,
     build_results,
@@ -29,7 +29,7 @@ FINDINGS = REPO / "docs" / "findings.md"
 
 @pytest.fixture(scope="module")
 def run_results() -> dict:
-    from assets.build_figures import latest_run_dir, load_run_results
+    from eval.report.build_figures import latest_run_dir, load_run_results
 
     try:
         return load_run_results(latest_run_dir())
@@ -133,7 +133,7 @@ def test_figures_are_embedded_and_isolated(page: str) -> None:
 
 def test_every_figure_carries_written_alt_text(page: str) -> None:
     import re as _re
-    from assets.build_results import ALT_TEXT
+    from eval.report.build_results import ALT_TEXT
 
     alts = _re.findall(r'<img class="figure"[^>]*alt="([^"]*)"', page)
     assert len(alts) >= 3

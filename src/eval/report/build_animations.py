@@ -9,8 +9,8 @@ affect tag, every highlighted set is the real top 5 the harness retrieved for th
 the three mood positions are the pre-registered conditions. Rebuild it from a run directory
 and it tells that run's truth:
 
-    python assets/build_animations.py                      # newest run
-    python assets/build_animations.py data/runs/<stamp>    # a specific one
+    python -m eval.report.build_animations                      # newest run
+    python -m eval.report.build_animations data/runs/<stamp>    # a specific one
 """
 
 from __future__ import annotations
@@ -22,9 +22,8 @@ from pathlib import Path
 from typing import Sequence
 from xml.sax.saxutils import escape
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from assets.build_figures import (  # noqa: E402
+from eval.report.build_figures import (  # noqa: E402
     AMBER,
     CREAM,
     DEEP_BROWN,
@@ -340,7 +339,7 @@ def build_loop_figure(out_dir: Path | str = DEFAULT_OUT_DIR) -> list[Path]:
         f'<tspan class="pill">{landed}/{attacks}</tspan> poisoned becomes '
         f'<tspan class="pill">{defended}/{attacks}</tspan></text>'
         f'<text x="{LOOP_WIDTH / 2}" y="{LOOP_HEIGHT - 30}" text-anchor="middle" class="caption">'
-        f"recomputed from the harness by assets/build_animations.py; python -m eval.attribution "
+        f"recomputed from the harness by src/eval/report/build_animations.py; python -m eval.attribution "
         f"prints the same table</text>"
     )
     caption = (

@@ -11,7 +11,7 @@ character state (persona, mood, trust, episodic memory) as explicit, separate,
 inspectable data, scores remembered events against the current query and state,
 and lets a developer see *why* a given memory shaped a given reply.
 
-## The five-signal scorer (the core, embr/scoring.py)
+## The five-signal scorer (the core, src/embr/scoring.py)
 
 ```
 score(m, q, s) = w_rec*Recency + w_aff*AffectIntensity + w_evt*EventTypeGate
@@ -25,17 +25,17 @@ over memory text plus optional embedding cosine; the corpus-wide BM25 index is
 computed once via an optional `prepare()` hook. `MoodCongruence` is the cosine
 between a memory's (valence, arousal) and the character's mood, remapped to
 [0,1]; the `lagged` variant reads turn-start mood, which is the defence
-measured in eval/provenance.py. `ProvenanceAnchor` is the opt-in sixth term
+measured in src/eval/provenance.py. `ProvenanceAnchor` is the opt-in sixth term
 reading `Memory.written_by`.
 
-One player line, end to end (embr/pipeline.py, `take_turn`, ~24 lines):
+One player line, end to end (src/embr/pipeline.py, `take_turn`, ~24 lines):
 
-1. Appraise the player's line into an event (embr/affect.py).
+1. Appraise the player's line into an event (src/embr/affect.py).
 2. Update mood and trust.
-3. Retrieve: score every memory in the store (embr/memory.py, SQLite) and take
+3. Retrieve: score every memory in the store (src/embr/memory.py, SQLite) and take
    top-k.
-4. Compose the prompt: persona + mood line + retrieved memories (embr/prompt.py).
-5. Generate the reply (embr/model.py); store the turn as a new memory.
+4. Compose the prompt: persona + mood line + retrieved memories (src/embr/prompt.py).
+5. Generate the reply (src/embr/model.py); store the turn as a new memory.
 
 Step order matters for the paper's central mechanism: appraisal happens *before*
 retrieval on the same turn, which is what lets an injected affect tag move the
@@ -57,7 +57,7 @@ mood that then scores that tag's own memory.
 Hard rules: web/ may read eval results but must not import eval code at game
 time (it currently pokes five private APIs via deferred imports; deferred
 breakage, flagged for cleanup after the paper freeze). eval/ never imports
-web/.
+src/web/.
 
 ## The claims the code can carry (and the ones it cannot)
 

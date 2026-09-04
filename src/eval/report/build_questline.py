@@ -24,7 +24,7 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 
-from assets.build_figures import (
+from eval.report.build_figures import (
     AMBER_LIGHT,
     CREAM,
     DEEP_BROWN,

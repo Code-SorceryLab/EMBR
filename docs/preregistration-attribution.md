@@ -2,7 +2,7 @@
 
 **Written before any real-model attribution run.** Committed at the head of
 `cite-view-test`, ahead of the first `--model ouro` invocation. Method and implementation are
-in [`cite.md`](cite.md) and `eval/context_attribution.py`; both were fixed before this document
+in [`cite.md`](cite.md) and `src/eval/context_attribution.py`; both were fixed before this document
 was written, and only stub runs have been executed.
 
 This exists to separate "we tested whether likelihood and behaviour diverge" from "we noticed

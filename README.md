@@ -259,8 +259,8 @@ git clone https://github.com/Code-SorceryLab/EMBR.git
 cd EMBR
 python3.11 -m venv .venv
 .venv\Scripts\activate                 # Windows;  source .venv/bin/activate elsewhere
-pip install -e ".[dev]"                # core and tests: the menu and the whole evaluation
-pip install -e ".[dev,figures,ml]"     # add the paper figures and the real models
+uv sync                # core and tests: the menu and the whole evaluation
+uv sync --all-extras     # add the paper figures and the real models
 embr                                   # the menu
 ```
 
@@ -319,12 +319,12 @@ python -m embr save-status                         # every slot, progress, probl
 python -m embr validate-saves                      # exit 1 when a save cannot load
 
 # The assets
-python assets/build_figures.py data/runs/<stamp>   # the run's figures and tables
-python assets/build_bakeoff_figures.py             # every mechanism figure, the loop included
-python assets/build_animations.py                  # the two README SVGs
-python -m assets.build_questline                   # the questline and evidence map
-python assets/build_demo.py                        # the interactive demo page
-python assets/build_manifest.py                    # the release manifest, from pytest's own report
+python -m eval.report.build_figures data/runs/<stamp>   # the run's figures and tables
+python -m eval.report.build_bakeoff_figures             # every mechanism figure, the loop included
+python -m eval.report.build_animations                  # the two README SVGs
+python -m eval.report.build_questline                   # the questline and evidence map
+python -m eval.report.build_demo                        # the interactive demo page
+python -m eval.report.build_manifest                    # the release manifest, from pytest's own report
 ```
 
 Cloud judges are optional and read `OLLAMA_API_KEY` from a gitignored `.env`. The key is

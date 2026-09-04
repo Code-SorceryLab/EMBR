@@ -3,7 +3,7 @@
 The README, the dashboard, and the paper must not hand-maintain test counts or run
 stamps. They either quote this file or they are stale. Run it, commit the output:
 
-    python -m assets.build_manifest
+    python -m eval.report.build_manifest
 
 Exit 1 if the test suite is not fully green, because a manifest that records a
 failing suite is fiction. Skip with --allow-failures only when the failures are
@@ -20,7 +20,7 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = Path(__file__).resolve().parents[3]
 MANIFEST_PATH = REPO_ROOT / "data" / "release-manifest.json"
 
 

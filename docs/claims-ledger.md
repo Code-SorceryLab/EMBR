@@ -9,9 +9,9 @@ DESIGN (true by construction of the code, present it as architecture), WITHDRAWN
 
 - **C1. State-mediated self-priming**: an attacker-written affect tag changes
   the NPC's appraised mood, and mood-congruent retrieval then raises that same
-  memory's retrieval score. Status: SUPPORTED. Evidence: eval/provenance.py
+  memory's retrieval score. Status: SUPPORTED. Evidence: src/eval/provenance.py
   dose-response; measured post-attack mood to affect cosine 0.90 to 0.99
-  (eval/scoring.py docstring); intervention = zeroing the mood weight
+  (src/eval/scoring.py docstring); intervention = zeroing the mood weight
   (9/10 → 6/10 poisoned). Framing: a mechanism case study, not a benchmark.
   Boundary vs MemPoison L3 and Sleeper: no semantic trigger, no dormancy; the
   activation condition is an internal state the write itself perturbs.
@@ -20,7 +20,7 @@ DESIGN (true by construction of the code, present it as architecture), WITHDRAWN
 
 - **C2. Exact coalition attribution**: Banzhaf values over all 2^6 subsets of
   five retrieved memories plus the mood descriptor, likelihood-based.
-  Status: SUPPORTED. Evidence: eval/attribution.py enumeration; guards for
+  Status: SUPPORTED. Evidence: src/eval/attribution.py enumeration; guards for
   position bias and inert context.
 - **C3. Affect-as-index dissociation**: flipping valence leaves relevance
   bit-identical and inverts mood-congruence polarity. Status: DESIGN.

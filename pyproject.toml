@@ -1,10 +1,10 @@
 [build-system]
-requires = ["setuptools>=68"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [project]
 name = "embr"
-version = "0.1.0"
+version = "0.2.0"
 description = "Emotional Memory for Believable Roleplay: emotion-grounded memory for persistent game NPCs."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -12,45 +12,47 @@ license = { text = "MIT" }
 authors = [{ name = "AL Shifan", email = "codeandsorcerylab@gmail.com" }]
 keywords = ["LLM", "NPC", "memory", "affective-computing", "retrieval", "game-ai"]
 
-# Core needs nothing: the menu and the eval harness run on the standard library alone. The
-# heavy ML stack goes in the optional extras below, so a fresh clone runs the skeleton,
-# the demo turn, and the full evaluation with nothing installed.
+# The core needs nothing: the applet, the NPC server, and the whole evaluation run on the
+# standard library. The heavy stacks are extras, so a fresh clone runs everything but the
+# real models and the paper figures with nothing installed.
 dependencies = []
 
 [project.optional-dependencies]
-# Real semantic embeddings and the real local model (Ouro 1.4B, the thesis model). BM25 is
-# implemented in-tree, so nothing here is needed to run the eval; installing it swaps the
-# deterministic embedder and the echo stub for the real thing.
+# Real semantic embeddings and the thesis model (Ouro 1.4B) in-process. BM25 is in-tree, so
+# the evaluation never needs this; installing it swaps the deterministic embedder and the
+# echo stub for the real thing.
 ml = [
     "sentence-transformers>=2.2",
     "torch>=2.2",
     # Both bounds are load-bearing for Ouro's remote code (snapshot 574fa66 and later).
-    # Below 4.56 it fails: on 4.54-4.55 the read-only Cache.key_cache property crashes its
-    # cache init, and on 4.53 it imports symbols that do not exist yet. On 5.x it fails twice
-    # over: OuroConfig has no pad_token_id, then the rope-config lookup raises KeyError:
-    # 'default'. Verified working on 4.57.
+    # Below 4.56 its cache init crashes; on 5.x OuroConfig has no pad_token_id and the
+    # rope-config lookup raises. Verified working on 4.57.
     "transformers>=4.56,<5",
     "accelerate>=0.30",
 ]
-# Paper figures. Kept out of the core so the harness stays dependency-light; only the
-# asset build step needs a plotting library.
+# Paper figures. Only the asset build step needs a plotting library.
 figures = [
     "matplotlib>=3.8",
 ]
+
+[dependency-groups]
 dev = [
     "pytest>=7.4",
 ]
 
 [project.scripts]
-embr = "menu:run_menu"
+embr = "embr.cli:run_menu"
 
-[tool.setuptools]
-# The menu is the front door, so it sits at the repo root rather than inside the library.
-# It is a top level module, not part of the `embr` package, and setuptools needs telling.
-py-modules = ["menu"]
+[project.urls]
+Repository = "https://github.com/Code-SorceryLab/EMBR"
 
-[tool.setuptools.packages.find]
-include = ["embr*"]
+[tool.hatch.build.targets.wheel]
+# Three packages, one src tree: the library (with the applet), the harness (with the paper
+# asset builders), and the web demo.
+packages = ["src/embr", "src/eval", "src/web"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src", "tests", "scripts", "assets", "docs", "menu.py", "conftest.py", "README.md", "LICENSE"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -21,7 +21,7 @@ from urllib.parse import urlparse
 from web.game import GameSession, PullJob, default_model_id
 
 STATIC_DIR = Path(__file__).parent / "static"
-PORTRAIT_DIR = Path(__file__).resolve().parents[1] / "assets" / "portraits"
+PORTRAIT_DIR = Path(__file__).resolve().parents[2] / "assets" / "portraits"
 
 _CONTENT_TYPES = {
     ".html": "text/html; charset=utf-8",

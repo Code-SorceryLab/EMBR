@@ -22,7 +22,7 @@ from pathlib import Path
 import pytest
 from PIL import Image
 
-from assets.build_figures import (
+from eval.report.build_figures import (
     COMMIT_ABBREV_LENGTH,
     FIGURE_DPI,
     FIGURE_SPECS,
@@ -481,7 +481,7 @@ def test_a_hint_that_would_be_clipped_raises_instead_of_vanishing(tmp_path: Path
     # is invisible in a diff and only shows up when someone opens the PNG.
     import matplotlib.pyplot as plt
 
-    from assets.build_figures import _arrow_hint
+    from eval.report.build_figures import _arrow_hint
 
     figure, ax = plt.subplots()
     try:
@@ -509,7 +509,7 @@ def test_module_sources_use_no_em_or_en_dashes() -> None:
     em_dash, en_dash = chr(0x2014), chr(0x2013)
     for path in (
         Path(__file__).resolve(),
-        Path(__file__).resolve().parents[1] / "assets" / "build_figures.py",
+        Path(__file__).resolve().parents[1] / "src" / "eval" / "report" / "build_figures.py",
     ):
         text = path.read_text(encoding="utf-8")
         assert em_dash not in text, f"em dash in {path.name}"
@@ -542,7 +542,7 @@ def test_builds_from_the_newest_real_run_directory(tmp_path: Path) -> None:
 def test_systems_are_ordered_so_the_two_park_arms_read_side_by_side() -> None:
     # The anchor comparison is the point of the figure, so the arms that differ only in
     # their rater must be adjacent whatever order the harness happened to report them in.
-    from assets.build_figures import ordered_systems
+    from eval.report.build_figures import ordered_systems
 
     order = ordered_systems(("recency_only", "park_llm", "embr", "park"))
     assert order == ("embr", "park", "park_llm", "recency_only")
@@ -554,7 +554,7 @@ def test_the_poison_floor_stays_the_designed_baseline_when_a_measured_arm_ties_i
     # recency only is the floor by construction. Once a real system also reaches the
     # ceiling, the reference line must keep naming the designed one, or the figure starts
     # calling a measured result "the floor".
-    from assets.build_figures import poison_summary
+    from eval.report.build_figures import poison_summary
 
     results = {"rq2": {"variants": {
         name: {"attacks": [
@@ -571,7 +571,7 @@ def test_the_poison_floor_stays_the_designed_baseline_when_a_measured_arm_ties_i
 def test_the_preliminary_warning_names_the_run_s_own_model(run_dir: Path) -> None:
     # It used to hard-code "stub model", so a run on a real model shipped a sidecar claiming
     # its numbers came from a stub. The caveat has to follow the run, not the code.
-    from assets.build_figures import preliminary_warning
+    from eval.report.build_figures import preliminary_warning
 
     results = load_run_results(run_dir)
     assert "stub" in preliminary_warning(results)
@@ -584,7 +584,7 @@ def test_latest_run_dir_skips_directories_without_results(tmp_path) -> None:
     """The attribution subtree lives under data/runs and sorts after every date stamp, so
     picking by name alone would return it forever once it exists. Only a directory that
     actually holds a results.json counts as a run."""
-    from assets.build_figures import latest_run_dir
+    from eval.report.build_figures import latest_run_dir
 
     real = tmp_path / "20260101-000000"
     real.mkdir()

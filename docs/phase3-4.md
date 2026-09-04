@@ -11,10 +11,10 @@ briefs these deliver on), and [`phase2.md`](phase2.md) (the harness that produce
 The rule from the roadmap is that no number is ever transcribed by hand. Both builders read
 `data/runs/<stamp>/` and write into `assets/`.
 
-- **`assets/build_tables.py`** emits five tables, each as LaTeX (booktabs) with a CSV twin:
+- **`src/eval/report/build_tables.py`** emits five tables, each as LaTeX (booktabs) with a CSV twin:
   the five-signal reference table, RQ3 retrieval quality grouped by family, the paired
   comparisons against tuned EMBR, RQ2 robustness, and RQ1 mood divergence. 39 tests.
-- **`assets/build_figures.py`** emits five figures, each as PDF for the paper and PNG for the
+- **`src/eval/report/build_figures.py`** emits five figures, each as PDF for the paper and PNG for the
   README: RQ3 retrieval quality, the RQ3 ablation deltas, RQ2 poisoning, RQ2 latency, and RQ1
   divergence. 20 tests.
 
@@ -75,7 +75,7 @@ pins accordingly. The eval box will need the same pin.
 
 ## 3. Phase 4: the playable walkthrough
 
-`embr/walkthrough.py` plays Dawn Whitmore's five-beat arc: the king's-errand lie that buys a
+`src/embr/walkthrough.py` plays Dawn Whitmore's five-beat arc: the king's-errand lie that buys a
 discounted room, a warm return, the slip about the late king, the reckoning, and a
 confession. A recorded, playable walkthrough is a primary deliverable for this venue, so the
 demo has to show its work rather than just print dialogue.
@@ -129,8 +129,8 @@ Neither phase is a clean sweep, and the gaps matter more than the tick marks:
   against a roughly 600 ms target. The VRAM budget, by contrast, holds at 2.78 GB. See
   section 6 of [`handoff.md`](handoff.md). This needs a response in the paper, not a footnote.
 
-The bake-off gap is closed: `eval/bakeoff.py` holds prompts, memories, retrieval and sampling
-equal and varies only the model, and `eval/experiments.py` replicates a run to show the
+The bake-off gap is closed: `src/eval/bakeoff.py` holds prompts, memories, retrieval and sampling
+equal and varies only the model, and `src/eval/experiments.py` replicates a run to show the
 harness reproduces exactly.
 
 ## 6. Running it

@@ -15,7 +15,7 @@ import pytest
 pytest.importorskip("PIL")
 from PIL import Image  # noqa: E402
 
-_spec = importlib.util.spec_from_file_location("cutout", "assets/portraits/cutout.py")
+_spec = importlib.util.spec_from_file_location("cutout", "scripts/cutout.py")
 cutout = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(cutout)
 

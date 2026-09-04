@@ -46,7 +46,7 @@ One relevant set **per state**, authored by someone who was not evaluating a ret
 }
 ```
 
-`eval/scenarios.py` reads this today, `Query.relevant_for(state)` resolves it,
+`src/eval/scenarios.py` reads this today, `Query.relevant_for(state)` resolves it,
 `Scenario.is_state_conditioned` reports whether a label set has it, and
 `eval.metrics.state_conditioned_ndcg` scores against it. A label file without
 `relevant_by_state` keeps working exactly as before. The harness is not the blocker.

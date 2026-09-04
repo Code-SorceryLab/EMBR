@@ -29,14 +29,14 @@ Everything runs locally, no network, no per-token cost.
 
 Three small contracts carry the whole system; get these right and everything plugs in.
 
-- **`Memory`** (`embr/memory.py`): `text`, `valence`, `arousal`, `event_type`,
+- **`Memory`** (`src/embr/memory.py`): `text`, `valence`, `arousal`, `event_type`,
   `timestamp`, `embedding`. These are exactly the fields the five signals consume; nothing
   else is stored. `MemoryStore` is the per-character store (in-memory now; SQLite + vector
   index later, behind the same interface).
-- **`CharacterState`** (`embr/affect.py`): `persona` (stable, read-only), `mood`
+- **`CharacterState`** (`src/embr/affect.py`): `persona` (stable, read-only), `mood`
   (valence/arousal, Russell 1980), `trust` (slow scalar). Mood and trust are separate so a
   single hostile remark doesn't erase a long relationship.
-- **`Signal` / `CompositeScorer`** (`embr/scoring.py`): each scoring term is one small,
+- **`Signal` / `CompositeScorer`** (`src/embr/scoring.py`): each scoring term is one small,
   pure class with a `name`; the scorer is a weighted sum. **Zeroing a weight disables a
   signal.** This is the single source of truth for all scoring variants.
 
@@ -72,7 +72,7 @@ reports a metric. See [`related-work.md`](related-work.md), which the paper must
 Both are scorer variants on the same interface, run on the same model and hardware. Every
 system (ours included) is tuned by the same grid search on the same validation set;
 evaluation scenarios and relevance labels are fixed in advance. *(Built in phase 2, under
-`eval/`.)*
+`src/eval/`.)*
 
 ## 6. Evaluation (summary)
 
@@ -94,7 +94,7 @@ evaluation scenarios and relevance labels are fixed in advance. *(Built in phase
 | **3 (done)** | Paper figures and tables generated from a run directory (see `docs/phase3-4.md`) |
 | **4 (done)** | Real model runners, the playable walkthrough, the Rich menu (see `docs/phase3-4.md`) |
 
-Phase-1 note: BM25 is implemented in-tree (`embr/scoring.py`) so the core needs no numpy; real
+Phase-1 note: BM25 is implemented in-tree (`src/embr/scoring.py`) so the core needs no numpy; real
 semantic embeddings live behind the `[ml]` extra, with a deterministic fallback embedder for
 tests. Corpus-aware signals expose an optional `prepare(memories, query, state)` hook the
 scorer calls once before per-memory scoring.
@@ -111,7 +111,7 @@ which is a live tension with the RQ2 target. Ouro also requires transformers 4.x
 
 ## 8. Conventions
 
-- One module per subsystem inside `embr/`; promote to a sub-package only when it outgrows a
+- One module per subsystem inside `src/embr/`; promote to a sub-package only when it outgrows a
   single file. Folders organize; we don't scatter lonely files.
 - Descriptive names, small "why" comments, easy-to-use functions, no duplicated logic
   (one source of truth, e.g. signals and baselines).

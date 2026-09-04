@@ -231,11 +231,11 @@ def test_every_front_door_opens_the_same_menu() -> None:
     root once and left other entry points pointing at the old address, which is exactly
     the "the menu is broken" report this guards against. `python -m embr` is covered
     by the subprocess test above."""
-    import menu
+    from embr.cli import menu
     from importlib.metadata import entry_points
 
     (script,) = entry_points(group="console_scripts", name="embr")
-    assert script.load() is menu.run_menu  # stale install: rerun pip install -e .
+    assert script.load() is menu.run_menu  # stale install: rerun uv sync
 
 
 def test_a_save_with_nan_in_it_refuses_to_load(tmp_path: Path) -> None:
