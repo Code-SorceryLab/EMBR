@@ -15,7 +15,7 @@ from pathlib import Path
 
 import pytest
 
-from assets.build_results import (
+from eval.report.build_results import (
     CLAIMS,
     DriftError,
     build_results,
@@ -29,14 +29,24 @@ FINDINGS = REPO / "docs" / "findings.md"
 
 @pytest.fixture(scope="module")
 def run_results() -> dict:
-    from assets.build_figures import latest_run_dir, load_run_results
+    from eval.report.build_figures import latest_run_dir, load_run_results
 
-    return load_run_results(latest_run_dir())
+    try:
+        return load_run_results(latest_run_dir())
+    except FileNotFoundError as missing:
+        if "no run directories" in str(missing):
+            pytest.skip("needs eval run artifacts (python -m eval.run)")
+        raise
 
 
 @pytest.fixture(scope="module")
 def page(tmp_path_factory) -> str:
-    (path,) = build_results(out_dir=tmp_path_factory.mktemp("results"))
+    try:
+        (path,) = build_results(out_dir=tmp_path_factory.mktemp("results"))
+    except FileNotFoundError as missing:
+        if "no run directories" in str(missing):
+            pytest.skip("needs eval run artifacts (python -m eval.run)")
+        raise
     return path.read_text(encoding="utf-8")
 
 
@@ -123,7 +133,7 @@ def test_figures_are_embedded_and_isolated(page: str) -> None:
 
 def test_every_figure_carries_written_alt_text(page: str) -> None:
     import re as _re
-    from assets.build_results import ALT_TEXT
+    from eval.report.build_results import ALT_TEXT
 
     alts = _re.findall(r'<img class="figure"[^>]*alt="([^"]*)"', page)
     assert len(alts) >= 3

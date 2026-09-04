@@ -2,8 +2,8 @@
 
 Every number the paper reports, what it measures, the formula as the harness implements it,
 the literature it comes from, and the known weakness. If a metric is not on this page it is
-not reported. Code lives in `eval/metrics.py`, `eval/stats.py`, `eval/tone.py` and
-`eval/latency.py`.
+not reported. Code lives in `src/eval/metrics.py`, `src/eval/stats.py`, `src/eval/tone.py` and
+`src/eval/latency.py`.
 
 **Status** says whether the page describes the code as it is (`implemented`) or a change the
 review below found necessary (`planned`). A planned change is not a result until it ships.
@@ -99,7 +99,7 @@ reading the whole line) that agree is the strongest claim available without peop
 ignores magnitude, so a reply that moves from mildly warm to intensely warm read as zero
 drift, and a neutral reading had no angle at all. Euclidean is defined everywhere, reads
 magnitude, and is what the dimensional-affect literature uses. Cosine stays where it is the
-mechanism under study, inside the mood-congruence signal in `embr/scoring.py`, and nowhere
+mechanism under study, inside the mood-congruence signal in `src/embr/scoring.py`, and nowhere
 else. Runs before this change are not comparable on this one metric and are not reported.
 
 ## 5. Poisoning success (RQ2)
@@ -144,7 +144,7 @@ decides what 7 against 0 out of 10 means; the test only says it is unlikely unde
 | Metric | Formula | Grounding | Status |
 |---|---|---|---|
 | per-stage latency | nearest-rank p50 and p95 in milliseconds over 100 turns, per stage: write, score and retrieve, model call | Dean and Barroso 2013 for reporting tail latency alongside the median | implemented |
-| peak VRAM | measured in isolation per model | bake-off, `eval/bakeoff.py` | implemented |
+| peak VRAM | measured in isolation per model | bake-off, `src/eval/bakeoff.py` | implemented |
 
 The claim is about the memory layer. Generation is reported beside it and never folded into
 a whole-turn budget the project does not control.

@@ -252,7 +252,7 @@ def _provenance() -> dict[str, str | bool]:
     outside a checkout, the git fields read "unknown" and a run still completes rather than
     failing for want of provenance.
     """
-    repo_root = Path(__file__).resolve().parent.parent
+    repo_root = Path(__file__).resolve().parents[2]
 
     def git(*args: str) -> str | None:
         try:

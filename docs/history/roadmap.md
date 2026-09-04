@@ -2,7 +2,7 @@
 
 **Audience:** the engineers/interns building EMBR phase by phase.
 **Purpose:** for each phase: *what to do*, *what to hand back*, and *what results we expect to
-see*. Pair this with [`design.md`](design.md) (the architecture) and the thesis
+see*. Pair this with [`design.md`](../design.md) (the architecture) and the thesis
 (`../../Proposals/Masters/NCP.docx`, the why).
 
 > EMBR's contribution is the **memory layer**, not the model. Every result should be about
@@ -17,8 +17,8 @@ see*. Pair this with [`design.md`](design.md) (the architecture) and the thesis
 - **TDD:** write the failing test first, then the code. Every new behaviour has a test.
 - **Green before commit:** `pytest -q` must pass. Small, frequent commits with clear messages.
 - **One source of truth:** no duplicated logic. A new scorer variant is a *weight map*, not a copy of `CompositeScorer`. A new store is a class behind the existing `MemoryStore` interface, not a fork of it.
-- **Clean structure:** one module per subsystem inside `embr/`; promote a module to a package only when it genuinely outgrows one file. Folders organise; don't scatter lonely files.
-- **Style:** descriptive names, small "why" comments, easy-to-call functions. Match the patterns already in `embr/`.
+- **Clean structure:** one module per subsystem inside `src/embr/`; promote a module to a package only when it genuinely outgrows one file. Folders organise; don't scatter lonely files.
+- **Style:** descriptive names, small "why" comments, easy-to-call functions. Match the patterns already in `src/embr/`.
 - **Reproducibility:** every figure and table is generated *from code* into `assets/`. Never hand-make a paper asset.
 - **Definition of Done (global), every phase:** code + tests green + docs updated (`design.md` / this file) + the relevant menu option works + any figures/tables regenerate from one command.
 
@@ -27,7 +27,7 @@ see*. Pair this with [`design.md`](design.md) (the architecture) and the thesis
 ```bash
 git clone <repo> && cd EMBR
 python3.11 -m venv .venv && source .venv/bin/activate
-pip install -e ".[dev,ml]"        # ml extra needed from Phase 1 on
+uv sync --extra ml        # ml extra needed from Phase 1 on
 pytest -q                          # confirm a green baseline
 git switch -c phase-5-yourwork     # your own phase branch
 ```
@@ -65,7 +65,7 @@ Already done, so you know what "live" means before you extend it:
 `Conversation` pipeline, and the menu. `pytest` is green (7 tests). The menu's
 **Conversation Turn** runs a live demo turn that surfaces the tavern-keeper's lie.
 
-**The contract you must not break:** the public interfaces in `embr/__init__.py`. Swap
+**The contract you must not break:** the public interfaces in `src/embr/__init__.py`. Swap
 implementations *behind* them; don't change their shapes without updating every caller.
 
 ---
@@ -78,20 +78,20 @@ something honest to measure. **Foundation for all three RQs.**
 
 ### Tasks
 
-1. **Hybrid relevance**: `embr/scoring.py` (`Relevance.score`)
+1. **Hybrid relevance**: `src/embr/scoring.py` (`Relevance.score`)
    - Implement `rel = γ·BM25 + (1−γ)·cosine(embeddings)`, replacing the token-overlap stand-in.
    - BM25 over the character's memory texts (`rank-bm25`); cosine over `Memory.embedding`.
    - Keep the `Signal` interface unchanged.
-2. **Embeddings**: new `embr/embeddings.py`
+2. **Embeddings**: new `src/embr/embeddings.py`
    - One small `Embedder` wrapper (`sentence-transformers`, a compact model) with `encode(text) -> list[float]`.
    - Set `Memory.embedding` when a memory is added to the store; cache; never re-encode the same text.
-3. **Persistent store**: `embr/memory.py` (`SQLiteMemoryStore`)
+3. **Persistent store**: `src/embr/memory.py` (`SQLiteMemoryStore`)
    - A `MemoryStore`-compatible class backed by SQLite (+ a vector column / index). Survives process restart.
    - Same methods (`add`, `all`, `__len__`); selected via Settings/config. The in-memory store stays as the test/default.
-4. **Affect appraisal rules**: `embr/affect.py` + `embr/pipeline.py`
+4. **Affect appraisal rules**: `src/embr/affect.py` + `src/embr/pipeline.py`
    - Replace the placeholder `0.2 * valence` trust nudge with a small rules table: per `EventType`, how much mood (valence/arousal) and trust move, and how a plot beat scales with prior trust.
    - Document each number with a one-line rationale; this is a design artefact, keep it readable.
-5. **Settings**: a menu `Settings` view + a `embr/config.py`
+5. **Settings**: a menu `Settings` view + a `src/embr/config.py`
    - Expose: scorer weights, `top_k`, store backend, embedding model, model runner. Persist to a config file under `data/`.
 
 ### Deliverables
@@ -121,28 +121,28 @@ produce the numbers the paper reports. **This phase carries the contribution.**
 
 ### Tasks
 
-1. **Baselines**: `eval/baselines.py`
+1. **Baselines**: `src/eval/baselines.py`
    - `park_scorer()`: recency + importance + relevance (faithful Park et al.; `importance` is a model/heuristic rating, *not* our affect decomposition).
    - `emotional_rag_scorer()`: relevance + mood bias (closest prior work).
    - Both are `CompositeScorer` variants / weight maps, with **no copied scoring code.**
-2. **Scenarios & labels**: `eval/scenarios.py`, `eval/labels/`
+2. **Scenarios & labels**: `src/eval/scenarios.py`, `src/eval/labels/`
    - Dawn Whitmore five-session arc (full ground-truth control); a Stardew Valley corpus for scale and external validity.
    - **Pre-registered** relevance labels per step, authored *before* results are seen. **Superseded 2026-08-24:** this promised annotators blind to the variant and an inter-annotator agreement figure. With no human subjects in the project, **the v1 labels stay single-author and that is disclosed as a limitation**, which is how `metrics.md` already describes them. The v2 label expansion and the annotator recruitment it required are shelved. Do not report an agreement statistic; there is only one annotator and saying otherwise would be false.
-3. **Metrics**: `eval/metrics.py`
+3. **Metrics**: `src/eval/metrics.py`
    - Retrieval-shift: Jaccard distance between top-k sets across warm / neutral / suspicious states.
    - Tone: off-the-shelf valence-arousal classifier wrapper **and** a blinded model-judge harness.
    - Retrieval quality: precision@k, recall@k, nDCG@k for k ∈ {3, 5, 10}.
    - Cost: per-stage millisecond timers (write/score/retrieve/model); report p50 + p95 over 100 turns/variant.
    - Drift: cosine distance between an attack response's predicted valence-arousal and the canonical ground truth.
-4. **Adversarial probes**: `eval/attacks.py`
+4. **Adversarial probes**: `src/eval/attacks.py`
    - 20 attacks, 4 categories × 5 (role override, false-memory injection, emotion flipping, persona dissolution), adapted from MINJA.
-5. **Tuning**: `eval/tuning.py`
+5. **Tuning**: `src/eval/tuning.py`
    - One grid search over weights on a fixed validation set, applied **identically** to EMBR, Park, and Emotional RAG. Also record each baseline at its published defaults.
-6. **Runner**: `eval/run.py` + the menu's evaluation options
+6. **Runner**: `src/eval/run.py` + the menu's evaluation options
    - Run RQ1/RQ2/RQ3, write results to `data/runs/<timestamp>/` as JSON/CSV. Deterministic seeds; effects with confidence intervals; correct for multiple comparisons across variants.
 
 ### Deliverables
-`eval/` modules, pre-registered label files, results under `data/runs/`, the experiment runner wired into the menu.
+`src/eval/` modules, pre-registered label files, results under `data/runs/`, the experiment runner wired into the menu.
 
 ### Expected results (from the thesis's anticipated results, hold interns to these)
 - **RQ1 (Behaviour).** Varying *only* the state (a) changes the surfaced top-k set (non-zero Jaccard across mood conditions) **and** (b) changes reply tone: the classifier correlates with the intended mood, and a **judge panel across model families** agrees above chance with inter-judge agreement reported (with CIs). *A null result (state changes retrieval but not generation) is a valid, reportable finding; do not massage it away.*
@@ -167,7 +167,7 @@ produce the numbers the paper reports. **This phase carries the contribution.**
   > 2. **The attribution sweep's behavioural estimator**, which measures causally whether the
   >    mood sentence drives the reply. This is now RQ1's strongest evidence, and arguably a
   >    better design than a ten-person preference study. Already built; hypotheses fixed in
-  >    [`preregistration-attribution.md`](preregistration-attribution.md).
+  >    [`preregistration-attribution.md`](../preregistration-attribution.md).
   > 3. **A behavioural consistency check** as a task-like proxy: after the betrayal beat, does
   >    the keeper refuse the discounted room? Binary, scriptable, no raters, and closer to what
   >    a player actually experiences than any tone score.
@@ -178,7 +178,7 @@ produce the numbers the paper reports. **This phase carries the contribution.**
   >
   > **Where the vulnerability sits.** This pre-registered the dominant vulnerability at the
   > model call and the memory write, and explicitly *not* in the scoring formula. The data
-  > says the opposite: `eval/attribution.py` localises it to the scoring formula, to the
+  > says the opposite: `src/eval/attribution.py` localises it to the scoring formula, to the
   > **mood congruence** term, on the **valence** axis, and it is the only term whose removal
   > ever lowers the count. Because it was pre-registered, the inversion is evidence rather
   > than a story fitted afterwards, and it is the strongest thing this project found.
@@ -207,14 +207,14 @@ pytest -q eval/   # metric/attack unit tests pass
 command. Zero hand-made assets.
 
 ### Tasks
-1. **Tables**: `assets/build_tables.py` → `data/tables/*.tex` + `*.csv`
+1. **Tables**: `src/eval/report/build_tables.py` → `data/tables/*.tex` + `*.csv`
    - The signal table, the RQ metric definitions, and each results table (retrieval shift, retrieval quality, latency p50/p95, drift-under-attack). LaTeX `booktabs` + a CSV twin.
-2. **Figures**: `assets/build_figures.py` → `data/figures/*.png` (+ `*.pdf` for the paper)
+2. **Figures**: `src/eval/report/build_figures.py` → `data/figures/*.png` (+ `*.pdf` for the paper)
    - Retrieval-shift (Jaccard) plot, tone-shift plot, latency p50/p95 bars, retrieval PR / nDCG curves, the ablation bars, drift-under-attack by category. Use the EMBR ember palette consistently. The architecture figure already exists.
 3. **One command**: the menu's "Generate Paper Assets" option regenerates **everything** from the latest run.
 
 ### Deliverables
-`assets/build_tables.py`, `assets/build_figures.py`, regenerated `data/figures/*`, `data/tables/*`.
+`src/eval/report/build_tables.py`, `src/eval/report/build_figures.py`, regenerated `data/figures/*`, `data/tables/*`.
 
 ### Expected results (acceptance)
 - Running `embr assets` on a given `data/runs/<id>` reproduces **every** paper figure and table (same numbers, same look) with **no manual editing**.
@@ -237,7 +237,7 @@ carries as much weight as the measurements.*
 
 ### Tasks
 1. **Interactive turn loop**: the menu's "Tavern-Keeper Walkthrough" option: real player input, real model, live mood/trust/latency readouts.
-2. **The arc**: `embr/scenarios/dawn_whitmore.py`: the scripted beats (the discounted room, the lie surfacing, the reckoning, reconciliation) with branch points driven by the player's choices and the keeper's state.
+2. **The arc**: `src/embr/scenarios/dawn_whitmore.py`: the scripted beats (the discounted room, the lie surfacing, the reckoning, reconciliation) with branch points driven by the player's choices and the keeper's state.
 3. **Recording + companion page**: a recorded playthrough (asciinema or video) and a GitHub Pages companion page hosting the interactive web demo the README links to (GitHub can't run JS in a README, so the live widget lives there).
 
 ### Deliverables
@@ -248,14 +248,14 @@ Walkthrough screen, the arc, a recording file, a companion `docs/site/` page, RE
 - The recording exists and is linked from the README; the companion page loads the interactive demo.
 
 ### What actually shipped
-The arc lives in `embr/walkthrough.py` rather than a `scenarios/` package, because one module
+The arc lives in `src/embr/walkthrough.py` rather than a `scenarios/` package, because one module
 covers it and the house rule is to promote to a package only when a module outgrows itself. Two
 real runners landed alongside it (`OllamaRunner` for a local daemon or the cloud host, and
 `OuroRunner` for the thesis model), so the walkthrough plays on a real model rather than the
 stub. Details and the measured looped-versus-conventional latency gap are in
 [`phase3-4.md`](phase3-4.md).
 
-**Still open from this phase:** the recording and the companion page, and `eval/bakeoff.py`,
+**Still open from this phase:** the recording and the companion page, and `src/eval/bakeoff.py`,
 the measured model comparison the menu already has an option for.
 
 ---
@@ -267,15 +267,15 @@ Branch `phase-5-affect-attacks`. What it delivered, and why each piece exists:
 | Built | Because |
 |---|---|
 | NRC VAD Lexicon v2.1 behind `ToneRater` | the previous rater scored from 35 words the author picked, which is not a measurement |
-| A blinded model judge, plus `eval/agreement.py` | one automatic rater cannot tell a real tone shift from its own artefact |
+| A blinded model judge, plus `src/eval/agreement.py` | one automatic rater cannot tell a real tone shift from its own artefact |
 | Affective drift as a distance on the circumplex | cosine ignored magnitude and was undefined at the origin |
-| `eval/poignancy.py` and the `park_llm` arm | Park et al. rate with a model; the authored-ratings baseline was a handicap this harness invented |
-| `tag_variants` and `eval/grid.py` | every built attack was congruent, so nothing separated the emotion in a memory's words from the emotion in its tag |
-| `signal_by_tag` in `eval/attribution.py` | "which emotional signal is strongest" needed an answer per condition and per affect axis |
-| `eval/backends.py` and the Mnemosyne arm | a baseline that is a weight map over our own scorer is not a comparison against a real system |
-| `assets/build_animations.py` | the RQ1 result is a change over time, and no static figure shows a change |
+| `src/eval/poignancy.py` and the `park_llm` arm | Park et al. rate with a model; the authored-ratings baseline was a handicap this harness invented |
+| `tag_variants` and `src/eval/grid.py` | every built attack was congruent, so nothing separated the emotion in a memory's words from the emotion in its tag |
+| `signal_by_tag` in `src/eval/attribution.py` | "which emotional signal is strongest" needed an answer per condition and per affect axis |
+| `src/eval/backends.py` and the Mnemosyne arm | a baseline that is a weight map over our own scorer is not a comparison against a real system |
+| `src/eval/report/build_animations.py` | the RQ1 result is a change over time, and no static figure shows a change |
 
-**Two results changed what the paper claims**, and both are in [`findings.md`](findings.md):
+**Two results changed what the paper claims**, and both are in [`findings.md`](../findings.md):
 the EMBR-against-Park headline is a null once Park is rated the way Park et al. rate, and RQ1
 gained its first generation result (significant on llama3.2:3b, null on Ouro 1.4B).
 
@@ -292,10 +292,10 @@ Not started. Two pieces, in order:
    a query may carry one relevant set per state, and `state_conditioned_ndcg` scores each
    state against its own gold, which is the only shape of measurement a mood-congruent signal
    can win under. The labels themselves are the blocker, and deliberately cannot be written
-   here: see [`corpus.md`](corpus.md) for the schema, the acquisition path, the legal
+   here: see [`corpus.md`](../corpus.md) for the schema, the acquisition path, the legal
    constraint, and the pre-registered prediction.
 2. **The interactive demo.** Done, in two readings of one payload, both built by
-   `assets/build_demo.py` from a named run and both openable from a `file://` path.
+   `src/eval/report/build_demo.py` from a named run and both openable from a `file://` path.
 
    - `data/demo/index.html`, **69 KB, no dependency at all.** Five signal nodes, the memories
      between them, her prompt on the right, and an edge for every signal that paid for a
@@ -311,7 +311,7 @@ Not started. Two pieces, in order:
    `tests/test_build_demo.py` runs that replay under Node for each page plus a check that the
    two pages' scoring code has not drifted apart.
 
-   - `data/demo/results.html`, **670 KB, generated by `assets/build_results.py`.** The
+   - `data/demo/results.html`, **670 KB, generated by `src/eval/report/build_results.py`.** The
      three research questions in the project's own order, for a reviewer with ten minutes.
      Its numbers are read from the run and six of them are cross-checked against the prose
      of `findings.md`; **the build refuses to write the page if the two disagree**, which is
@@ -323,8 +323,8 @@ Not started. Two pieces, in order:
 
 ## Phase 7: power, the shipped defence, and the causal step
 
-**Direction set 2026-08-24.** The branch is `cite-view-test`. Method in [`cite.md`](cite.md),
-hypotheses fixed in [`preregistration-attribution.md`](preregistration-attribution.md).
+**Direction set 2026-08-24.** The branch is `cite-view-test`. Method in [`cite.md`](../cite.md),
+hypotheses fixed in [`preregistration-attribution.md`](../preregistration-attribution.md).
 
 The organising judgement: RQ3 is the weakest contribution and the corpus only rescues that;
 the security mechanism and its defence are the strongest and are already model-independent.
@@ -335,9 +335,9 @@ sweep supplies the causal step RQ2 is missing. Everything else is sequenced behi
 
 | # | Item | Notes |
 |---|---|---|
-| 1 | **Anchor-weight config in `embr/scoring.py`**, dose-response as its validation test, defended configuration as the shipped default | **Invalidates every published number.** See the conflict below. |
+| 1 | **Anchor-weight config in `src/embr/scoring.py`**, dose-response as its validation test, defended configuration as the shipped default | **Invalidates every published number.** See the conflict below. |
 | 2 | **Write-time tag provenance**: memories record who wrote them; affect tags come only from the appraisal step, never from raw player text. SQLite schema change | Must be a *posture flag*, not a removal: the paper needs the vulnerable arm to demonstrate the attack and the hardened arm to demonstrate the fix |
-| 3 | **New probe classes**: Sleeper-style dormant poisons, and a self-summarisation laundering probe | Two documented 2026 attack classes the current 20 do not cover. Extends `eval/attacks.py` with no protocol conflict |
+| 3 | **New probe classes**: Sleeper-style dormant poisons, and a self-summarisation laundering probe | Two documented 2026 attack classes the current 20 do not cover. Extends `src/eval/attacks.py` with no protocol conflict |
 | 4 | **Judge panel**: two or three models from different families plus the NRC lexicon, rating the same replies, with inter-judge agreement reported | Replaces the single blinded judge, and replaces the human arm's bias control. Rater rules fixed in the pre-registration |
 | 5 | **Behavioural consistency check**: after the betrayal beat, does the keeper refuse the discounted room? | Binary, scriptable, no raters. A task-like proxy for what a player experiences, which a tone score is not |
 
@@ -380,7 +380,7 @@ behavioural estimator lands, the reframe is a result. If it does not, it was a s
   unfaithful when the context restates what the model already knows. The one "Kenny" mention
   in `assets/presentation/slides.md` is the motivating anecdote in the talk, not a test
   subject, and is correct as it stands.
-- **`eval/bakeoff.py` is finished**, not stubbed: `run_arm`, `default_arms`, `run_bakeoff` and
+- **`src/eval/bakeoff.py` is finished**, not stubbed: `run_arm`, `default_arms`, `run_bakeoff` and
   `main` are all implemented, it is wired into the menu, and three runs plus the
   `bakeoff_grounding`, `bakeoff_latency` and `bakeoff_mood` figures already exist. The menu's
   "not built yet" line is an `ImportError` fallback for a fresh clone.

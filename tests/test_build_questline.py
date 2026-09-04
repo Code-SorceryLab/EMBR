@@ -14,7 +14,7 @@ import pytest
 
 pytest.importorskip("matplotlib")
 
-from assets.build_questline import VALENCE_MARKERS, build_questline
+from eval.report.build_questline import VALENCE_MARKERS, build_questline
 from embr.walkthrough import DAWN_ARC
 from eval.scenarios import label_sha256
 

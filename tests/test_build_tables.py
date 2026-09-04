@@ -1,4 +1,4 @@
-"""Tests for the paper table builder in `assets/build_tables.py`.
+"""Tests for the paper table builder in `src/eval/report/build_tables.py`.
 
 These pin the contract the paper depends on: every table lands as LaTeX (booktabs) plus a
 CSV twin, every .tex opens with a provenance line that traces it back to one run directory,
@@ -20,7 +20,7 @@ from pathlib import Path
 
 import pytest
 
-from assets.build_tables import (
+from eval.report.build_tables import (
     ABSENT,
     SIGNAL_REFERENCE,
     MissingRunValue,

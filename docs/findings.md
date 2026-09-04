@@ -117,7 +117,7 @@ measurably more poisonable.** Reported as a null.
 Two arms read 0/10 for a reason that is not a defence. The probe is a generic question that
 shares no words with any memory, so a purely lexical or purely semantic store returns nothing
 at all: `relevance_only` and Mnemosyne are immune by silence. Mnemosyne is measured exactly as
-shipped, through a bridge in its own virtual environment (`eval/backends.py`).
+shipped, through a bridge in its own virtual environment (`src/eval/backends.py`).
 
 ### 2.2 What survives, and it is the mechanism: poisonability is set by who controls a term's inputs
 

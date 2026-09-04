@@ -37,7 +37,7 @@ def test_a_fresh_session_opens_on_the_scene_before_any_turn() -> None:
 
 def test_every_tab_renders_on_the_stub_with_no_cached_data(monkeypatch) -> None:
     # No cached attribution run: the tab must still render from the live stub computation.
-    monkeypatch.setattr("demos._latest_attribution_run", lambda: None)
+    monkeypatch.setattr("embr.cli.demos._latest_attribution_run", lambda: None)
     g = GameSession()
     _play_to_finish(g)
     tabs = g.snapshot()["tabs"]
@@ -70,7 +70,7 @@ def test_likelihood_attribution_is_unavailable_not_crashing_on_a_generate_only_m
     """A runner that cannot return token log-probs (Ollama) must yield an 'unavailable'
     likelihood reading, never a 500. Regression for the OllamaRunner.logprob crash."""
     from embr.walkthrough import build_walkthrough_conversation
-    from demos import _live_reading
+    from embr.cli.demos import _live_reading
 
     class GenerateOnly:
         label = "fake-local (local)"
@@ -113,7 +113,7 @@ def test_the_bridge_reimplements_no_scoring() -> None:
     or re-derive attribution. It may import the pipeline and the demo's reader, nothing else."""
     from pathlib import Path
 
-    src = Path("web/game.py").read_text(encoding="utf-8")
+    src = Path("src/web/game.py").read_text(encoding="utf-8")
     # It reuses the demo's attribution reader rather than computing Banzhaf itself.
     assert "_live_reading" in src
     assert "banzhaf_values" not in src  # never computes attribution by hand

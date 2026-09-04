@@ -14,7 +14,7 @@ from pathlib import Path
 
 import pytest
 
-from assets.build_animations import QUERY_ID, build_recall_animation
+from eval.report.build_animations import QUERY_ID, build_recall_animation
 
 
 @pytest.fixture
@@ -73,7 +73,7 @@ def test_the_animation_uses_smil_because_css_freezes_inside_an_img_tag(
 
 
 def test_a_frozen_renderer_still_shows_a_real_state(run_dir: Path, tmp_path: Path) -> None:
-    from assets.build_animations import opacity_track
+    from eval.report.build_animations import opacity_track
 
     (path,) = build_recall_animation(run_dir, tmp_path / "out")
     # Every group starts at its first phase's value, so a still is one honest condition
@@ -84,7 +84,7 @@ def test_a_frozen_renderer_still_shows_a_real_state(run_dir: Path, tmp_path: Pat
 
 
 def test_the_track_holds_each_phase_flat_and_crossfades_the_wrap(tmp_path: Path) -> None:
-    from assets.build_animations import opacity_track
+    from eval.report.build_animations import opacity_track
 
     base, track = opacity_track((True, False, True))
     assert base == 1
@@ -99,9 +99,9 @@ def test_every_experiment_figure_has_a_note_beside_it(tmp_path: Path) -> None:
     """The house rule is that a figure carries data and its caveats live in results.txt.
     These three shipped with no notes at all, which is how a figure reaches a slide deck
     with nothing to stop it being over-read."""
-    from assets.build_bakeoff_figures import EXPERIMENT_NOTES, write_experiment_notes
+    from eval.report.build_bakeoff_figures import EXPERIMENT_NOTES, write_experiment_notes
 
-    stems = ["affective_indexing", "provenance_sweep", "content_tag_grid", "mood_recall"]
+    stems = ["affective_indexing", "provenance_sweep", "content_tag_grid", "mood_recall", "self_priming_loop"]
     assert set(stems) <= set(EXPERIMENT_NOTES)
     notes = write_experiment_notes(stems, tmp_path)
     text = notes.read_text(encoding="utf-8")
@@ -111,3 +111,16 @@ def test_every_experiment_figure_has_a_note_beside_it(tmp_path: Path) -> None:
     # A rebuild replaces the block rather than stacking a second copy under it.
     write_experiment_notes(stems, tmp_path)
     assert notes.read_text(encoding="utf-8").count("Mechanism experiments") == 1
+
+
+def test_the_loop_figure_prints_the_harness_numbers_not_typed_ones(tmp_path: Path) -> None:
+    from eval.report.build_animations import build_loop_figure
+    from eval.attribution import attribute_poisoning
+
+    (path,) = build_loop_figure(tmp_path / "out")
+    xml.dom.minidom.parse(str(path))
+    svg = path.read_text(encoding="utf-8")
+    counts = attribute_poisoning()
+    assert f'{counts["baseline"]["embr"]}/10' in svg
+    assert f'{counts["embr_minus"]["mood"]}/10' in svg
+    assert "@keyframes" not in svg and "<animate" not in svg  # a still, on purpose

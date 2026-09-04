@@ -2,44 +2,44 @@
 
 Phase 2 builds the measurement layer: everything needed to run RQ1 (behaviour), RQ2
 (robustness and cost), and RQ3 (retrieval quality) against the Park and Emotional RAG
-baselines under the pre-registered protocol. The harness lives in `eval/` at the repo
-root, deliberately outside `embr/`: it measures the system, so the system never imports
-it. Pair this with [`design.md`](design.md) (architecture) and
+baselines under the pre-registered protocol. The harness lives in `src/eval/` at the repo
+root, deliberately outside `src/embr/`: it measures the system, so the system never imports
+it. Pair this with [`design.md`](../design.md) (architecture) and
 [`roadmap.md`](roadmap.md) (the phase brief this delivers on).
 
 ## 1. What phase 2 added, file by file
 
-### The harness (`eval/`)
+### The harness (`src/eval/`)
 
-- **`eval/baselines.py`**: the two paper baselines as weight maps over the shared
+- **`src/eval/baselines.py`**: the two paper baselines as weight maps over the shared
   `CompositeScorer`. The only new scoring code is `Importance`, an authored-ratings
   lookup standing in for Park's LLM poignancy rater; each scorer's docstring lists
   exactly where it deviates from the published pipeline.
-- **`eval/scenarios.py`** + **`eval/labels/dawn_whitmore.json`**: the pre-registered
+- **`src/eval/scenarios.py`** + **`src/eval/labels/dawn_whitmore.json`**: the pre-registered
   scenario: 24 memories across five sessions of Dawn Whitmore's arc, 10 retrieval
   queries with frozen relevant sets, authored importance ratings, and three pinned mood
   conditions (warm, neutral, suspicious). The loader rebuilds timestamps against a
   caller-supplied reference time so the scenario is identical on any run day.
-- **`eval/metrics.py`**: precision@k, recall@k, nDCG@k, Jaccard distance between top-k
+- **`src/eval/metrics.py`**: precision@k, recall@k, nDCG@k, Jaccard distance between top-k
   sets, and valence-arousal drift. Pure functions, no numpy, every formula small enough
   to recompute by hand.
-- **`eval/attacks.py`**: the twenty-attack RQ2 corpus (five each of role override, false
+- **`src/eval/attacks.py`**: the twenty-attack RQ2 corpus (five each of role override, false
   memory, emotion flip, persona dissolution, adapted from MINJA) and `run_attack`, which
   plays one attack into a conversation and probes it with a fixed follow-up question.
   Injection attacks also poison the memory write itself.
-- **`eval/tone.py`**: the `ToneRater` seam (reply text to valence and arousal) and
+- **`src/eval/tone.py`**: the `ToneRater` seam (reply text to valence and arousal) and
   `LexiconToneRater`, a deterministic stand-in so the harness runs anywhere; the real
   affect classifier and the blinded judge plug in behind the same protocol later.
-- **`eval/latency.py`**: wraps an existing `Conversation`'s write, score-retrieve, and
+- **`src/eval/latency.py`**: wraps an existing `Conversation`'s write, score-retrieve, and
   model stages from the outside and reports nearest-rank p50/p95 with per-stage sample
   counts. The core never grows timing code.
-- **`eval/tuning.py`**: the one grid search every variant goes through, plus
+- **`src/eval/tuning.py`**: the one grid search every variant goes through, plus
   `leave_one_out_folds` for held-out tuned scores and a `visible_memories` filter that
   stops a query from seeing memories from later sessions.
-- **`eval/stats.py`**: fixed-seed percentile bootstrap CIs, an exact paired sign-flip
+- **`src/eval/stats.py`**: fixed-seed percentile bootstrap CIs, an exact paired sign-flip
   permutation test, and Holm-Bonferroni correction. Deterministic and dependency free,
   like the numbers it describes.
-- **`eval/run.py`**: the runner. `python -m eval.run` executes all three studies against
+- **`src/eval/run.py`**: the runner. `python -m eval.run` executes all three studies against
   a pinned `REFERENCE_TIME` (2026-01-01 UTC) and writes an auditable run directory;
   `fast_rq3_defaults()` is the sub-second subset the menu calls.
 
@@ -80,14 +80,14 @@ wiring described here survived the move; only the renderer changed.
 
 ## 2. What changed in existing files, and why
 
-- **`embr/scoring.py`** (the only core change): `Recency` gained an injectable clock,
+- **`src/embr/scoring.py`** (the only core change): `Recency` gained an injectable clock,
   `now: Callable[[], datetime] | None`, threaded through `all_signals` and
   `embr_scorer`. The default is `None`, meaning the live wall clock, so game behaviour
   is unchanged; the eval passes a clock returning `REFERENCE_TIME` at every scorer
   construction site. Without this, the scenario's pinned 2026-01-01 timestamps were
   months in the past by run day and every recency score had decayed to roughly 1e-11:
   the signal was dead in every variant and the comparison was silently four-signal.
-- **`embr/app/main.py`**: the "not built yet" experiment placeholder was replaced with
+- **`src/embr/app/main.py`**: the "not built yet" experiment placeholder was replaced with
   the live screen described above. (Phase 4 removed this file with the rest of the Textual
   applet; the wiring moved to `menu.py` at the repo root.)
 - **`tests/test_scoring.py`**: two new tests pin the injected clock (exact decay from an
@@ -154,7 +154,7 @@ is lexical rather than semantic; the real model runner and real embeddings land 
 eval hardware. The labels are the v1 pre-registered set, authored by one person before
 any retrieval was run. **The blind multi-annotator pass is not coming**: it was shelved on
 2026-08-24 with the rest of the human-subject work, so the recorded borderline cases (see the
-honesty note in `eval/scenarios.py`) stay unadjudicated and the label set stays single-author. Ten queries buy very little power: the CIs are wide, every paired
+honesty note in `src/eval/scenarios.py`) stay unadjudicated and the label set stays single-author. Ten queries buy very little power: the CIs are wide, every paired
 interval spans zero, and no Holm-corrected comparison is significant (the minimum
 corrected p is 0.75, for the no-relevance ablation, whose attainable floor is 0.03125).
 The tuned rows are honest held-out estimates, which is why they sit below the optimistic
@@ -202,7 +202,7 @@ described in section 2; tuned scores moved from in-sample grid maxima to
 leave-one-query-out cross-validation; RQ2 went from measuring one system to comparing
 four against the full memory store, gaining the retrieval_drift and poison_retrieved
 columns; a neutral mood condition that was not actually neutral was re-pinned to the
-zero vector; CIs and Holm-corrected paired tests were added via `eval/stats.py`; and a
+zero vector; CIs and Holm-corrected paired tests were added via `src/eval/stats.py`; and a
 nearest-rank percentile off-by-one was corrected.
 
 The caveats that remain are declared in the run output itself:
@@ -220,7 +220,7 @@ The caveats that remain are declared in the run output itself:
   independently of which model runs. `immediate_drift` is kept only as a stub-limited
   diagnostic and is constant across systems.
 - **The label set is v1.** Six borderline exclusions are documented next to the honesty
-  note in `eval/scenarios.py`, exposed machine-readably as `BORDERLINE_EXCLUSIONS`, and
+  note in `src/eval/scenarios.py`, exposed machine-readably as `BORDERLINE_EXCLUSIONS`, and
   frozen; the blind pass re-judges them rather than the author quietly re-adjudicating his
   own labels. Admitting them reverses the Park and EMBR ordering, so they matter.
 - **Park is a shared-scorer port**, not a byte-for-byte reimplementation. Its docstring
@@ -244,6 +244,6 @@ Phase 3 (paper assets) reads `data/runs/<stamp>/` and nothing else:
   assets must produce identical files, except the latency block, the one declared
   wall-clock measurement.
 
-The build scripts themselves (`assets/build_tables.py`, `assets/build_figures.py`, and
+The build scripts themselves (`src/eval/report/build_tables.py`, `src/eval/report/build_figures.py`, and
 the menu's "Generate Paper Assets" option) are phase 3's scope, and shipped: see
 [`phase3-4.md`](phase3-4.md).

@@ -1,4 +1,4 @@
-"""The animated figure for the README: RQ1's mood-dependent recall, drawn as it happens.
+"""The README's SVG figures: the animated mood-dependent recall, and the static attack loop.
 
 Matplotlib cannot animate, and a GIF is a binary blob nobody can diff, so this emits an SVG
 whose only moving parts are CSS keyframes. GitHub renders it inline, a browser plays it, and
@@ -9,8 +9,8 @@ affect tag, every highlighted set is the real top 5 the harness retrieved for th
 the three mood positions are the pre-registered conditions. Rebuild it from a run directory
 and it tells that run's truth:
 
-    python assets/build_animations.py                      # newest run
-    python assets/build_animations.py data/runs/<stamp>    # a specific one
+    python -m eval.report.build_animations                      # newest run
+    python -m eval.report.build_animations data/runs/<stamp>    # a specific one
 """
 
 from __future__ import annotations
@@ -22,9 +22,8 @@ from pathlib import Path
 from typing import Sequence
 from xml.sax.saxutils import escape
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from assets.build_figures import (  # noqa: E402
+from eval.report.build_figures import (  # noqa: E402
     AMBER,
     CREAM,
     DEEP_BROWN,
@@ -275,12 +274,118 @@ def build_recall_animation(
     return [target]
 
 
+LOOP_WIDTH, LOOP_HEIGHT = 880, 330
+
+
+def build_loop_figure(out_dir: Path | str = DEFAULT_OUT_DIR) -> list[Path]:
+    """Write `self_priming_loop.svg`: the attack timeline, with the run's own numbers on it.
+
+    Five stages left to right, and one arrow back: the mood the write perturbed is the state
+    the scorer then reads. Every number is recomputed from the harness on the stub, which is
+    exact because retrieval and appraisal never call a model. No cached value, no prose.
+    """
+    from eval.attribution import attribute_poisoning, self_priming_alignment
+
+    counts = attribute_poisoning()
+    landed, defended = counts["baseline"]["embr"], counts["embr_minus"]["mood"]
+    alignment = self_priming_alignment()
+    low, high, attacks = min(alignment.values()), max(alignment.values()), len(alignment)
+
+    stages = [
+        ("1  write", "the attacker files one", "memory, with an affect tag"),
+        ("2  appraise", "the turn reads it, and", "the mood follows the tag"),
+        ("3  score", "mood congruence rewards", "the memory that matches"),
+        ("4  retrieve", "the plant makes the top 5", f"on {landed} of {attacks} attacks"),
+        ("5  reply", "it enters the prompt;", "the model answers from it"),
+    ]
+    box_w, box_h, gap, top = 158, 92, 18, 58
+    left = (LOOP_WIDTH - (box_w * len(stages) + gap * (len(stages) - 1))) / 2
+    parts: list[str] = []
+    for index, (title, line1, line2) in enumerate(stages):
+        x = left + index * (box_w + gap)
+        hot = index in (1, 2)  # the two stages the loop runs through
+        parts.append(
+            f'<rect x="{x}" y="{top}" width="{box_w}" height="{box_h}" rx="10" '
+            f'fill="{"#FFEDD5" if hot else "white"}" stroke="{EMBER_ORANGE if hot else AMBER}" '
+            f'stroke-width="{2 if hot else 1.2}"/>'
+            f'<text x="{x + 12}" y="{top + 26}" class="title">{escape(title)}</text>'
+            f'<text x="{x + 12}" y="{top + 50}" class="body">{escape(line1)}</text>'
+            f'<text x="{x + 12}" y="{top + 68}" class="body">{escape(line2)}</text>'
+        )
+        if index:
+            parts.append(
+                f'<line x1="{x - gap + 2}" y1="{top + box_h / 2}" x2="{x - 3}" '
+                f'y2="{top + box_h / 2}" stroke="{DEEP_BROWN}" stroke-width="1.6" '
+                f'marker-end="url(#head)"/>'
+            )
+
+    # The return arrow: from the appraised mood back into the scorer, drawn underneath so
+    # the timeline stays a timeline and the loop reads as the exception it is.
+    mood_x = left + 1 * (box_w + gap) + box_w / 2
+    score_x = left + 2 * (box_w + gap) + box_w / 2
+    y0, y1 = top + box_h, top + box_h + 46
+    parts.append(
+        f'<path d="M{mood_x},{y0} V{y1} H{score_x} V{y0 + 4}" fill="none" '
+        f'stroke="{EMBER_ORANGE}" stroke-width="2" stroke-dasharray="5 4" '
+        f'marker-end="url(#hot)"/>'
+        f'<text x="{(mood_x + score_x) / 2}" y="{y1 + 18}" text-anchor="middle" class="loop">'
+        f"the scorer reads the state the write just moved: cosine {low:.2f} to {high:.2f} "
+        f"on all {attacks} attacks</text>"
+    )
+    # The intervention, on its own line: the one weight whose removal breaks the loop.
+    parts.append(
+        f'<text x="{LOOP_WIDTH / 2}" y="{LOOP_HEIGHT - 52}" text-anchor="middle" class="body">'
+        f"zero the mood-congruence weight and the loop has nothing to read: "
+        f'<tspan class="pill">{landed}/{attacks}</tspan> poisoned becomes '
+        f'<tspan class="pill">{defended}/{attacks}</tspan></text>'
+        f'<text x="{LOOP_WIDTH / 2}" y="{LOOP_HEIGHT - 30}" text-anchor="middle" class="caption">'
+        f"recomputed from the harness by src/eval/report/build_animations.py; python -m eval.attribution "
+        f"prints the same table</text>"
+    )
+    caption = (
+        f"The self-priming loop: an attacker-written affect tag moves the appraised mood, "
+        f"mood congruence then rewards that same memory, and {landed} of {attacks} injections "
+        f"reach the top 5; zeroing the mood weight leaves {defended}."
+    )
+    style = (
+        "text { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Helvetica, "
+        "Arial, sans-serif; }"
+        f".title {{ font-size: 14px; font-weight: 700; fill: {NEAR_BLACK}; }}"
+        f".body {{ font-size: 11.5px; fill: {NEAR_BLACK}; }}"
+        f".loop {{ font-size: 12px; font-weight: 700; fill: {DEEP_BROWN}; }}"
+        f".pill {{ font-weight: 700; fill: {EMBER_ORANGE}; }}"
+        f".caption {{ font-size: 11px; fill: {DEEP_BROWN}; opacity: 0.9; }}"
+    )
+    svg = (
+        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {LOOP_WIDTH} {LOOP_HEIGHT}" '
+        f'width="{LOOP_WIDTH}" height="{LOOP_HEIGHT}" role="img" aria-label="{escape(caption)}">'
+        f"<style>{style}</style><defs>"
+        f'<marker id="head" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" '
+        f'markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="{DEEP_BROWN}"/></marker>'
+        f'<marker id="hot" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" '
+        f'markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="{EMBER_ORANGE}"/></marker>'
+        f"</defs>"
+        f'<rect width="{LOOP_WIDTH}" height="{LOOP_HEIGHT}" rx="14" fill="{CREAM}"/>'
+        f'<rect width="{LOOP_WIDTH}" height="{LOOP_HEIGHT}" rx="14" fill="none" stroke="{AMBER}" '
+        f'stroke-opacity="0.5"/>'
+        f'<text x="{LOOP_WIDTH / 2}" y="34" text-anchor="middle" class="title">'
+        f"One injected memory, one turn: how the affect tag primes its own retrieval</text>"
+        + "".join(parts)
+        + "</svg>"
+    )
+    out_path = Path(out_dir)
+    out_path.mkdir(parents=True, exist_ok=True)
+    target = out_path / "self_priming_loop.svg"
+    target.write_text(svg, encoding="utf-8")
+    return [target]
+
+
 def main(argv: Sequence[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("run_dir", nargs="?", default=None)
     parser.add_argument("--out-dir", default=str(DEFAULT_OUT_DIR))
     args = parser.parse_args(argv)
-    for path in build_recall_animation(args.run_dir, args.out_dir):
+    for path in build_recall_animation(args.run_dir, args.out_dir) + build_loop_figure(args.out_dir):
         print(f"  {path}")
 
 

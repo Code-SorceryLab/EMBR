@@ -20,13 +20,18 @@ from pathlib import Path
 
 import pytest
 
-from assets.build_demo import PRESETS, build_demo
+from eval.report.build_demo import PRESETS, build_demo
 
 
 @pytest.fixture(scope="module")
 def built(tmp_path_factory) -> list[Path]:
     """Both pages, built once from the same payload."""
-    return build_demo(out_dir=tmp_path_factory.mktemp("demo"))
+    try:
+        return build_demo(out_dir=tmp_path_factory.mktemp("demo"))
+    except FileNotFoundError as missing:
+        if "no run directories" in str(missing):
+            pytest.skip("needs eval run artifacts (python -m eval.run)")
+        raise
 
 
 @pytest.fixture(scope="module")
@@ -173,7 +178,7 @@ def test_every_store_id_resolves_to_a_memory_the_page_can_draw(demo) -> None:
 def test_memory_text_cannot_break_out_of_the_script_block() -> None:
     """A trust boundary, and an adversarial one: the attack corpus is text written by
     somebody trying to break the character, and it is inlined into a <script> block."""
-    from assets.build_demo import _inline_json
+    from eval.report.build_demo import _inline_json
 
     hostile = {"text": "</script><img src=x onerror=alert(1)>", "amp": "a & b"}
     encoded = _inline_json(hostile)
@@ -193,7 +198,7 @@ def test_the_line_separators_are_escaped_and_the_table_cannot_no_op() -> None:
     backslash, so Python read them as the characters being escaped and every replacement
     became an identity. Neither failure is loud, so both get a test.
     """
-    from assets.build_demo import _inline_json
+    from eval.report.build_demo import _inline_json
 
     backslash, line_sep, para_sep = chr(92), chr(0x2028), chr(0x2029)
     payload = {"text": f"a{line_sep}b{para_sep}c"}
@@ -229,7 +234,7 @@ def _last_script(html: str) -> str:
 
 def test_the_vendored_renderer_is_the_bytes_we_recorded() -> None:
     """Vendored third-party code that nobody can check is just code of unknown origin."""
-    from assets.build_demo import VENDORED_THREE
+    from eval.report.build_demo import VENDORED_THREE
 
     if not VENDORED_THREE.exists():
         pytest.skip("three.js has not been vendored")

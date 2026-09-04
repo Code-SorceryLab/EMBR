@@ -24,7 +24,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 # ANSI helpers reused from the menu, so the palette is defined in exactly one place.
-from menu import _BOLD, _CYAN, _DIM, _EMBER, _RED, _WHT, _YEL, _c, _SUPPORTS_COLOR
+from embr.cli.menu import _BOLD, _CYAN, _DIM, _EMBER, _RED, _WHT, _YEL, _c, _SUPPORTS_COLOR
 
 from embr import (
     CharacterState,

@@ -1,6 +1,6 @@
 # EMBR engineering intern plan (first ~8 weeks)
 
-> **Phases 2, 3 and 4 have shipped.** The `eval/` harness, the paper assets, the real model
+> **Phases 2, 3 and 4 have shipped.** The `src/eval/` harness, the paper assets, the real model
 > runners, the walkthrough and the menu all exist now (see [`phase2.md`](phase2.md) and
 > [`phase3-4.md`](phase3-4.md)), so tasks 2 to 7 are history rather than work to pick up. This
 > document is kept as the ramp-up reading path: the task descriptions still say what each piece
@@ -23,7 +23,7 @@ A local middleware layer that gives a game NPC an emotion-grounded, persistent m
 each turn it logs an event, updates the character's mood and trust, scores every stored
 memory with five weighted signals, retrieves the top few, and prompts a local model. The
 whole spine already runs and is tested; you build the harness that *measures* it against the
-two baselines. Read [`design.md`](design.md) for the architecture and the thesis proposal
+two baselines. Read [`design.md`](../design.md) for the architecture and the thesis proposal
 for the why.
 
 ## How this works
@@ -32,7 +32,7 @@ for the why.
 - **TDD.** Write the failing test first, then the code. Every new behaviour has a test.
 - **Green before commit.** `pytest -q` must pass; small, frequent commits.
 - **One source of truth.** A new scorer variant is a *weight map*, not a copy of `CompositeScorer`. Shared logic lives in one place.
-- **Small "why" comments.** Match the style already in `embr/`.
+- **Small "why" comments.** Match the style already in `src/embr/`.
 - **Remote-friendly.** Each task ends with a short written update (what shipped, what's next, any blockers), which works well across the time zone.
 
 Deadlines are week *ranges* and reorderable. If a task blocks, move to the next and come back.
@@ -42,7 +42,7 @@ Deadlines are week *ranges* and reorderable. If a task blocks, move to the next 
 ```bash
 git clone <repo> && cd EMBR
 python3.11 -m venv .venv && source .venv/bin/activate
-pip install -e ".[dev,ml]"     # dev = tests; ml = real semantic embeddings
+uv sync --extra ml     # dev = tests; ml = real semantic embeddings
 pytest -q                       # confirm a green baseline (semantic test un-skips with ml)
 embr                            # open the menu, try "Conversation Turn"
 ```
@@ -52,12 +52,12 @@ embr                            # open the menu, try "Conversation Turn"
 | # | Task | Window (flexible) | Deliverable |
 |---|---|---|---|
 | 1 | Orient + ship one tiny change | Week 1 | env working, small merged PR, "in my words" note |
-| 2 | Baselines (Park, Emotional RAG) | Weeks 1 to 2 | `eval/baselines.py` + tests |
-| 3 | Retrieval & cost metrics | Weeks 2 to 3 | `eval/metrics.py` + tests |
-| 4 | Scenarios, labels, experiment runner | Weeks 3 to 4 | `eval/scenarios.py`, `eval/run.py`, first results |
-| 5 | Adversarial probes | Weeks 4 to 5 | `eval/attacks.py` + tests |
+| 2 | Baselines (Park, Emotional RAG) | Weeks 1 to 2 | `src/eval/baselines.py` + tests |
+| 3 | Retrieval & cost metrics | Weeks 2 to 3 | `src/eval/metrics.py` + tests |
+| 4 | Scenarios, labels, experiment runner | Weeks 3 to 4 | `src/eval/scenarios.py`, `src/eval/run.py`, first results |
+| 5 | Adversarial probes | Weeks 4 to 5 | `src/eval/attacks.py` + tests |
 | 6 | RQ3 ablation run | Weeks 5 to 6 | results + findings note |
-| 7 | Paper assets from results | Weeks 6 to 7 | `assets/build_*.py`, regenerable figures/tables |
+| 7 | Paper assets from results | Weeks 6 to 7 | `src/eval/report/build_*.py`, regenerable figures/tables |
 | 8 | Wrap-up & handoff | Weeks 7 to 8 | report + updated docs, green suite |
 
 ---
@@ -75,29 +75,29 @@ embr                            # open the menu, try "Conversation Turn"
 ### Task 2: Baselines, Park & Emotional RAG (Weeks 1 to 2)
 
 - **Why:** the comparison targets, and the best way to internalise the scoring abstraction.
-- **Do:** in `eval/baselines.py`, write `park_scorer()` (recency + importance + relevance;
+- **Do:** in `src/eval/baselines.py`, write `park_scorer()` (recency + importance + relevance;
   `importance` is a model/heuristic rating EMBR does not have, so implement it faithfully)
   and `emotional_rag_scorer()` (relevance + mood bias). Both are `CompositeScorer` **weight
   maps, with no copied scoring code** (TDD).
-- **Deliverable:** `eval/baselines.py` + tests + a note on how each maps onto `CompositeScorer`.
+- **Deliverable:** `src/eval/baselines.py` + tests + a note on how each maps onto `CompositeScorer`.
 - **Done when:** a crafted case shows each baseline ranks differently from EMBR, and no
   scoring logic is duplicated. *(roadmap Phase 2, task 1)*
 
 ### Task 3: Retrieval & cost metrics (Weeks 2 to 3)
 
 - **Why:** the measuring stick for RQ3 and latency.
-- **Do:** in `eval/metrics.py`, implement precision@k, recall@k, nDCG@k for k in {3, 5, 10};
+- **Do:** in `src/eval/metrics.py`, implement precision@k, recall@k, nDCG@k for k in {3, 5, 10};
   Jaccard distance between top-k sets across warm / neutral / suspicious states; per-stage
-  latency timers (p50, p95, in `eval/latency.py`). TDD each metric against a hand-computed
+  latency timers (p50, p95, in `src/eval/latency.py`). TDD each metric against a hand-computed
   toy example.
-- **Deliverable:** `eval/metrics.py` + tests.
+- **Deliverable:** `src/eval/metrics.py` + tests.
 - **Done when:** every metric matches a worked example. *(roadmap Phase 2, task 3)*
 
 ### Task 4: Scenarios, labels & the experiment runner (Weeks 3 to 4)
 
 - **Why:** something to measure, and a repeatable way to run it.
-- **Do:** `eval/scenarios.py` (the Dawn Whitmore multi-session arc), `eval/labels/`
-  (pre-registered relevance labels), and `eval/run.py` (runs RQ3 retrieval over EMBR and
+- **Do:** `src/eval/scenarios.py` (the Dawn Whitmore multi-session arc), `src/eval/labels/`
+  (pre-registered relevance labels), and `src/eval/run.py` (runs RQ3 retrieval over EMBR and
   both baselines, deterministic seeds, writes `data/runs/<timestamp>/` as JSON/CSV). Wire it
   to the menu's evaluation options.
 - **Deliverable:** scenarios + labels + runner + a first results dump.
@@ -106,10 +106,10 @@ embr                            # open the menu, try "Conversation Turn"
 ### Task 5: Adversarial probes (Weeks 4 to 5)
 
 - **Why:** the inputs for the RQ2 robustness study.
-- **Do:** `eval/attacks.py`: 20 attacks in 4 categories of 5 (role override, false-memory
+- **Do:** `src/eval/attacks.py`: 20 attacks in 4 categories of 5 (role override, false-memory
   injection, emotion flipping, persona dissolution), plus a harness that applies each to the
   memory store and records drift (valence-arousal cosine distance from the canonical response).
-- **Deliverable:** `eval/attacks.py` + tests.
+- **Deliverable:** `src/eval/attacks.py` + tests.
 - **Done when:** all four categories are represented and the drift metric is wired.
   *(roadmap Phase 2, task 4)*
 
@@ -124,7 +124,7 @@ embr                            # open the menu, try "Conversation Turn"
 ### Task 7: Paper assets from results (Weeks 6 to 7), a taste of Phase 3
 
 - **Why:** turn numbers into paper-ready, reproducible figures and tables.
-- **Do:** `assets/build_tables.py` + `assets/build_figures.py`: the retrieval-quality table,
+- **Do:** `src/eval/report/build_tables.py` + `src/eval/report/build_figures.py`: the retrieval-quality table,
   the ablation bar chart, the latency p50/p95 plot; one command (`embr assets`) regenerates
   them from the latest run; use the ember palette.
 - **Deliverable:** the asset scripts + generated figures/tables.
@@ -147,13 +147,13 @@ embr                            # open the menu, try "Conversation Turn"
 The open work is what Phase 2 deliberately left behind a seam, all of it in the roadmap:
 
 - ~~the blind multi-annotator label pass~~ **shelved 2026-08-24**, with the rest of the
-  human-subject work. The borderline exclusions recorded in `eval/scenarios.py` will now
+  human-subject work. The borderline exclusions recorded in `src/eval/scenarios.py` will now
   never be re-judged, so no ordering may be read off the retrieval table at all. This is a
   permanent ceiling, not a pending task;
 - the **real model runner** in place of `StubRunner`, which is what makes every tone and
   drift number in RQ1 and RQ2 mean something;
 - the **off-the-shelf affect classifier and blinded model judge** behind the existing
-  `ToneRater` protocol in `eval/tone.py`, replacing `LexiconToneRater`.
+  `ToneRater` protocol in `src/eval/tone.py`, replacing `LexiconToneRater`.
 
 ## Cadence
 

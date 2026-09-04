@@ -1,13 +1,11 @@
-"""Launch the EMBR menu with `python -m embr`, or query save state without it.
+"""`python -m embr`: the menu with no arguments, or any command (`python -m embr --help`).
 
-    python -m embr                  # the menu
-    python -m embr save-status      # every slot, its progress, and any problems
-    python -m embr validate-saves   # exit 1 if any save cannot load against this build
+The two save queries below are kept here because they need nothing but the saves module,
+so `embr saves status` works on a machine with nothing else installed or configured.
 """
 
 from __future__ import annotations
 
-import argparse
 import sys
 from pathlib import Path
 
@@ -49,20 +47,9 @@ def validate_saves(root: Path | str = SAVES_ROOT) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(prog="embr", description=__doc__.splitlines()[0])
-    parser.add_argument(
-        "command", nargs="?", choices=("save-status", "validate-saves"),
-        help="omit to open the menu",
-    )
-    args = parser.parse_args(argv)
-    if args.command == "save-status":
-        return save_status()
-    if args.command == "validate-saves":
-        return validate_saves()
-    from menu import run_menu  # the menu lives at the repo root as a top-level module
+    from embr.cli import main as cli_main
 
-    run_menu()
-    return 0
+    return cli_main(argv)
 
 
 if __name__ == "__main__":

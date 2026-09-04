@@ -1,10 +1,10 @@
 # Exact Banzhaf attribution over the prompt's sources
 
-**Branch:** `cite-view-test`. **Module:** [`eval/context_attribution.py`](../eval/context_attribution.py).
+**Branch:** `cite-view-test`. **Module:** [`src/eval/context_attribution.py`](../eval/context_attribution.py).
 **Framing paper:** ContextCite, Cohen-Wang, Shah, Georgiev and Madry, [arXiv:2409.00729](https://arxiv.org/abs/2409.00729).
 
 Pair this with [`findings.md`](findings.md) (the canonical results), [`metrics.md`](metrics.md)
-(every statistic defined) and [`phase2.md`](phase2.md) (the harness this extends).
+(every statistic defined) and [`phase2.md`](history/phase2.md) (the harness this extends).
 
 > **Naming, because it matters for the citation.** What this computes is the **exact Banzhaf
 > value** of each prompt source. It is not "ContextCite with more ablations", and the code and
@@ -36,7 +36,7 @@ Four things this buys, in order of how much they matter.
 4. **It produces a measurement result of its own.** See section 4.
 
 **Scope honesty.** One eval module, one method on `OuroRunner`, one keyword argument on
-`PromptBuilder`. It does not touch `embr/scoring.py`. It does not unblock the two things that
+`PromptBuilder`. It does not touch `src/embr/scoring.py`. It does not unblock the two things that
 actually gate this project, the ground-truth corpus and the write-up. It is justified by (1)
 alone. If (1) comes back null that is reportable, and it is the same shape as the RQ1 null.
 
@@ -199,7 +199,7 @@ version and sha256, model label, tone rater, reference time, and the pinned Ouro
 
 ## 8. The demo suite
 
-Five terminal demos, in `demos.py` beside `menu.py` (not in `embr/`, which must never import
+Five terminal demos, in `demos.py` beside `menu.py` (not in `src/embr/`, which must never import
 the eval harness), menu rows 14 to 19. **Every one runs end to end on the stub, CPU only, and
 never launches a model.** The through-line is the six-source highlighting: each source shaded
 on the ember ramp by its exact Banzhaf weight, the near-zero guard rendering a warning in place
@@ -212,7 +212,7 @@ of highlighting whenever the model barely used its context.
 2. **Mood slider.** One line under warm, neutral and suspicious, with the retrieved set
    changing, the Jaccard shift as a number, the reply's rated tone, and the attribution
    re-flowing across the six sources.
-3. **Defence dial.** The anchor-weight dose-response from `eval/provenance.py`, poison falling
+3. **Defence dial.** The anchor-weight dose-response from `src/eval/provenance.py`, poison falling
    to 0/10, then the hostile-anchor column snapping back to 10/10.
 4. **Tag-flip close-up.** One memory, its affect tag flipped, the retrieval rank moving while
    the words do not; repeated with the opposite words to show direction-blindness.
@@ -229,16 +229,16 @@ stamp and model behind its numbers, so a stub number can never be read as a real
 capture-ready output for a two-to-three-minute screen recording: arc, reveal, slider, dial.
 Demo 5 is left out because it is cached-only and may have nothing to show.
 
-**Not Rich, and not `embr/`.** The task brief named Rich and `embr/demos.py`; the repo has no
-Rich (the menu and harness are stdlib-only by design) and `embr/` may not import the harness,
+**Not Rich, and not `src/embr/`.** The task brief named Rich and `src/embr/demos.py`; the repo has no
+Rich (the menu and harness are stdlib-only by design) and `src/embr/` may not import the harness,
 so the demos use the menu's own ember ANSI palette and live at the repo root beside it.
 
 ## 9. The web demo
 
-A playable visual-novel front for the Dawn Whitmore arc, in `web/` beside `menu.py` and
-`demos.py` (not in `embr/`, which must never import the harness). Presentation only: it drives
+A playable visual-novel front for the Dawn Whitmore arc, in `src/web/` beside `menu.py` and
+`demos.py` (not in `src/embr/`, which must never import the harness). Presentation only: it drives
 the existing `Conversation` pipeline and reads existing run data, and re-implements no scoring,
-appraisal or attribution. A structural test pins that (`web/game.py` reuses `demos._live_reading`
+appraisal or attribution. A structural test pins that (`src/web/game.py` reuses `demos._live_reading`
 and never computes Banzhaf itself). Launch it from menu row `W` or `python -m web.server`; it
 runs on the stub, so **no model and no network are ever required**.
 
@@ -260,7 +260,7 @@ tab bar carries the RESEARCH tabs where a game would put Politics or Reputation:
 icon, chosen by the mood and beat the turn produced, and crossfaded on change. To swap the art,
 drop a same-named PNG into `assets/portraits/` (`dawn-warm.png`, `dawn-neutral.png`,
 `dawn-suspicious.png`, `dawn-betrayed.png`, `player.png`); no code changes. A missing file
-falls back to a drawn ember silhouette. `assets/portraits/cutout.py` makes a portrait's flat
+falls back to a drawn ember silhouette. `scripts/cutout.py` makes a portrait's flat
 field transparent by flooding from the borders inward, so it never eats white hair on a white
 background (a border flood stops at the first drawn outline); it is idempotent enough to re-run.
 Cached real-model turns and attribution light up automatically when present under
@@ -308,7 +308,7 @@ stays judge-only and never generates.
 
 ## 10. The v2 defence finding, stated precisely
 
-The 2026 attack classes (`eval/attacks_v2.py`, a second corpus that leaves the pre-registered
+The 2026 attack classes (`src/eval/attacks_v2.py`, a second corpus that leaves the pre-registered
 twenty untouched) each test the defence at a different edge, and the laundering result is the
 sharp one:
 

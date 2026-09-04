@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import pytest
 
-import menu
+from embr.cli import menu
 
 
 def test_delete_removes_every_generated_directory_and_reports_what_went(tmp_path) -> None:

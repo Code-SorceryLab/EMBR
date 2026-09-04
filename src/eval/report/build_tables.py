@@ -23,10 +23,10 @@ Three rules run through the whole module:
 
 Usage:
 
-    python assets/build_tables.py                    # newest run under data/runs/
-    python assets/build_tables.py data/runs/<stamp>  # a specific run
+    python -m eval.report.build_tables                    # newest run under data/runs/
+    python -m eval.report.build_tables data/runs/<stamp>  # a specific run
 
-    from assets.build_tables import build_all_tables
+    from eval.report.build_tables import build_all_tables
     build_all_tables("data/runs/<stamp>")
 """
 
@@ -245,7 +245,7 @@ class Provenance:
             f"% label_set={self.label_set}, label_sha256={self.label_sha256}, "
             f"results generated_at={self.generated_at}",
             f"% Requires \\usepackage{{booktabs}}. Flat twin: {table_name}.csv. "
-            f"Rebuild: python assets/build_tables.py {self.run_dir}",
+            f"Rebuild: python -m eval.report.build_tables {self.run_dir}",
             "% If the tabular overflows the text block, make the float a table* or wrap the "
             "tabular in \\resizebox{\\linewidth}{!}{...}.",
         ]
@@ -419,7 +419,7 @@ def _require(container: dict, key: str, where: str) -> dict:
     if not value:
         raise MissingRunValue(
             f"{where} has no usable {key!r}: this run directory is not the shape "
-            f"assets/build_tables.py was written against, so no table is produced "
+            f"src/eval/report/build_tables.py was written against, so no table is produced "
             f"rather than a table of invented values"
         )
     return value
@@ -594,7 +594,7 @@ def _signals_table(results: dict) -> Table:
                 "authored content",
                 "the five-signal reference is transcribed from the design specification "
                 "(docs/design.md section 4) into SIGNAL_REFERENCE in "
-                "assets/build_tables.py. It is the only table here that is not read out of "
+                "src/eval/report/build_tables.py. It is the only table here that is not read out of "
                 "a run directory, so its provenance line records the run whose assets it "
                 "was built alongside rather than a source for its values",
             ),

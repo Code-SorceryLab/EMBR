@@ -12,8 +12,8 @@ from pathlib import Path
 
 import pytest
 
-import demos
-import menu
+from embr.cli import demos
+from embr.cli import menu
 
 
 # --------------------------------------------------------------------- menu integration

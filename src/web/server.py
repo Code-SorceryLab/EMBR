@@ -21,7 +21,7 @@ from urllib.parse import urlparse
 from web.game import GameSession, PullJob, default_model_id
 
 STATIC_DIR = Path(__file__).parent / "static"
-PORTRAIT_DIR = Path(__file__).resolve().parents[1] / "assets" / "portraits"
+PORTRAIT_DIR = Path(__file__).resolve().parents[2] / "assets" / "portraits"
 
 _CONTENT_TYPES = {
     ".html": "text/html; charset=utf-8",
@@ -93,7 +93,7 @@ class DemoHandler(BaseHTTPRequestHandler):
 
     def _read_json_body(self) -> dict:
         length = int(self.headers.get("Content-Length") or 0)
-        if not length:
+        if not length or length > 1_000_000:  # a player line is bytes, not MB; refuse junk
             return {}
         try:
             return json.loads(self.rfile.read(length) or b"{}")

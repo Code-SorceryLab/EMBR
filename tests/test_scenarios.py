@@ -21,7 +21,7 @@ from eval.scenarios import (
     with_borderlines_admitted,
 )
 
-_JSON_PATH = Path(__file__).resolve().parent.parent / "eval" / "labels" / "dawn_whitmore.json"
+_JSON_PATH = Path(__file__).resolve().parent.parent / "src" / "eval" / "labels" / "dawn_whitmore.json"
 
 # Any fixed anchor works; pinning one makes every timestamp assertion exact.
 _REFERENCE = datetime(2026, 1, 1, 12, 0, tzinfo=timezone.utc)

@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import os
 import re
 from dataclasses import asdict
@@ -166,6 +167,23 @@ def _read_payload(path: Path) -> dict[str, Any] | None:
         return None
 
 
+def _find_non_finite(value: Any, location: str, problems: list[str]) -> None:
+    """Recurse the payload: a NaN or inf float anywhere makes the save unloadable.
+
+    json.loads accepts NaN/Infinity by default, and a handcrafted save with a valid
+    content hash can put one in a valence or trust field; the scorer then returns nan
+    silently for the rest of the session. Reject at the load boundary instead.
+    """
+    if isinstance(value, float) and not math.isfinite(value):
+        problems.append(f"non-finite number at {location}.")
+    elif isinstance(value, dict):
+        for key, item in value.items():
+            _find_non_finite(item, f"{location}.{key}", problems)
+    elif isinstance(value, list):
+        for index, item in enumerate(value):
+            _find_non_finite(item, f"{location}[{index}]", problems)
+
+
 def validate_payload(payload: dict[str, Any], beats: Sequence[Beat] = DAWN_ARC) -> list[str]:
     """Every reason this save cannot be loaded against the current code and content.
 
@@ -182,6 +200,7 @@ def validate_payload(payload: dict[str, Any], beats: Sequence[Beat] = DAWN_ARC) 
     for key in ("state", "memories", "written_memories", "beats_played"):
         if key not in payload:
             problems.append(f"missing field {key!r}.")
+    _find_non_finite(payload, "$", problems)
     return problems
 
 

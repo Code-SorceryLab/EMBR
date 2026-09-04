@@ -29,31 +29,39 @@ Everything runs locally, no network, no per-token cost.
 
 Three small contracts carry the whole system; get these right and everything plugs in.
 
-- **`Memory`** (`embr/memory.py`): `text`, `valence`, `arousal`, `event_type`,
+- **`Memory`** (`src/embr/memory.py`): `text`, `valence`, `arousal`, `event_type`,
   `timestamp`, `embedding`. These are exactly the fields the five signals consume; nothing
   else is stored. `MemoryStore` is the per-character store (in-memory now; SQLite + vector
   index later, behind the same interface).
-- **`CharacterState`** (`embr/affect.py`): `persona` (stable, read-only), `mood`
+- **`CharacterState`** (`src/embr/affect.py`): `persona` (stable, read-only), `mood`
   (valence/arousal, Russell 1980), `trust` (slow scalar). Mood and trust are separate so a
   single hostile remark doesn't erase a long relationship.
-- **`Signal` / `CompositeScorer`** (`embr/scoring.py`): each scoring term is one small,
+- **`Signal` / `CompositeScorer`** (`src/embr/scoring.py`): each scoring term is one small,
   pure class with a `name`; the scorer is a weighted sum. **Zeroing a weight disables a
   signal.** This is the single source of truth for all scoring variants.
 
 ## 4. The composite score
 
 ```
-score(m, q, s) = w_rec·recency + w_aff·affect + w_evt·event_gate
-                 + w_rel·relevance + w_mood·mood_congruence
+score(m, q, s) = w_rec * recency + w_aff * affect + w_evt * event_gate
+               + w_rel * relevance + w_mood * mood_congruence
+               [+ w_anchor * provenance_anchor]      the defended posture, opt in
 ```
 
-| Signal | Formula (sketch) | Grounding |
+Every signal returns a value in [0, 1], so the weights are the only thing that sets their
+relative size. As implemented in `src/embr/scoring.py`:
+
+| Signal | Formula as implemented | Grounding |
 |---|---|---|
-| Recency | `decay_per_hour ** Δhours` | Park 2023; MemoryBank |
-| Affect intensity | `|valence| · arousal` | Cahill & McGaugh 1998 |
-| Event-type gate | `1[plot beat] · g(trust)` | novel |
-| Hybrid relevance | `γ·BM25 + (1−γ)·cosine(embeddings)` | standard hybrid retrieval |
-| Mood congruence | `cos((v_m,a_m),(v_s,a_s))` | Bower 1981; Emotional RAG |
+| Recency | `decay_per_hour ** hours_since`, decay 0.995 per hour, clock pinned in the eval | Park 2023; MemoryBank |
+| Affect intensity | `abs(valence) * arousal` | Cahill and McGaugh 1998 |
+| Event-type gate | `1[plot beat] * (trust + 1) / 2` | this project |
+| Hybrid relevance | `gamma * BM25 + (1 - gamma) * cosine(embeddings)`, BM25 normalised by the top score, cosine floored at 0 | standard hybrid retrieval |
+| Mood congruence | `(cos((v_m, a_m), (v_s, a_s)) + 1) / 2`; a zero mood vector scores every memory 0.5 | Bower 1981; Emotional RAG |
+| Provenance anchor | `1[written_by and tagged_by are inside the trust boundary]`, weight 8.0 when enabled | this project; measured in `src/eval/provenance.py` |
+
+The `lagged` variant of mood congruence reads the mood the turn opened with rather than the
+live one; it is the defence measured in the provenance sweep and is off by default.
 
 **Why decomposed:** it makes the RQ3 ablation trivial (zero a weight), expresses baselines
 as weight maps rather than duplicated code, and keeps every signal independently testable.
@@ -72,7 +80,7 @@ reports a metric. See [`related-work.md`](related-work.md), which the paper must
 Both are scorer variants on the same interface, run on the same model and hardware. Every
 system (ours included) is tuned by the same grid search on the same validation set;
 evaluation scenarios and relevance labels are fixed in advance. *(Built in phase 2, under
-`eval/`.)*
+`src/eval/`.)*
 
 ## 6. Evaluation (summary)
 
@@ -90,11 +98,11 @@ evaluation scenarios and relevance labels are fixed in advance. *(Built in phase
 |---|---|
 | **0 (done)** | Skeleton, data contracts, menu shell, live demo turn, tests |
 | **1 (done)** | Hybrid relevance (in-tree BM25 + embedding cosine), pluggable embedder, SQLite store, affect-appraisal rules, config + live Settings |
-| **2 (done)** | Eval harness, baselines, metrics, adversarial probes (see `docs/phase2.md`) |
-| **3 (done)** | Paper figures and tables generated from a run directory (see `docs/phase3-4.md`) |
-| **4 (done)** | Real model runners, the playable walkthrough, the Rich menu (see `docs/phase3-4.md`) |
+| **2 (done)** | Eval harness, baselines, metrics, adversarial probes (see `docs/history/phase2.md`) |
+| **3 (done)** | Paper figures and tables generated from a run directory (see `docs/history/phase3-4.md`) |
+| **4 (done)** | Real model runners, the playable walkthrough, the Rich menu (see `docs/history/phase3-4.md`) |
 
-Phase-1 note: BM25 is implemented in-tree (`embr/scoring.py`) so the core needs no numpy; real
+Phase-1 note: BM25 is implemented in-tree (`src/embr/scoring.py`) so the core needs no numpy; real
 semantic embeddings live behind the `[ml]` extra, with a deterministic fallback embedder for
 tests. Corpus-aware signals expose an optional `prepare(memories, query, state)` hook the
 scorer calls once before per-memory scoring.
@@ -111,7 +119,7 @@ which is a live tension with the RQ2 target. Ouro also requires transformers 4.x
 
 ## 8. Conventions
 
-- One module per subsystem inside `embr/`; promote to a sub-package only when it outgrows a
+- One module per subsystem inside `src/embr/`; promote to a sub-package only when it outgrows a
   single file. Folders organize; we don't scatter lonely files.
 - Descriptive names, small "why" comments, easy-to-use functions, no duplicated logic
   (one source of truth, e.g. signals and baselines).
